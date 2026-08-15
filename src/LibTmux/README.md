@@ -52,6 +52,11 @@ every supported tmux.
 | Control | `server.EnterControlModeAsync(ct)` | one client, streamed | 0.29 ms | 6.5 ms |
 | Chained | `server.Chain()…ExecuteAsync(ct)` | N batched, one invocation | 3.6 ms | 3.5 ms |
 
+Chaining's two cells are one measurement, not two: 3.6 ms ± 1.1 and 3.5 ms ±
+0.6 overlap completely. A chain pays for one tmux process and almost nothing
+per command after it — 312 KB allocated for one command, 388 KB for fifty — so
+fifty commands cost what one costs. That is the reason to reach for it.
+
 ```csharp run
 // One command, a typed object back.
 Window built = await session.CreateWindowAsync(new NewWindowRequest(name: "build"), ct);

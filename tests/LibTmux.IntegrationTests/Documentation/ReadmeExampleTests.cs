@@ -106,17 +106,18 @@ public sealed class ReadmeExampleTests
 
         Type documented = Assembly.Load(assembly).GetType("Documented", throwOnError: true)!;
 
-        // A socket of this suite's own, named for what it is: the examples run
-        // against a real server, and one they share with anything else would
-        // make a failure somebody else's problem to explain.
         TmuxTestFactory factory = new();
-        TmuxTestOptions options = new(new ServerConnectionOptions(
-            tmuxBinaryPath: Environment.GetEnvironmentVariable("LIBTMUX_TMUX") ?? "tmux",
-            socketName: $"ltreadme-{Guid.NewGuid():N}"[..24],
-            configurationFile: "/dev/null"));
-
         foreach (Example example in runnable)
         {
+            // A socket per example, named for what it is. Sharing one would
+            // mean each example starting a server on a socket the previous
+            // example's kill has not finished releasing, which is a race that
+            // fails on a slow machine and passes on a fast one. It also keeps
+            // one example's windows out of the next one's reads.
+            TmuxTestOptions options = new(new ServerConnectionOptions(
+                tmuxBinaryPath: Environment.GetEnvironmentVariable("LIBTMUX_TMUX") ?? "tmux",
+                socketName: $"ltreadme-{Guid.NewGuid():N}"[..24],
+                configurationFile: "/dev/null"));
             await using TemporaryHierarchyScope scope = await factory.CreateHierarchyAsync(
                 options,
                 TestContext.Current.CancellationToken);

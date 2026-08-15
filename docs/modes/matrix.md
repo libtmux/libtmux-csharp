@@ -38,14 +38,21 @@ no process cost at all, in exchange for holding a connection.
 
 Measured by the `LibTmux.Benchmarks` project against tmux 3.7b on `net10.0`:
 
-| Commands | Mode | Mean | Allocated |
-|---|---|---:|---:|
-| 1 | One-shot | 3.8 ms | 312 KB |
-| 1 | Chained | 3.6 ms | 313 KB |
-| 1 | Control | 0.29 ms | 1.3 KB |
-| 50 | One-shot | 118 ms | 15,576 KB |
-| 50 | Chained | 3.5 ms | 388 KB |
-| 50 | Control | 6.5 ms | 59 KB |
+| Commands | Mode | Mean | Error | Allocated |
+|---|---|---:|---:|---:|
+| 1 | One-shot | 3.8 ms | ± 0.8 | 312 KB |
+| 1 | Chained | 3.6 ms | ± 1.1 | 313 KB |
+| 1 | Control | 0.29 ms | ± 0.05 | 1.3 KB |
+| 50 | One-shot | 118 ms | ± 8.1 | 15,576 KB |
+| 50 | Chained | 3.5 ms | ± 0.6 | 388 KB |
+| 50 | Control | 6.5 ms | ± 0.8 | 59 KB |
+
+The error column is there because one comparison in this table needs it:
+chaining one command and chaining fifty are **the same measurement**. 3.6 ± 1.1
+and 3.5 ± 0.6 overlap completely, and reading the means alone would say fifty
+commands are faster than one, which is not a thing. The allocations say what is
+actually happening — 313 KB for one, 388 KB for fifty — a chain pays for one
+tmux process and almost nothing per command after it.
 
 There are two crossovers here and they point at different modes.
 
