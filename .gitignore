@@ -1,0 +1,20 @@
+.vs/
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+*.suo
+*.user
+
+# BenchmarkDotNet writes its reports beside the project it ran.
+BenchmarkDotNet.Artifacts/
+
+# The engineering scripts under eng/ are Python, run through uv.
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+.DS_Store
