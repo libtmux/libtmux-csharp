@@ -481,6 +481,15 @@ public sealed class VersionParityTests
                 await SeedPaneCommandAsync(
                     context,
                     "printf '\\033[2J\\033[HX'; sleep 2");
+
+                // The shell reaching the sleep is what says the printf before
+                // it has run. Reading the pane for the X it wrote would match
+                // the echoed command line, which also contains one.
+                await WaitForFormatAsync(
+                    context,
+                    TargetPane(context),
+                    "#{pane_current_command}",
+                    "sleep");
                 RawTmuxResult untrimmed = await RequireSuccessAsync(
                     context,
                     ["capture-pane", "-p", "-N", "-S", "0", "-E", "0", "-t", TargetPane(context)]);
@@ -773,6 +782,10 @@ public sealed class VersionParityTests
                 "set-option -g @libtmux_prompt37 executed",
             ]);
         await client.WriteAsync(new byte[] { 0x7f }, TestContext.Current.CancellationToken);
+
+        // What is being proven is that the prompt did not execute, and nothing
+        // to wait for ever arrives when nothing happens. A delay is the shape
+        // this assertion has: too short and it proves less, never wrong.
         await Task.Delay(TimeSpan.FromMilliseconds(50), TestContext.Current.CancellationToken);
         Assert.Null(await ShowOptionAsync(context, "@libtmux_prompt37"));
 
@@ -861,13 +874,18 @@ public sealed class VersionParityTests
         await using PtyAttachedClientScope client = await PtyAttachedClientScope.StartAsync(
             context,
             TestContext.Current.CancellationToken);
+        await WaitForClientOutputToSettleAsync(client);
+        int offset = client.ReadOutputSnapshot().Length;
         Task<RawTmuxResult> menu = ExecuteAsync(
             context,
             [
                 "display-menu", "-M", "-t", TargetPane(context), "-x", "0", "-y", "0",
                 "mouse-item", "x", "set-option -g @libtmux_menu_mouse selected",
             ]);
-        await Task.Delay(TimeSpan.FromMilliseconds(75), TestContext.Current.CancellationToken);
+
+        // A click sent before the menu is drawn lands on the pane underneath
+        // it. Its own item arriving at the client is what says it is there.
+        await WaitForClientOutputAsync(client, offset, "mouse-item");
         await client.WriteAsync(
             "\u001b[<0;2;2M\u001b[<0;2;2m"u8.ToArray(),
             TestContext.Current.CancellationToken);
@@ -892,7 +910,9 @@ public sealed class VersionParityTests
                 "0", "first", "a", "set-option -g @libtmux_menu_style first",
                 "second", "b", "set-option -g @libtmux_menu_style second",
             ]);
-        await Task.Delay(TimeSpan.FromMilliseconds(75), TestContext.Current.CancellationToken);
+        // The last item proves the whole menu reached the client, which is what
+        // the colors and the border below are read out of.
+        await WaitForClientOutputAsync(client, offset, "second");
         byte[] rendered = client.ReadOutputSnapshot()[offset..];
         string renderedText = Encoding.UTF8.GetString(rendered);
         AssertSgrColor(renderedText, ansiColor: 31, paletteColor: 1);
@@ -957,10 +977,13 @@ public sealed class VersionParityTests
         await using PtyAttachedClientScope client = await PtyAttachedClientScope.StartAsync(
             context,
             TestContext.Current.CancellationToken);
+        // A key sent before the popup exists reaches the pane underneath it,
+        // and the popup then waits for a key that already came and went. The
+        // popup says when it is there rather than being given time to be.
         Task<RawTmuxResult> closeAny = ExecuteAsync(
             context,
-            ["display-popup", "-k", "-t", TargetPane(context), "true"]);
-        await Task.Delay(TimeSpan.FromMilliseconds(75), TestContext.Current.CancellationToken);
+            ["display-popup", "-k", "-t", TargetPane(context), PopupOpenedCommand(context, "libtmux-popup-any")]);
+        await RequireSuccessAsync(context, ["wait-for", "libtmux-popup-any"]);
         await client.WriteAsync("x"u8.ToArray(), TestContext.Current.CancellationToken);
         Assert.Equal(
             0,
@@ -968,10 +991,13 @@ public sealed class VersionParityTests
 
         Task<RawTmuxResult> reset = ExecuteAsync(
             context,
-            ["display-popup", "-k", "-t", TargetPane(context), "true"]);
-        await Task.Delay(TimeSpan.FromMilliseconds(75), TestContext.Current.CancellationToken);
+            ["display-popup", "-k", "-t", TargetPane(context), PopupOpenedCommand(context, "libtmux-popup-reset")]);
+        await RequireSuccessAsync(context, ["wait-for", "libtmux-popup-reset"]);
         await RequireSuccessAsync(context, ["display-popup", "-N", "-t", TargetPane(context)]);
         await client.WriteAsync("x"u8.ToArray(), TestContext.Current.CancellationToken);
+
+        // As above: the proof is that the popup stayed open, and a popup that
+        // stays open produces nothing to wait for.
         await Task.Delay(TimeSpan.FromMilliseconds(75), TestContext.Current.CancellationToken);
         Assert.False(reset.IsCompleted);
         await client.WriteAsync(new byte[] { 0x1b }, TestContext.Current.CancellationToken);
@@ -1187,10 +1213,13 @@ public sealed class VersionParityTests
                 "display-message %%",
             ]);
         await client.WriteAsync("\r"u8.ToArray(), TestContext.Current.CancellationToken);
-        await Task.Delay(TimeSpan.FromMilliseconds(50), TestContext.Current.CancellationToken);
-        RawTmuxResult shown = await RequireSuccessAsync(
+
+        // The prompt records what was entered when it accepts it, which is not
+        // when the return key was written to the client's terminal.
+        RawTmuxResult shown = await WaitForResultAsync(
             context,
-            ["show-prompt-history", "-T", "command"]);
+            ["show-prompt-history", "-T", "command"],
+            result => result.StandardOutputLines.Count == 3);
         Assert.Equal(
             ["History for command:", "", "1: libtmux-history-value"],
             shown.StandardOutputLines);
@@ -1289,7 +1318,65 @@ public sealed class VersionParityTests
             context,
             ["send-keys", "-t", TargetPane(context), "-l", command]);
         await RequireSuccessAsync(context, ["send-keys", "-t", TargetPane(context), "Enter"]);
-        await Task.Delay(TimeSpan.FromMilliseconds(75), TestContext.Current.CancellationToken);
+
+        // Sending a command is not running it. What running it produces differs
+        // per caller, so each waits for its own result rather than being given
+        // a fixed number of milliseconds here.
+    }
+
+    /// <summary>Runs a command until its result is the one being waited for.</summary>
+    /// <remarks>
+    /// A command that answers the wrong thing once has not necessarily failed:
+    /// tmux may not have got to the work yet. Asking again until the deadline
+    /// is what tells those apart.
+    /// </remarks>
+    private static async Task<RawTmuxResult> WaitForResultAsync(
+        RawTmuxTestContext context,
+        IReadOnlyList<string> arguments,
+        Func<RawTmuxResult, bool> settled)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + CommandTimeout;
+        RawTmuxResult result = await RequireSuccessAsync(context, arguments);
+        while (!settled(result) && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(
+                TimeSpan.FromMilliseconds(10),
+                TestContext.Current.CancellationToken);
+            result = await RequireSuccessAsync(context, arguments);
+        }
+
+        return result;
+    }
+
+    /// <summary>Waits until a pane's scrollback shows some text.</summary>
+    /// <remarks>
+    /// A shell handed a command has not necessarily run it, and a sequence
+    /// written to a pane's terminal has not necessarily been parsed. Reading
+    /// until what was seeded is there is what separates proving tmux's behavior
+    /// from measuring how busy the machine is.
+    /// </remarks>
+    private static async Task WaitForPaneContentAsync(
+        RawTmuxTestContext context,
+        string expected)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + CommandTimeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            RawTmuxResult result = await ExecuteAsync(
+                context,
+                ["capture-pane", "-p", "-S", "-", "-t", TargetPane(context)]);
+            if (result.ExitCode == 0
+                && result.StandardOutputText.Contains(expected, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            await Task.Delay(
+                TimeSpan.FromMilliseconds(10),
+                TestContext.Current.CancellationToken);
+        }
+
+        Assert.Fail($"The pane never showed '{expected}'.");
     }
 
     private static async Task SeedHyperlinkAsync(
@@ -1305,7 +1392,10 @@ public sealed class VersionParityTests
                 $"printf '\\033]8;;{url}\\033\\\\{text}\\033]8;;\\033\\\\\\n' "
                 + "> '#{pane_tty}'",
             ]);
-        await Task.Delay(TimeSpan.FromMilliseconds(75), TestContext.Current.CancellationToken);
+
+        // run-shell returning says the sequence was written to the terminal,
+        // not that the pane has parsed it. The text it carries showing up does.
+        await WaitForPaneContentAsync(context, text);
     }
 
     private static async Task SeedScrollbackAsync(RawTmuxTestContext context)
@@ -1622,6 +1712,15 @@ public sealed class VersionParityTests
 
     private static string TargetPane(RawTmuxTestContext context) =>
         $"{context.SessionName}:0.0";
+
+    /// <summary>Builds a popup command that signals once the popup is open.</summary>
+    /// <remarks>
+    /// tmux remembers a signal that arrives before anyone waits, so signalling
+    /// from inside the popup and waiting for it afterwards cannot race: the
+    /// wait returns immediately when the popup was quicker.
+    /// </remarks>
+    private static string PopupOpenedCommand(RawTmuxTestContext context, string channel) =>
+        $"'{context.TmuxBinaryPath}' -S '{context.SocketPath}' wait-for -S {channel}";
 
     private static async Task WriteTransitionRecordAsync(TmuxCapabilityProfile profile)
     {
