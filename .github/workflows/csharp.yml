@@ -1,0 +1,162 @@
+# The gate. Everything a change has to pass locally runs here, in the same
+# order and with the same flags, so a change that is green here and red there
+# would make one of the two a lie.
+name: csharp
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: csharp-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  build:
+    name: build and prove
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # SourceLink points at the commit that produced the assembly, which
+          # a shallow checkout does not have.
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install tmux
+        # The examples, the ahead-of-time smoke test and the package consumer
+        # all drive a real server rather than a stub.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes tmux
+          tmux -V
+
+      - name: Restore
+        run: dotnet restore LibTmux.slnx --locked-mode
+
+      - name: Format
+        run: dotnet format LibTmux.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build LibTmux.slnx --configuration Release --no-restore --warnaserror
+
+      - name: Unit tests (net8.0)
+        run: >
+          dotnet test
+          --project tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj
+          --configuration Release
+          --framework net8.0
+          --no-build
+          --minimum-expected-tests 1
+
+      - name: Unit tests (net10.0)
+        run: >
+          dotnet test
+          --project tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj
+          --configuration Release
+          --framework net10.0
+          --no-build
+          --minimum-expected-tests 1
+
+      - name: Pack
+        run: dotnet pack LibTmux.slnx --configuration Release --no-build --output artifacts/packages
+
+      - name: Inspect the packages
+        run: uv run python eng/parity/inspect_packages.py
+
+      - name: Package consumer
+        # Reaching the library through the package is the point: a missing
+        # assembly or a wrong target framework is invisible from inside the
+        # repository.
+        run: |
+          dotnet restore tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj
+          for framework in net8.0 net10.0; do
+            dotnet run \
+              --project tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj \
+              --configuration Release \
+              --framework "${framework}" \
+              --no-restore
+          done
+
+      - name: Ahead-of-time smoke test
+        # Trim and ahead-of-time warnings are only complete once something is
+        # published that way and run. This publishes where the closure tests
+        # below look for it, which is the default location rather than one
+        # this job picked.
+        run: |
+          sudo apt-get install --yes clang zlib1g-dev
+          for framework in net8.0 net10.0; do
+            dotnet publish tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj \
+              --configuration Release \
+              --framework "${framework}" \
+              --runtime linux-x64
+            "tests/LibTmux.AotSmoke/bin/Release/${framework}/linux-x64/native/LibTmux.AotSmoke"
+          done
+
+      - name: Examples
+        # An example that stopped working should fail the build, not the
+        # reader who copied it.
+        run: >
+          dotnet run
+          --project examples/LibTmux.Examples/LibTmux.Examples.csproj
+          --configuration Release
+          --framework net10.0
+          --no-build
+
+      - name: Integration tests
+        # These run last because the packaging tests among them read what the
+        # steps above produced: the package, the consumer, and the native
+        # binary. The runner's tmux is whatever Ubuntu ships; which versions
+        # are supported is proven by csharp-tmux.yml, which builds each one.
+        env:
+          LIBTMUX_INTEGRATION_REQUIRED: '1'
+        run: >
+          dotnet test
+          --project tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj
+          --configuration Release
+          --framework net10.0
+          --no-build
+          --minimum-expected-tests 1
+
+      - name: Documents
+        # Two validators run on checked-in documents rather than the build, so
+        # nothing else would notice them drifting from the source.
+        run: |
+          uv run python eng/parity/verify_public_api.py
+          uv run python eng/parity/verify_capabilities.py
+          uv run python eng/parity/verify_workflows.py
+
+      - name: Check out the pinned Python libtmux
+        # The parity records quote one revision of the Python library. It is
+        # cloned beside the workspace rather than into it, so nothing here
+        # counts as part of this repository's tree.
+        run: git clone --filter=blob:none --no-checkout https://github.com/tmux-python/libtmux "${RUNNER_TEMP}/python-libtmux"
+
+      - name: Engineering tests
+        env:
+          LIBTMUX_PYTHON_REPOSITORY: ${{ runner.temp }}/python-libtmux
+        run: uv run --with pytest python -m pytest eng --quiet
+
+      - uses: actions/upload-artifact@v4
+        # A run that failed before packing has nothing to upload, and saying so
+        # twice would bury which step actually failed.
+        if: always()
+        with:
+          name: packages
+          path: artifacts/packages
+          if-no-files-found: warn

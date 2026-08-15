@@ -1,0 +1,144 @@
+# The compatibility claim. The README and the package say which tmux versions
+# this works on; each one is built from source here and driven for real, so the
+# claim is something this repository can fail.
+name: csharp-tmux
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    # tmux master moves under the library rather than with it.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: csharp-tmux-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  matrix:
+    name: tmux ${{ matrix.tmux }} on ${{ matrix.framework }}
+    runs-on: ubuntu-latest
+    strategy:
+      # One lane failing says something about that tmux version, which is only
+      # readable when the other lanes still run.
+      fail-fast: false
+      matrix:
+        tmux: ['3.2a', '3.3a', '3.4', '3.5', '3.6', '3.7a', '3.7b']
+        framework: ['net8.0', 'net10.0']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            autoconf \
+            automake \
+            bison \
+            build-essential \
+            jq \
+            libevent-dev \
+            libncurses-dev \
+            pkg-config
+
+      - name: Restore the tmux build
+        id: tmux-cache
+        uses: actions/cache@v4
+        with:
+          path: artifacts/tmux
+          key: tmux-${{ matrix.tmux }}-${{ runner.os }}-${{ hashFiles('eng/tmux/build-version.sh') }}
+
+      - name: Build tmux ${{ matrix.tmux }}
+        id: tmux
+        env:
+          TMUX_VERSION: ${{ matrix.tmux }}
+        run: eng/tmux/build-version.sh "${TMUX_VERSION}" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Restore
+        run: dotnet restore LibTmux.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build LibTmux.slnx --configuration Release --no-restore --warnaserror
+
+      - name: Integration tests
+        env:
+          LIBTMUX_TMUX: ${{ steps.tmux.outputs.binary }}
+          LIBTMUX_TMUX_SOURCE_COMMIT: ${{ steps.tmux.outputs.commit }}
+          LIBTMUX_EXPECTED_TMUX_VERSION: ${{ matrix.tmux }}
+          # A lane whose integration tests silently skipped would pass while
+          # proving nothing at all.
+          LIBTMUX_INTEGRATION_REQUIRED: '1'
+          LIBTMUX_TEST_FRAMEWORK: ${{ matrix.framework }}
+        run: >
+          dotnet test
+          --project tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj
+          --configuration Release
+          --framework ${{ matrix.framework }}
+          --no-build
+          --minimum-expected-tests 1
+
+  advisory:
+    name: tmux master (advisory)
+    runs-on: ubuntu-latest
+    # What master does is worth knowing and is not a reason to block a change.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            autoconf \
+            automake \
+            bison \
+            build-essential \
+            jq \
+            libevent-dev \
+            libncurses-dev \
+            pkg-config
+
+      - name: Build tmux master
+        id: tmux
+        run: eng/tmux/build-version.sh master | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Restore
+        run: dotnet restore LibTmux.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build LibTmux.slnx --configuration Release --no-restore --warnaserror
+
+      - name: Integration tests
+        env:
+          LIBTMUX_TMUX: ${{ steps.tmux.outputs.binary }}
+          LIBTMUX_TMUX_SOURCE_COMMIT: ${{ steps.tmux.outputs.commit }}
+          LIBTMUX_INTEGRATION_REQUIRED: '1'
+        run: >
+          dotnet test
+          --project tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj
+          --configuration Release
+          --framework net10.0
+          --no-build
+          --minimum-expected-tests 1

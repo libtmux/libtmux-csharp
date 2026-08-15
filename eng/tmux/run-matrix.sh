@@ -365,7 +365,9 @@ if [[ -n "${candidate}" ]]; then
         > "${candidate}/redaction-proof.json"
     mapfile -t producer_files < <(
         cd "${candidate}"
-        fd --type f . --exclude producer.json | sort
+        # find rather than fd: this has to run on whatever a CI image ships,
+        # and fd is not on one.
+        find . -type f ! -name producer.json | sed 's|^\./||' | sort
     )
     jq -n \
         --arg evaluatedCommit "${EVALUATED_COMMIT}" \
