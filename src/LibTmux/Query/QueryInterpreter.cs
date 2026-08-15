@@ -128,12 +128,22 @@ internal static class QueryInterpreter
         "Trimming",
         "IL2075:Members might be removed",
         Justification = "Marked on the query surface a caller reaches this through.")]
-    private static object? ReadMember(FieldNode field, object element) =>
-        element.GetType()
-            .GetProperty(ToClrName(field.WireName))
-            ?.GetValue(element)
-        ?? throw new UnsupportedQueryExpressionException(
-            $"Element exposes no member for field '{field.WireName}'.");
+    private static object? ReadMember(FieldNode field, object element)
+    {
+        Type type = element.GetType();
+
+        // Reading has to resolve the same pair translating wrote: an entity
+        // holds session_attached under Attached, and a row a caller declared
+        // holds it under SessionAttached.
+        string property =
+            QueryFieldCatalog.TryGetProperty(type.Name, field.WireName, out string mapped)
+                ? mapped
+                : ToClrName(field.WireName);
+
+        return type.GetProperty(property)?.GetValue(element)
+            ?? throw new UnsupportedQueryExpressionException(
+                $"Element exposes no member for field '{field.WireName}'.");
+    }
 
     private static object? Literal(QueryConstant constant) => constant switch
     {

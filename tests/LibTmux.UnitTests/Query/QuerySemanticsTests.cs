@@ -7,6 +7,69 @@ public sealed class QuerySemanticsTests
     private sealed record Row(string SessionName, long SessionWindows);
 
     [Fact]
+    public void An_entity_translates_through_the_name_tmux_uses_for_the_field()
+    {
+        // What C# calls a property and what tmux calls the field are not
+        // transformations of one another, so the catalog carries the pair. A
+        // filter written over the objects the library hands back is the one a
+        // caller has reason to write.
+        Assert.Equal(
+            "session_name",
+            Field(QueryExtensions.Translate<Session>(
+                session => session.Name.StartsWith("build"))));
+        Assert.Equal(
+            "session_attached",
+            Field(QueryExtensions.Translate<Session>(session => session.Attached)));
+        Assert.Equal(
+            "window_name",
+            Field(QueryExtensions.Translate<Window>(window => window.Name == "build")));
+
+        // The one that a naming rule would never produce.
+        Assert.Equal(
+            "client_control",
+            Field(QueryExtensions.Translate<Client>(client => client.IsControlClient)));
+    }
+
+    [Fact]
+    public void An_entity_relation_translates_with_the_element_it_quantifies()
+    {
+        QueryDocument document = QueryExtensions.Translate<Session>(
+            session => session.Windows.Any(window => window.Name == "build"));
+
+        QuantifierNode quantifier = Assert.IsType<QuantifierNode>(document.Predicate);
+        Assert.Equal("session_windows", quantifier.Relation.WireName);
+        Assert.Equal(QueryTarget.Session, document.Target);
+    }
+
+    [Fact]
+    public void A_row_a_caller_declares_still_names_the_wire_fields_itself()
+    {
+        // A type the catalog does not own is a projection, whose properties are
+        // the wire names already. Both spellings reach the same document.
+        Assert.Equal(
+            "session_name",
+            Field(QueryExtensions.Translate<Row>(row => row.SessionName.StartsWith("dev"))));
+    }
+
+    [Fact]
+    public void A_property_outside_the_catalog_still_refuses_to_translate()
+    {
+        UnsupportedQueryExpressionException error =
+            Assert.Throws<UnsupportedQueryExpressionException>(
+                () => QueryExtensions.Translate<Pane>(pane => pane.Title == "x"));
+
+        Assert.Contains("title", error.Message, StringComparison.Ordinal);
+    }
+
+    private static string Field(QueryDocument document) => document.Predicate switch
+    {
+        StringNode text => ((FieldNode)text.Left).WireName,
+        ComparisonNode comparison => ((FieldNode)comparison.Left).WireName,
+        FieldNode field => field.WireName,
+        _ => throw new InvalidOperationException($"No field in {document.Predicate}."),
+    };
+
+    [Fact]
     public void Matching_translates_and_interprets_the_canonical_AST()
     {
         QueryDocument document = QueryExtensions.Translate<Row>(

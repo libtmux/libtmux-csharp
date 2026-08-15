@@ -122,7 +122,19 @@ internal static class QueryTranslator
             "Contains" => QueryStringOperation.ContainsOrdinal,
             _ => throw Unsupported(call),
         };
-        if (call.Object is null || call.Arguments.Count != 1)
+        // The wire operations are ordinal, so the overload that says so is the
+        // one to accept. It is also the one CA1310 tells a caller to write, and
+        // refusing it would mean the library rejecting what .NET's own
+        // analyzers asked for. A culture-sensitive comparison has no wire form
+        // and still throws rather than quietly meaning something else.
+        if (call.Object is null || call.Arguments.Count is not (1 or 2))
+        {
+            throw Unsupported(call);
+        }
+
+        if (call.Arguments.Count == 2
+            && !(TryConstant(call.Arguments[1], out object? comparison)
+                && comparison is StringComparison.Ordinal))
         {
             throw Unsupported(call);
         }
@@ -201,7 +213,17 @@ internal static class QueryTranslator
 
     private static FieldNode FieldFor(MemberInfo member)
     {
-        string wireName = ToWireName(member.Name);
+        // An entity says what it is, and what tmux calls its fields is not a
+        // transformation of what C# calls them: Session.Attached is
+        // session_attached, and Client.IsControlClient is client_control. The
+        // catalog carries that pair, so a filter can be written over the
+        // objects the library hands back. A type it does not know is a row a
+        // caller declared, whose property names are the wire names already.
+        string wireName =
+            member.DeclaringType is { } owner
+            && QueryFieldCatalog.TryGetWireName(owner.Name, member.Name, out string mapped)
+                ? mapped
+                : ToWireName(member.Name);
         // The catalog is closed: a field it does not carry cannot be put on the
         // wire, so translating it would produce a document tmux cannot answer.
         if (!QueryFieldCatalog.TryGetTarget(wireName, out QueryTarget target))

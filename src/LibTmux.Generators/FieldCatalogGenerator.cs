@@ -13,20 +13,30 @@ namespace LibTmux.Generators;
 [Generator(LanguageNames.CSharp)]
 public sealed class FieldCatalogGenerator : IIncrementalGenerator
 {
-    private static readonly (string WireName, string Target, bool Relation)[] Fields =
+    /// <summary>The closed catalog, and where each field lives on its entity.</summary>
+    /// <remarks>
+    /// A field's wire name is a tmux format name and its property is what C#
+    /// calls the same thing, which is not a transformation of the other:
+    /// <c>client_control</c> reads as <c>IsControlClient</c>, and two fields
+    /// have no property at all. Writing the pair down is what lets a filter be
+    /// expressed over the entities the library hands back rather than over a
+    /// row whose property names happen to match the wire.
+    /// </remarks>
+    private static readonly (string WireName, string Target, bool Relation, string? Property)[]
+        Fields =
     {
-        ("client_control", "Client", false),
-        ("client_id", "Client", false),
-        ("client_name", "Client", false),
-        ("pane_command", "Pane", false),
-        ("pane_id", "Pane", false),
-        ("session_attached", "Session", false),
-        ("session_id", "Session", false),
-        ("session_name", "Session", false),
-        ("session_windows", "Session", true),
-        ("window_id", "Window", false),
-        ("window_name", "Window", false),
-        ("window_panes", "Window", true),
+        ("client_control", "Client", false, "IsControlClient"),
+        ("client_id", "Client", false, null),
+        ("client_name", "Client", false, "Name"),
+        ("pane_command", "Pane", false, null),
+        ("pane_id", "Pane", false, "Id"),
+        ("session_attached", "Session", false, "Attached"),
+        ("session_id", "Session", false, "Id"),
+        ("session_name", "Session", false, "Name"),
+        ("session_windows", "Session", true, "Windows"),
+        ("window_id", "Window", false, "Id"),
+        ("window_name", "Window", false, "Name"),
+        ("window_panes", "Window", true, "Panes"),
     };
 
     /// <inheritdoc />
@@ -49,7 +59,7 @@ public sealed class FieldCatalogGenerator : IIncrementalGenerator
         source.AppendLine(
             "    internal static bool IsRelation(string wireName) => wireName switch");
         source.AppendLine("    {");
-        foreach ((string wireName, _, bool relation) in Fields)
+        foreach ((string wireName, _, bool relation, _) in Fields)
         {
             if (relation)
             {
@@ -65,7 +75,7 @@ public sealed class FieldCatalogGenerator : IIncrementalGenerator
         source.AppendLine("    {");
         source.AppendLine("        switch (wireName)");
         source.AppendLine("        {");
-        foreach ((string wireName, string target, _) in Fields)
+        foreach ((string wireName, string target, _, _) in Fields)
         {
             source.AppendLine($"            case \"{wireName}\":");
             source.AppendLine($"                target = QueryTarget.{target};");
@@ -78,9 +88,57 @@ public sealed class FieldCatalogGenerator : IIncrementalGenerator
         source.AppendLine("        }");
         source.AppendLine("    }");
         source.AppendLine();
+        source.AppendLine(
+            "    internal static bool TryGetWireName(string owner, string property, "
+            + "out string wireName)");
+        source.AppendLine("    {");
+        source.AppendLine("        switch (owner + \".\" + property)");
+        source.AppendLine("        {");
+        foreach ((string wireName, string target, _, string? property) in Fields)
+        {
+            if (property is null)
+            {
+                continue;
+            }
+
+            source.AppendLine($"            case \"{target}.{property}\":");
+            source.AppendLine($"                wireName = \"{wireName}\";");
+            source.AppendLine("                return true;");
+        }
+
+        source.AppendLine("            default:");
+        source.AppendLine("                wireName = string.Empty;");
+        source.AppendLine("                return false;");
+        source.AppendLine("        }");
+        source.AppendLine("    }");
+        source.AppendLine();
+        source.AppendLine(
+            "    internal static bool TryGetProperty(string owner, string wireName, "
+            + "out string property)");
+        source.AppendLine("    {");
+        source.AppendLine("        switch (owner + \".\" + wireName)");
+        source.AppendLine("        {");
+        foreach ((string wireName, string target, _, string? property) in Fields)
+        {
+            if (property is null)
+            {
+                continue;
+            }
+
+            source.AppendLine($"            case \"{target}.{wireName}\":");
+            source.AppendLine($"                property = \"{property}\";");
+            source.AppendLine("                return true;");
+        }
+
+        source.AppendLine("            default:");
+        source.AppendLine("                property = string.Empty;");
+        source.AppendLine("                return false;");
+        source.AppendLine("        }");
+        source.AppendLine("    }");
+        source.AppendLine();
         source.AppendLine("    internal static IReadOnlyList<string> WireNames { get; } =");
         source.AppendLine("    [");
-        foreach ((string wireName, _, _) in Fields)
+        foreach ((string wireName, _, _, _) in Fields)
         {
             source.AppendLine($"        \"{wireName}\",");
         }
