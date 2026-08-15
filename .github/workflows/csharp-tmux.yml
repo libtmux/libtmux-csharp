@@ -110,7 +110,13 @@ jobs:
   advisory:
     name: tmux master (advisory)
     runs-on: ubuntu-latest
-    # What master does is worth knowing and is not a reason to block a change.
+
+    # What tmux master does is a question about time, not about a commit: it
+    # moves under this library rather than with it. Running it weekly answers
+    # that question and stops a lane that is expected to fail from putting a
+    # red mark on every push, which costs a reader the time to check whether
+    # this one matters.
+    if: github.event_name != 'push' && github.event_name != 'pull_request'
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
