@@ -2,41 +2,7 @@
   "capabilities": [
     {
       "capability": "attachment_accounting",
-      "evidence": {
-        "capabilityCohort": "0001",
-        "evaluatedCommit": "67123c8ce26eca6aaacfabdb7882d9915deb1e00",
-        "frameworks": [
-          "net10.0",
-          "net8.0"
-        ],
-        "results": "docs/parity/evidence/0001/results.ndjson",
-        "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
-        "sourceState": "clean",
-        "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
-        "testCount": 134,
-        "tests": [
-          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::AttachmentAccounting"
-        ],
-        "tmuxSourceCommits": {
-          "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
-          "3.3a": "0b355ae8114511e1ff6359272b164f1cdf718e80",
-          "3.4": "9ae69c3795ab5ef6b4d760f6398cd9281151f632",
-          "3.5": "ac44566c9c7e3e94d23be6def4c7ae83472543f5",
-          "3.6": "0dac7fe434d029a4f0b819cba8eb7963df291990",
-          "3.7a": "0e418b62d259ce8da8970f75732cc6632ee4c3a0",
-          "3.7b": "e802909de06012a4df6209d55e86487c56223163"
-        },
-        "tmuxVersions": [
-          "3.2a",
-          "3.3a",
-          "3.4",
-          "3.5",
-          "3.6",
-          "3.7a",
-          "3.7b"
-        ]
-      },
-      "evidenceStatus": "verified",
+      "evidenceStatus": "pending",
       "introducedIn": "unknown",
       "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::AttachmentAccounting",
       "removedIn": "unknown",
@@ -47,41 +13,7 @@
     },
     {
       "capability": "byte_length_framing",
-      "evidence": {
-        "capabilityCohort": "0001",
-        "evaluatedCommit": "67123c8ce26eca6aaacfabdb7882d9915deb1e00",
-        "frameworks": [
-          "net10.0",
-          "net8.0"
-        ],
-        "results": "docs/parity/evidence/0001/results.ndjson",
-        "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
-        "sourceState": "clean",
-        "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
-        "testCount": 134,
-        "tests": [
-          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ByteLengthFraming"
-        ],
-        "tmuxSourceCommits": {
-          "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
-          "3.3a": "0b355ae8114511e1ff6359272b164f1cdf718e80",
-          "3.4": "9ae69c3795ab5ef6b4d760f6398cd9281151f632",
-          "3.5": "ac44566c9c7e3e94d23be6def4c7ae83472543f5",
-          "3.6": "0dac7fe434d029a4f0b819cba8eb7963df291990",
-          "3.7a": "0e418b62d259ce8da8970f75732cc6632ee4c3a0",
-          "3.7b": "e802909de06012a4df6209d55e86487c56223163"
-        },
-        "tmuxVersions": [
-          "3.2a",
-          "3.3a",
-          "3.4",
-          "3.5",
-          "3.6",
-          "3.7a",
-          "3.7b"
-        ]
-      },
-      "evidenceStatus": "verified",
+      "evidenceStatus": "pending",
       "introducedIn": "unknown",
       "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ByteLengthFraming",
       "removedIn": "unknown",
@@ -92,41 +24,7 @@
     },
     {
       "capability": "control_notifications",
-      "evidence": {
-        "capabilityCohort": "0001",
-        "evaluatedCommit": "67123c8ce26eca6aaacfabdb7882d9915deb1e00",
-        "frameworks": [
-          "net10.0",
-          "net8.0"
-        ],
-        "results": "docs/parity/evidence/0001/results.ndjson",
-        "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
-        "sourceState": "clean",
-        "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
-        "testCount": 134,
-        "tests": [
-          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ControlNotifications"
-        ],
-        "tmuxSourceCommits": {
-          "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
-          "3.3a": "0b355ae8114511e1ff6359272b164f1cdf718e80",
-          "3.4": "9ae69c3795ab5ef6b4d760f6398cd9281151f632",
-          "3.5": "ac44566c9c7e3e94d23be6def4c7ae83472543f5",
-          "3.6": "0dac7fe434d029a4f0b819cba8eb7963df291990",
-          "3.7a": "0e418b62d259ce8da8970f75732cc6632ee4c3a0",
-          "3.7b": "e802909de06012a4df6209d55e86487c56223163"
-        },
-        "tmuxVersions": [
-          "3.2a",
-          "3.3a",
-          "3.4",
-          "3.5",
-          "3.6",
-          "3.7a",
-          "3.7b"
-        ]
-      },
-      "evidenceStatus": "verified",
+      "evidenceStatus": "pending",
       "introducedIn": "unknown",
       "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ControlNotifications",
       "removedIn": "unknown",
@@ -137,41 +35,7 @@
     },
     {
       "capability": "format_fields_and_operators",
-      "evidence": {
-        "capabilityCohort": "0001",
-        "evaluatedCommit": "67123c8ce26eca6aaacfabdb7882d9915deb1e00",
-        "frameworks": [
-          "net10.0",
-          "net8.0"
-        ],
-        "results": "docs/parity/evidence/0001/results.ndjson",
-        "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
-        "sourceState": "clean",
-        "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
-        "testCount": 134,
-        "tests": [
-          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::FormatFieldsAndOperators"
-        ],
-        "tmuxSourceCommits": {
-          "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
-          "3.3a": "0b355ae8114511e1ff6359272b164f1cdf718e80",
-          "3.4": "9ae69c3795ab5ef6b4d760f6398cd9281151f632",
-          "3.5": "ac44566c9c7e3e94d23be6def4c7ae83472543f5",
-          "3.6": "0dac7fe434d029a4f0b819cba8eb7963df291990",
-          "3.7a": "0e418b62d259ce8da8970f75732cc6632ee4c3a0",
-          "3.7b": "e802909de06012a4df6209d55e86487c56223163"
-        },
-        "tmuxVersions": [
-          "3.2a",
-          "3.3a",
-          "3.4",
-          "3.5",
-          "3.6",
-          "3.7a",
-          "3.7b"
-        ]
-      },
-      "evidenceStatus": "verified",
+      "evidenceStatus": "pending",
       "introducedIn": "unknown",
       "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::FormatFieldsAndOperators",
       "removedIn": "unknown",
@@ -193,41 +57,7 @@
     },
     {
       "capability": "semicolon_grouping",
-      "evidence": {
-        "capabilityCohort": "0001",
-        "evaluatedCommit": "67123c8ce26eca6aaacfabdb7882d9915deb1e00",
-        "frameworks": [
-          "net10.0",
-          "net8.0"
-        ],
-        "results": "docs/parity/evidence/0001/results.ndjson",
-        "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
-        "sourceState": "clean",
-        "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
-        "testCount": 134,
-        "tests": [
-          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SemicolonGrouping"
-        ],
-        "tmuxSourceCommits": {
-          "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
-          "3.3a": "0b355ae8114511e1ff6359272b164f1cdf718e80",
-          "3.4": "9ae69c3795ab5ef6b4d760f6398cd9281151f632",
-          "3.5": "ac44566c9c7e3e94d23be6def4c7ae83472543f5",
-          "3.6": "0dac7fe434d029a4f0b819cba8eb7963df291990",
-          "3.7a": "0e418b62d259ce8da8970f75732cc6632ee4c3a0",
-          "3.7b": "e802909de06012a4df6209d55e86487c56223163"
-        },
-        "tmuxVersions": [
-          "3.2a",
-          "3.3a",
-          "3.4",
-          "3.5",
-          "3.6",
-          "3.7a",
-          "3.7b"
-        ]
-      },
-      "evidenceStatus": "verified",
+      "evidenceStatus": "pending",
       "introducedIn": "unknown",
       "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SemicolonGrouping",
       "removedIn": "unknown",

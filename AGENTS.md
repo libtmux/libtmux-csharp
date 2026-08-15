@@ -87,11 +87,30 @@ so anything grounded in that source needs to be told where it went now:
 $ LIBTMUX_PYTHON_REPOSITORY=~/work/python/libtmux uv run python eng/parity/verify_ledger.py
 ```
 
-The evidence bundles under `docs/parity/evidence/` are a different case. Each
-one fingerprints the whole tree it was produced from, which was the monorepo's,
-so `eng/parity/reconcile_versions.py` reports a fingerprint mismatch that no
-edit here can resolve. Only a fresh matrix run re-records it:
+## Recorded evidence is a release artifact
+
+A capability row is `pending` until a matrix run records evidence for it, and
+`verified` after. What `verified` claims is exact: these tmux versions, on these
+frameworks, at *this tree* — the fingerprint covers every tracked file outside
+the evidence directory. Any commit changes it, so a verified row is true at one
+commit and stale at the next.
+
+That is why recording belongs at a release boundary rather than in the gate,
+and why `reconcile_versions.py` and `verify_ledger.py` are not in
+`.github/workflows/csharp.yml`. Between releases every row is `pending`, which
+is the honest state: nobody has run the matrix against this tree.
+
+To record, on the commit being released:
 
 ```console
-$ eng/tmux/run-matrix.sh --evidence-dir docs/parity/evidence/0001 --capability-cohort closure tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj
+$ eng/tmux/run-matrix.sh --evidence-dir docs/parity/evidence/0001 --capability-cohort 0001 tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj
 ```
+
+```console
+$ uv run python eng/parity/reconcile_versions.py --evidence docs/parity/evidence/0001/results.ndjson --write
+```
+
+Then commit the bundle and the rewritten `version-deltas.json` together, because
+the fingerprint is of the tree that commit produces. A tmux build takes about
+forty seconds here and the matrix runs the suite fourteen times, so budget half
+an hour.
