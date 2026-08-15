@@ -55,3 +55,43 @@ $ uv run python eng/parity/verify_public_api.py
 ```console
 $ uv run python eng/parity/verify_capabilities.py
 ```
+
+The packaging tests inside the integration suite read what a pack produced, so
+they fail on a tree nobody packed. Run the build workflow's order — pack, then
+the package consumer, then the ahead-of-time publish — before the integration
+suite, or expect `PackageClosureTests` to fail for a reason that is not a bug.
+
+Publishing ahead of time names a runtime identifier, and restore then writes
+one into the lock file of every project in that graph — including the library's,
+where the section is empty because no package resolves differently. That is why
+`src/LibTmux` and `src/LibTmux.Generators` declare `RuntimeIdentifiers`: without
+it, the lock files disagree with the projects and the *next*
+`restore --locked-mode` fails with NU1004, which reads like a dependency problem
+and is not one. Adding a platform to the matrix means adding its identifier
+there and regenerating:
+
+```console
+$ mise exec -- dotnet restore LibTmux.slnx --force-evaluate
+```
+
+`.github/workflows/csharp-tmux.yml` builds each supported tmux from source and
+runs the integration suite against it. That is what proves the compatibility
+range; the build workflow only ever sees whatever tmux Ubuntu ships.
+
+## The Python original is a separate checkout
+
+This repository was imported out of a monorepo that also held Python libtmux,
+so anything grounded in that source needs to be told where it went now:
+
+```console
+$ LIBTMUX_PYTHON_REPOSITORY=~/work/python/libtmux uv run python eng/parity/verify_ledger.py
+```
+
+The evidence bundles under `docs/parity/evidence/` are a different case. Each
+one fingerprints the whole tree it was produced from, which was the monorepo's,
+so `eng/parity/reconcile_versions.py` reports a fingerprint mismatch that no
+edit here can resolve. Only a fresh matrix run re-records it:
+
+```console
+$ eng/tmux/run-matrix.sh --evidence-dir docs/parity/evidence/0001 --capability-cohort closure tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj
+```

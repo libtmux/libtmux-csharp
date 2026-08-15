@@ -19,6 +19,18 @@ measured cost for one command and for fifty.
 compiler emits, so nothing can be documented there and absent from the
 library.
 
+## Packages
+
+The core library takes one dependency. Everything that would add another
+ships separately and carries this repository's version:
+
+- [LibTmux.Query.Json](../src/LibTmux.Query.Json/README.md) — `System.Text.Json`
+  for query documents
+- [LibTmux.Workspace](../src/LibTmux.Workspace/README.md) — sessions from tmuxp
+  workspace files
+- [LibTmux.Mcp](../src/LibTmux.Mcp/README.md) — a Model Context Protocol server,
+  installed as a .NET tool
+
 ## Contracts
 
 The library's surface and behavior are recorded rather than described,
@@ -32,3 +44,8 @@ and each record has a validator that fails when the code disagrees.
   symbol went
 - [Decisions](decisions/) — why the transport, object model, query
   catalog, and public API are shaped the way they are
+
+Decisions 0001 to 0003 quote the commands that produced their evidence, and
+those ran while this project was a directory inside another repository. Their
+paths begin with `csharp/` and are left as they were run: a transcript that
+was edited afterwards is no longer a record of anything.

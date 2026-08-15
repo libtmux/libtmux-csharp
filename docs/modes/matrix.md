@@ -36,30 +36,38 @@ One-shot starts a tmux client per command. Chaining starts one for the whole
 sequence. Control mode starts one and keeps it, so commands after the first pay
 no process cost at all, in exchange for holding a connection.
 
-Measured by the `LibTmux.Benchmarks` project against tmux 3.7b on `net10.0`,
-one idle machine:
+Measured by the `LibTmux.Benchmarks` project against tmux 3.7b on `net10.0`:
 
 | Commands | Mode | Mean | Allocated |
 |---|---|---:|---:|
-| 1 | One-shot | 8.1 ms | 287 KB |
-| 1 | Chained | 9.0 ms | 288 KB |
-| 1 | Control | 0.09 ms | 1 KB |
-| 50 | One-shot | 344 ms | 14,337 KB |
-| 50 | Chained | 9.5 ms | 363 KB |
-| 50 | Control | 7.9 ms | 59 KB |
+| 1 | One-shot | 3.8 ms | 312 KB |
+| 1 | Chained | 3.6 ms | 313 KB |
+| 1 | Control | 0.29 ms | 1.3 KB |
+| 50 | One-shot | 118 ms | 15,576 KB |
+| 50 | Chained | 3.5 ms | 388 KB |
+| 50 | Control | 6.5 ms | 59 KB |
 
-Read the crossover, not the absolute numbers, which depend on the machine.
-**Chaining is slightly slower than one-shot for a single command** — you pay to
-build a chain and gain nothing, because there is only one process either way.
-It wins the moment there is more than one command, and by fifty it is roughly
-thirty times faster and allocates forty times less. Control mode beats both
-once its client is already running, which is what makes it worth holding.
+There are two crossovers here and they point at different modes.
 
-The allocation column is the part that does not move: it is the same on a busy
-machine as an idle one, so it is what to check a change against. Timings need
-enough iterations to separate the modes — at a handful, the error exceeds the
-mean and the single-command comparison inverts, which is measuring the machine
-rather than the library.
+**Per command, control mode wins by an order of magnitude** — 0.29 ms against
+3.6, and 1.3 KB against 312 — because its client is already running and nothing
+starts a process. That is what makes holding a connection worth it.
+
+**For a batch handed over at once, chaining wins** — fifty commands in one
+invocation cost 3.5 ms, less than fifty round trips on a connection that is
+already open. A chain pays for one round trip however many commands are in it;
+control mode pays for fifty.
+
+One-shot is the mode that does not scale: fifty commands is fifty processes,
+118 ms and 15 MB of it. At a single command it is indistinguishable from a
+chain, and the allocations say why — 312 KB either way, because both start
+exactly one process.
+
+The allocation column is the part that does not move: it repeated to two
+decimal places across runs here while the means moved by a factor of two, so it
+is what to check a change against. Timings depend on the machine and on what
+else it is doing, which is why this table is worth rerunning rather than
+believing.
 
 Run it for your own tmux and machine:
 
@@ -67,10 +75,14 @@ Run it for your own tmux and machine:
 $ dotnet run \
     --project benchmarks/LibTmux.Benchmarks \
     --configuration Release \
+    --framework net10.0 \
     -- --filter '*ModeBenchmarks*' \
-    --warmupCount 5 \
-    --iterationCount 15
+    --warmupCount 10 \
+    --iterationCount 30
 ```
+
+The project multi-targets, so the framework has to be named: the numbers above
+are `net10.0`, and running the other one measures something else.
 
 ## Version differences
 

@@ -26,6 +26,40 @@ $ dotnet add package LibTmux
 The package targets `net8.0` and `net10.0`, is trim- and AOT-safe, and takes one
 dependency: `Microsoft.Extensions.Logging.Abstractions`.
 
+## Three ways to reach tmux
+
+Which one a call uses is visible where the call starts, never a flag buried in
+options, and all three work on every tmux this library supports.
+
+| Mode | Flip it on | Dispatch | Example output | 1 command | 50 commands |
+|---|---|---|---|---:|---:|
+| [One-shot](docs/modes/one-shot.md) | `session.CreateWindowAsync(...)` | 1 command, awaited | `@1 1:build` | 3.8 ms | 118 ms |
+| [Control](docs/modes/control-mode.md) | `server.EnterControlModeAsync(ct)` | 1 client, streamed | `%window-add @1` | 0.29 ms | 6.5 ms |
+| [Chained](docs/modes/chaining.md) | `server.Chain()...ExecuteAsync(ct)` | N batched, 1 invocation | `@1` | 3.6 ms | 3.5 ms |
+
+The same window, three ways:
+
+```csharp
+Window window = await session.CreateWindowAsync(new NewWindowRequest(name: "build"), ct);
+```
+
+```csharp
+await using IControlModeSession control = await server.EnterControlModeAsync(cancellationToken: ct);
+await control.SendAsync("new-window -d -n build", ct);
+```
+
+```csharp
+await server.Chain().Then("new-window", "-d", "-n", "build").ExecuteAsync(ct);
+```
+
+One-shot starts a tmux client per command, chaining starts one for the whole
+sequence, and control mode starts one and keeps it. Read the crossovers rather
+than the numbers, which depend on the machine: control mode is an order of
+magnitude cheaper *per command* because its client is already running, while a
+chain beats it *for a batch* by paying one round trip for the whole sequence.
+[Choosing a mode](docs/modes/matrix.md) has allocations, both crossovers, and
+how to rerun the table on your own machine.
+
 ## What the API looks like
 
 Every call that reaches tmux is asynchronous and takes a `CancellationToken`.
@@ -134,11 +168,27 @@ fields (`TmuxSubcommand`, `TmuxExitCode`) to filter and group on. Everything
 that can carry a payload is truncated, the command line included: setting a
 buffer puts whatever was copied into the arguments.
 
+## Documentation
+
+[docs/](docs/README.md) covers the three modes, the rendered API reference, and
+the records the library is held to: the approved public surface, every tmux
+version difference with the test that proves it, and where each Python libtmux
+symbol went.
+
 ## Optional packages
 
-`LibTmux.Query.Json` adds `System.Text.Json` support for query documents. The
-core library does not reference it, so a caller who does not want a JSON
-dependency does not get one.
+The core library depends on `Microsoft.Extensions.Logging.Abstractions` and
+nothing else. Anything that would add a dependency ships as its own package, so
+a caller who does not want one does not get it:
+
+| Package | What it adds | Dependency |
+|---|---|---|
+| [LibTmux.Query.Json](src/LibTmux.Query.Json/README.md) | `System.Text.Json` support for query documents | `System.Text.Json` |
+| [LibTmux.Workspace](src/LibTmux.Workspace/README.md) | Builds sessions from tmuxp workspace files | `YamlDotNet` |
+| [LibTmux.Mcp](src/LibTmux.Mcp/README.md) | A Model Context Protocol server | none — it installs as a tool |
+
+They ship from this repository and carry its version, so `LibTmux.Mcp 1.0.0`
+goes with `LibTmux 1.0.0` without a compatibility table to consult.
 
 ## License
 
