@@ -91,6 +91,12 @@ jobs:
         # test goes on the path so that inner tmux is the same one: the image
         # has no other, and reaching a different version would prove nothing
         # about this lane.
+        #
+        # The packaging tests are excluded because they read what a pack, a
+        # consumer build and an ahead-of-time publish produced, none of which
+        # this lane does and none of which depends on a tmux version. The build
+        # workflow runs them. The floor on the count is what stops a filter
+        # that excluded more than that from passing quietly.
         run: |
           export PATH="$(dirname "${LIBTMUX_TMUX}"):${PATH}"
           dotnet test \
@@ -98,7 +104,8 @@ jobs:
             --configuration Release \
             --framework "${MATRIX_FRAMEWORK}" \
             --no-build \
-            --minimum-expected-tests 1
+            --filter-not-class LibTmux.IntegrationTests.Packaging.PackageClosureTests \
+            --minimum-expected-tests 800
 
   advisory:
     name: tmux master (advisory)
@@ -149,4 +156,5 @@ jobs:
             --configuration Release \
             --framework net10.0 \
             --no-build \
-            --minimum-expected-tests 1
+            --filter-not-class LibTmux.IntegrationTests.Packaging.PackageClosureTests \
+            --minimum-expected-tests 800
