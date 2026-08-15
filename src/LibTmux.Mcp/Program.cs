@@ -1,7 +1,9 @@
+using System.Reflection;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 
 namespace LibTmux.Mcp;
 
@@ -14,6 +16,27 @@ namespace LibTmux.Mcp;
 [UnsupportedOSPlatform("windows")]
 internal static class Program
 {
+    /// <summary>Returns the version this server reports to a client.</summary>
+    /// <remarks>
+    /// An assembly version is four numbers, so a prerelease arrives at the
+    /// client as "0.0.0.0" — which reads as unset rather than as an alpha. The
+    /// informational version is the one the package carries, and the build
+    /// metadata after "+" is a commit nobody asked for.
+    /// </remarks>
+    private static string ServerVersion()
+    {
+        string? informational = typeof(Program).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+        if (string.IsNullOrEmpty(informational))
+        {
+            return typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0";
+        }
+
+        int metadata = informational.IndexOf('+', StringComparison.Ordinal);
+        return metadata < 0 ? informational : informational[..metadata];
+    }
+
     private static async Task<int> Main(string[] args)
     {
         if (OperatingSystem.IsWindows())
@@ -37,7 +60,11 @@ internal static class Program
                     : new ServerConnectionOptions(socketName: socket)));
 
         builder.Services
-            .AddMcpServer()
+            .AddMcpServer(options => options.ServerInfo = new Implementation
+            {
+                Name = "LibTmux.Mcp",
+                Version = ServerVersion(),
+            })
             .WithStdioServerTransport()
             .WithTools<TmuxTools>();
 

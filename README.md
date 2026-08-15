@@ -103,16 +103,32 @@ IEnumerable<Window> named = (await session.GetWindowsAsync())
 ```
 
 Declarative filtering translates an expression to a portable document, or
-throws. It never quietly falls back to filtering in memory:
+throws. It never quietly falls back to filtering in memory.
+
+The expression is written over a row you declare, whose property names are the
+tmux fields it reads. That is what lets the same expression become a document
+tmux can answer rather than a predicate only this process understands:
+
+```csharp
+internal sealed record SessionRow(string SessionName, bool SessionAttached);
+```
 
 ```csharp
 using LibTmux.Query;
 
-QueryDocument document = QueryExtensions.Translate<Session>(
-    session => session.Name.StartsWith("build") && session.IsAttached);
+QueryDocument document = QueryExtensions.Translate<SessionRow>(
+    row => row.SessionName.StartsWith("build") && row.SessionAttached);
 ```
 
-The same expression compiles to a predicate for matching what you already hold.
+A field outside the catalog throws `UnsupportedQueryExpressionException` rather
+than falling back, so an expression that translates is one tmux can answer.
+
+The same expression matches what you already hold, in memory:
+
+```csharp
+IReadOnlyList<SessionRow> attached = rows.Matching<SessionRow>(
+    row => row.SessionName.StartsWith("build") && row.SessionAttached);
+```
 
 ### Options and hooks
 
@@ -193,8 +209,9 @@ a caller who does not want one does not get it:
 | [LibTmux.Workspace](src/LibTmux.Workspace/README.md) | Builds sessions from tmuxp workspace files | `YamlDotNet` |
 | [LibTmux.Mcp](src/LibTmux.Mcp/README.md) | A Model Context Protocol server | none — it installs as a tool |
 
-They ship from this repository and carry its version, so `LibTmux.Mcp 1.0.0`
-goes with `LibTmux 1.0.0` without a compatibility table to consult.
+They ship from this repository and carry its version, so `LibTmux.Mcp
+0.0.0-alpha.1` goes with `LibTmux 0.0.0-alpha.1` without a compatibility table
+to consult.
 
 ## License
 

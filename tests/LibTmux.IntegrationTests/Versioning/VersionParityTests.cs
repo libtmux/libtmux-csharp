@@ -990,14 +990,21 @@ public sealed class VersionParityTests
             0,
             (await closeAny.WaitAsync(CommandTimeout, TestContext.Current.CancellationToken)).ExitCode);
 
+        // -N changes an open popup and returns, but with no popup open it opens
+        // one and blocks until that is closed. Retrying it until it succeeds
+        // therefore waits on the popup it just created, which is what made this
+        // time out about once in five full runs. The popup says when it is
+        // there instead: it signals a channel from inside, and -N is a command
+        // rather than a key, so applying it cannot race the command that
+        // signalled.
         Task<RawTmuxResult> reset = ExecuteAsync(
             context,
-            ["display-popup", "-k", "-t", TargetPane(context), "true"]);
-
-        // Changing the policy of a popup that is not open is what says it is
-        // not open yet, so retrying it until it works is both the wait and the
-        // thing being waited for.
-        await WaitForSuccessAsync(context, ["display-popup", "-N", "-t", TargetPane(context)]);
+            [
+                "display-popup", "-k", "-t", TargetPane(context),
+                PopupOpenedCommand(context, "libtmux-popup-reset"),
+            ]);
+        await RequireSuccessAsync(context, ["wait-for", "libtmux-popup-reset"]);
+        await RequireSuccessAsync(context, ["display-popup", "-N", "-t", TargetPane(context)]);
         await client.WriteAsync("x"u8.ToArray(), TestContext.Current.CancellationToken);
 
         // As above: the proof is that the popup stayed open, and a popup that
@@ -1328,6 +1335,17 @@ public sealed class VersionParityTests
         // a fixed number of milliseconds here.
     }
 
+    /// <summary>Builds a popup command that signals once the popup is open.</summary>
+    /// <remarks>
+    /// tmux remembers a signal that arrives before anyone waits, so signalling
+    /// from inside the popup and waiting for it afterwards cannot race. This
+    /// says the popup exists, which is what a command needs; it does not say
+    /// the command inside has finished, so a key sent on the strength of it can
+    /// still land in that command rather than in the popup.
+    /// </remarks>
+    private static string PopupOpenedCommand(RawTmuxTestContext context, string channel) =>
+        $"'{context.TmuxBinaryPath}' -S '{context.SocketPath}' wait-for -S {channel}";
+
     /// <summary>Sends one input until the work it is meant to finish has.</summary>
     /// <remarks>
     /// Some of what tmux does cannot be observed until it has already happened,
@@ -1348,32 +1366,6 @@ public sealed class VersionParityTests
                 TimeSpan.FromMilliseconds(10),
                 TestContext.Current.CancellationToken);
         }
-    }
-
-    /// <summary>Runs a command until it succeeds.</summary>
-    /// <remarks>
-    /// A command that fails because tmux is not in the state it needs yet is
-    /// not the same as one that fails. Retrying until the deadline is what
-    /// tells them apart, and the command succeeding is the state arriving.
-    /// </remarks>
-    private static async Task WaitForSuccessAsync(
-        RawTmuxTestContext context,
-        IReadOnlyList<string> arguments)
-    {
-        DateTimeOffset deadline = DateTimeOffset.UtcNow + CommandTimeout;
-        RawTmuxResult result = await ExecuteAsync(context, arguments);
-        while (result.ExitCode != 0 && DateTimeOffset.UtcNow < deadline)
-        {
-            await Task.Delay(
-                TimeSpan.FromMilliseconds(10),
-                TestContext.Current.CancellationToken);
-            result = await ExecuteAsync(context, arguments);
-        }
-
-        Assert.True(
-            result.ExitCode == 0,
-            $"tmux command never succeeded: {string.Join(' ', arguments)}: "
-            + result.StandardErrorText);
     }
 
     /// <summary>Runs a command until its result is the one being waited for.</summary>

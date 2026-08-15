@@ -8,12 +8,19 @@
 query documents. The core library does not reference it, so a caller who does
 not want a JSON dependency does not get one.
 
+A query is written over a row you declare, whose property names are the tmux
+fields it reads:
+
+```csharp
+internal sealed record SessionRow(string SessionName, bool SessionAttached);
+```
+
 ```csharp
 using LibTmux.Query;
 using LibTmux.Query.Json;
 
-QueryDocument document = QueryExtensions.Translate<Session>(
-    session => session.Name.StartsWith("build") && session.IsAttached);
+QueryDocument document = QueryExtensions.Translate<SessionRow>(
+    row => row.SessionName.StartsWith("build") && row.SessionAttached);
 
 string wire = QueryJson.Serialize(document);
 QueryDocument parsed = QueryJson.Deserialize(wire);
