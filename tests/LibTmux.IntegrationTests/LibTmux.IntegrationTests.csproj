@@ -9,6 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The documented examples are compiled at test time against the build
+         under test, which is what makes a readme something that can fail. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <PackageReference Include="xunit.v3.mtp-v2" />
@@ -23,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/LibTmux/LibTmux.csproj" />
+    <ProjectReference Include="../../src/LibTmux.Query.Json/LibTmux.Query.Json.csproj" />
     <ProjectReference Include="../../src/LibTmux.Workspace/LibTmux.Workspace.csproj" />
     <ProjectReference Include="../../src/LibTmux.Mcp/LibTmux.Mcp.csproj" />
     <ProjectReference Include="../LibTmux.TestChild/LibTmux.TestChild.csproj"

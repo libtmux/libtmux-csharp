@@ -28,6 +28,7 @@ library.
 The core library takes one dependency. Everything that would add another
 ships separately and carries this repository's version:
 
+- [LibTmux](../src/LibTmux/README.md) — the client
 - [LibTmux.Query.Json](../src/LibTmux.Query.Json/README.md) — `System.Text.Json`
   for query documents
 - [LibTmux.Workspace](../src/LibTmux.Workspace/README.md) — sessions from tmuxp

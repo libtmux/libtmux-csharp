@@ -1,12 +1,27 @@
 # LibTmux.Query.Json
 
-> **Alpha.** `0.0.0-alpha.1` is the first prerelease. The public API is not
-> settled and can change between prereleases without notice, so pin an exact
-> version.
+JSON for [LibTmux](https://www.nuget.org/packages/LibTmux) query documents. The
+core library does not reference `System.Text.Json`, so a caller who does not
+want it does not get it.
 
-`System.Text.Json` support for [LibTmux](https://www.nuget.org/packages/LibTmux)
-query documents. The core library does not reference it, so a caller who does
-not want a JSON dependency does not get one.
+> **Alpha.** `0.0.0-alpha.1` is the first prerelease: pin an exact version, and
+> expect the API to move between prereleases.
+
+```console
+$ dotnet add package LibTmux.Query.Json --prerelease
+```
+
+## When you want this
+
+A query in LibTmux is a *document*, not a lambda: an expression is translated
+into a closed AST that can be checked, stored, logged, or sent somewhere else.
+This package is how that document crosses a process boundary.
+
+Reach for it when a filter is written in one place and evaluated in another —
+a CLI that takes a filter argument, a service that accepts one over HTTP, a
+tool that records what it queried.
+
+## Use it
 
 A query is written over a row you declare, whose property names are the tmux
 fields it reads:
@@ -15,20 +30,76 @@ fields it reads:
 internal sealed record SessionRow(string SessionName, bool SessionAttached);
 ```
 
-```csharp
-using LibTmux.Query;
-using LibTmux.Query.Json;
-
+```csharp run
 QueryDocument document = QueryExtensions.Translate<SessionRow>(
     row => row.SessionName.StartsWith("build") && row.SessionAttached);
 
 string wire = QueryJson.Serialize(document);
 QueryDocument parsed = QueryJson.Deserialize(wire);
+
+// The document that came back means what the one that left meant.
+Console.WriteLine(parsed == document);
 ```
 
-The wire format is versioned and its schema ships in the package as
-`libtmux-query-v1.schema.json`. Reading applies the limits in
-`QueryJsonLimits.V1` — depth, node count, string length — so a document that
-arrived from somewhere else cannot cost more than a document is allowed to.
+`wire` is the versioned document, and it says what it is:
 
-Documentation: <https://github.com/libtmux/libtmux-csharp>
+```json
+{
+  "schema": "libtmux.query",
+  "version": 1,
+  "target": "session",
+  "predicate": {
+    "kind": "and",
+    "operands": [
+      { "kind": "string", "operator": "startsWith", "field": "session_name", "value": "build" },
+      { "kind": "comparison", "operator": "equal", "field": "session_attached", "value": true }
+    ]
+  }
+}
+```
+
+The same document filters what you already hold, wherever it was written:
+
+```csharp run
+SessionRow[] rows = [new("build-1", true), new("other", true), new("build-2", false)];
+IReadOnlyList<SessionRow> matched = rows.Matching(QueryJson.Deserialize(
+    QueryJson.Serialize(QueryExtensions.Translate<SessionRow>(
+        row => row.SessionName.StartsWith("build") && row.SessionAttached))));
+
+Console.WriteLine(matched.Count);
+```
+
+## What reading a document costs
+
+Deserializing applies the limits in `QueryJsonLimits.V1` — depth, node count,
+string length — so a document that arrived from somewhere else cannot cost more
+than a document is allowed to. The schema those limits describe ships in the
+package as `libtmux-query-v1.schema.json`.
+
+```csharp run
+Console.WriteLine($"depth {QueryJsonLimits.V1.MaximumDepth}, nodes {QueryJsonLimits.V1.MaximumNodes}");
+```
+
+## The field catalog is closed
+
+`session_name`, `session_attached`, `session_id`, `session_windows`,
+`window_name`, `window_id`, `window_panes`, `pane_id`, `pane_command`,
+`client_id`, `client_name`, `client_control`.
+
+A field outside it throws `UnsupportedQueryExpressionException` at translation
+rather than falling back to filtering in memory, so a document that exists is
+one tmux can answer.
+
+## Related packages
+
+| Package | Adds |
+|---|---|
+| [LibTmux](https://www.nuget.org/packages/LibTmux) | The client. Required. |
+| [LibTmux.Workspace](https://www.nuget.org/packages/LibTmux.Workspace) | Sessions from tmuxp YAML |
+| [LibTmux.Mcp](https://www.nuget.org/packages/LibTmux.Mcp) | A Model Context Protocol server, as a .NET tool |
+
+Source, docs and issues: <https://github.com/libtmux/libtmux-csharp>
+
+## License
+
+[MIT](https://github.com/libtmux/libtmux-csharp/blob/master/LICENSE)
