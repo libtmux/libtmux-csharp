@@ -4,8 +4,8 @@ A [Model Context Protocol](https://modelcontextprotocol.io) server that gives
 an assistant hands on tmux, built on
 [LibTmux](https://www.nuget.org/packages/LibTmux).
 
-> **Alpha.** `0.0.0-alpha.1` is the first prerelease: pin an exact version, and
-> expect the tool surface to move between prereleases.
+> **Alpha.** The public API is not settled and can change between prereleases
+> without notice, so pin an exact version.
 
 This is a **.NET tool**, not a library reference:
 

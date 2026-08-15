@@ -4,9 +4,9 @@ A typed, async-first [tmux](https://github.com/tmux/tmux) client for .NET.
 Servers, sessions, windows, panes, clients, options, hooks and buffers, against
 every tmux from **3.2a to 3.7b**, on **net8.0** and **net10.0**.
 
-> **Alpha.** `0.0.0-alpha.1` is the first prerelease: pin an exact version, and
-> expect the API to move between prereleases. The behaviour is proven against
-> all seven supported tmux versions on every commit.
+> **Alpha.** The public API is not settled and can change between prereleases
+> without notice, so pin an exact version. The behaviour is proven against all
+> seven supported tmux versions on every commit.
 
 ```console
 $ dotnet add package LibTmux --prerelease

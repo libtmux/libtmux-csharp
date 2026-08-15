@@ -10,10 +10,10 @@ Drive [tmux](https://github.com/tmux/tmux) from .NET. Servers, sessions,
 windows, panes, clients, options, hooks and buffers, typed and asynchronous,
 against every tmux from **3.2a to 3.7b** on **net8.0** and **net10.0**.
 
-> **Alpha.** `0.0.0-alpha.1` is the first prerelease: pin an exact version, and
-> expect the API to move between prereleases. The behaviour is proven against
-> all seven supported tmux versions on every commit — what is unsettled is the
-> shape of the API, not whether it works.
+> **Alpha.** The public API is not settled and can change between prereleases
+> without notice, so pin an exact version. The behaviour is proven against all
+> seven supported tmux versions on every commit — what is unsettled is the shape
+> of the API, not whether it works.
 
 ```csharp
 using LibTmux;
@@ -57,8 +57,8 @@ $ dotnet add package LibTmux --prerelease
 
 The core takes exactly one dependency. Anything that would add another ships as
 its own package, so a caller who does not want YAML never sees YamlDotNet. They
-all carry one version, so `LibTmux.Workspace 0.0.0-alpha.1` goes with
-`LibTmux 0.0.0-alpha.1` without a table to consult.
+all carry one version, so any `LibTmux.Workspace` goes with the `LibTmux` of the
+same version, without a table to consult.
 
 ## Three ways to reach tmux
 

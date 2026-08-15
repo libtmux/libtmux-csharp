@@ -3,8 +3,8 @@
 Build tmux sessions from [tmuxp](https://github.com/tmux-python/tmuxp)
 workspace files, on top of [LibTmux](https://www.nuget.org/packages/LibTmux).
 
-> **Alpha.** `0.0.0-alpha.1` is the first prerelease: pin an exact version, and
-> expect the API to move between prereleases.
+> **Alpha.** The public API is not settled and can change between prereleases
+> without notice, so pin an exact version.
 
 ```console
 $ dotnet add package LibTmux.Workspace --prerelease
