@@ -1,0 +1,11 @@
+<Project>
+  <!-- Items that depend on what a project decided about itself belong here
+       rather than in Directory.Build.props: props is imported before the
+       project body, where IsPackable is still whatever the default was. -->
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)assets/icon.png"
+          Pack="true"
+          PackagePath="\"
+          Visible="false" />
+  </ItemGroup>
+</Project>

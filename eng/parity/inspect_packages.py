@@ -111,6 +111,12 @@ def assets(names: set[str], identifier: str, contract: Contract) -> list[str]:
     'LibTmux carries no assembly for net8.0'
     """
     violations: list[str] = []
+
+    # An icon element naming a file the package does not carry renders as a
+    # broken image rather than as no image.
+    if "icon.png" not in names:
+        violations.append(f"{identifier} carries no icon")
+
     for framework in TARGET_FRAMEWORKS:
         directory = (
             f"tools/{framework}/any" if contract.tool else f"lib/{framework}"
@@ -177,6 +183,7 @@ def inspect(package: pathlib.Path) -> list[str]:
         ("id", identifier),
         ("license", "MIT"),
         ("readme", "README.md"),
+        ("icon", "icon.png"),
         ("projectUrl", "https://github.com/libtmux/libtmux-csharp"),
     ):
         element = metadata.find(f"{namespace}{field}")

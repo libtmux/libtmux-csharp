@@ -20,6 +20,7 @@ SPECIFICATION = """<?xml version="1.0" encoding="utf-8"?>
     <description>A typed client for tmux.</description>
     <license type="expression">MIT</license>
     <readme>README.md</readme>
+    <icon>icon.png</icon>
     <projectUrl>{project_url}</projectUrl>
     <repository type="git" url="{repository_url}" commit="{commit}" />
 {dependencies}  </metadata>
@@ -69,10 +70,13 @@ def build(
     repository_url: str = PROJECT_URL,
     project_url: str = PROJECT_URL,
     version: str = "1.0.0",
+    icon: bool = True,
 ) -> pathlib.Path:
     """Write a package shaped the way dotnet pack writes one."""
     package = directory / f"{identifier}.{version}.nupkg"
     with zipfile.ZipFile(package, "w") as archive:
+        if icon:
+            archive.writestr("icon.png", "png")
         archive.writestr(
             f"{identifier}.nuspec",
             SPECIFICATION.format(
@@ -107,6 +111,13 @@ def test_a_prerelease_package_is_recognised(tmp_path: pathlib.Path) -> None:
     package = build(tmp_path, version="0.0.1-alpha.1")
 
     assert inspect(package) == []
+
+
+def test_a_missing_icon_is_reported(tmp_path: pathlib.Path) -> None:
+    """An icon element naming a file the package lacks renders as broken."""
+    package = build(tmp_path, icon=False)
+
+    assert "LibTmux carries no icon" in inspect(package)
 
 
 def test_a_missing_framework_is_reported(tmp_path: pathlib.Path) -> None:
@@ -234,6 +245,7 @@ def test_changed_metadata_is_reported(
                 commit="a" * 40,
             ).replace(field, replacement),
         )
+        archive.writestr("icon.png", "png")
         for framework in ("net8.0", "net10.0"):
             archive.writestr(f"lib/{framework}/LibTmux.dll", "assembly")
             archive.writestr(f"lib/{framework}/LibTmux.xml", "<doc />")
