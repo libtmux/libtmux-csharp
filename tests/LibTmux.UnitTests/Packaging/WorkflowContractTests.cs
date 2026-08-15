@@ -76,6 +76,41 @@ public sealed class WorkflowContractTests
         Assert.Contains("fetch-depth: 0", workflow, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void The_release_workflow_proves_the_package_before_it_is_permanent()
+    {
+        string workflow = ReadWorkflow("release.yml");
+
+        // A version on nuget.org can be unlisted and never deleted, so every
+        // check that could fail has to run while the package is still private.
+        int inspected = workflow.IndexOf("inspect_packages.py", StringComparison.Ordinal);
+        int consumed = workflow.IndexOf("LibTmux.PackageConsumer", StringComparison.Ordinal);
+        int pushed = workflow.IndexOf("dotnet nuget push", StringComparison.Ordinal);
+
+        Assert.True(inspected > 0, "The release workflow does not inspect the packages.");
+        Assert.True(consumed > 0, "The release workflow does not run the package consumer.");
+        Assert.True(pushed > 0, "The release workflow does not push.");
+        Assert.True(inspected < pushed, "The packages are pushed before they are inspected.");
+        Assert.True(consumed < pushed, "The packages are pushed before one is installed and run.");
+    }
+
+    [Fact]
+    public void The_release_workflow_matches_the_trusted_publishing_policy()
+    {
+        string workflow = ReadWorkflow("release.yml");
+
+        // nuget.org issues a key only for a token from the workflow file and
+        // environment its policy names. Either of these drifting turns every
+        // release into an authentication failure.
+        Assert.Contains("id-token: write", workflow, StringComparison.Ordinal);
+        Assert.Contains("environment: nuget", workflow, StringComparison.Ordinal);
+        Assert.Contains("NuGet/login", workflow, StringComparison.Ordinal);
+
+        // A tag that disagrees with the version publishes something
+        // permanently mislabelled.
+        Assert.Contains("-getProperty:Version", workflow, StringComparison.Ordinal);
+    }
+
     private static string ReadWorkflow(string name)
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);

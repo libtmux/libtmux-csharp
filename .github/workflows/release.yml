@@ -1,0 +1,136 @@
+# Publishing. A version on nuget.org can never be deleted, only unlisted, so
+# everything that can be proven about a package is proven here before the push
+# rather than after it: the gate's build and tests, the package inspection, and
+# a consumer that restores the built package from a folder feed and runs it.
+#
+# The name of this file is part of the trusted publishing policy on nuget.org.
+# Renaming it means editing that policy, and until then no publish is possible.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  publish:
+    name: publish to nuget.org
+    runs-on: ubuntu-latest
+
+    # The policy on nuget.org names this environment, so a workflow that ran
+    # outside it cannot exchange a token. It is also where a required reviewer
+    # and a tag restriction belong.
+    environment: nuget
+
+    permissions:
+      contents: read
+      # Lets the job ask GitHub for the short-lived token nuget.org trades for
+      # a one-hour API key. Nothing else here needs a credential.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # SourceLink points a debugger at the commit that produced the
+          # assembly, which a shallow checkout does not have.
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install tmux
+        # The consumer proof drives a real server rather than a stub.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes tmux
+
+      - name: Check the tag matches the version
+        # A tag that disagrees with the version publishes something permanently
+        # mislabelled, and the mislabelling is what nobody can take back.
+        if: github.event_name == 'push'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(dotnet msbuild src/LibTmux/LibTmux.csproj \
+            -getProperty:Version -verbosity:quiet | tr -d '[:space:]')"
+          if [ "${TAG}" != "v${version}" ]; then
+            echo "tag ${TAG} does not match version ${version}" >&2
+            exit 1
+          fi
+          echo "publishing ${version} as ${TAG}"
+
+      - name: Restore
+        run: dotnet restore LibTmux.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build LibTmux.slnx --configuration Release --no-restore --warnaserror
+
+      - name: Unit tests
+        run: >
+          dotnet test
+          --project tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj
+          --configuration Release
+          --framework net10.0
+          --no-build
+          --minimum-expected-tests 1
+
+      - name: Pack
+        run: dotnet pack LibTmux.slnx --configuration Release --no-build --output artifacts/packages
+
+      - name: Inspect the packages
+        # Metadata, assemblies, dependencies and symbols, per package. What
+        # this catches is only fixable before the version exists.
+        run: uv run python eng/parity/inspect_packages.py
+
+      - name: Prove the package installs and runs
+        # Reaching the library through the built package rather than a project
+        # reference is the last thing that can fail while it is still private.
+        run: |
+          dotnet restore tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj
+          for framework in net8.0 net10.0; do
+            dotnet run \
+              --project tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj \
+              --configuration Release \
+              --framework "${framework}" \
+              --no-restore
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: artifacts/packages
+          if-no-files-found: error
+
+      - name: NuGet login
+        # The key this returns lasts an hour, so it is asked for immediately
+        # before it is used. One token buys exactly one key.
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Push
+        # The matching .snupkg is pushed alongside each package automatically,
+        # which is what puts the symbols on the NuGet symbol server.
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: >
+          dotnet nuget push "artifacts/packages/*.nupkg"
+          --api-key "${NUGET_API_KEY}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
