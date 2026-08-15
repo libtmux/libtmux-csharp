@@ -156,27 +156,30 @@ IEnumerable<Window> building = windows.Where(
 ```
 
 Declarative filtering is different: it turns an expression into a portable
-document, or throws. It never quietly falls back to filtering in memory. The
-expression is written over a row you declare, whose property names are the tmux
-fields it reads:
-
-```csharp
-internal sealed record SessionRow(string SessionName, bool SessionAttached);
-```
+document, or throws. It never quietly falls back to filtering in memory. Write
+it over the objects you already hold:
 
 ```csharp run
-QueryDocument document = QueryExtensions.Translate<SessionRow>(
-    row => row.SessionName.StartsWith("build") && row.SessionAttached);
-
-SessionRow[] rows = [new("build-1", true), new("other", true), new("build-2", false)];
-IReadOnlyList<SessionRow> matched = rows.Matching<SessionRow>(
-    row => row.SessionName.StartsWith("build") && row.SessionAttached);
-
-Console.WriteLine($"{document.Target}: {matched.Count} of {rows.Length}");
+IReadOnlyList<Session> sessions = await server.GetSessionsAsync(ct);
+IReadOnlyList<Session> building = sessions.Matching<Session>(
+    session => session.Name.StartsWith("build"));
 ```
 
-A field outside the catalog throws `UnsupportedQueryExpressionException` rather
-than falling back, so an expression that translates is one tmux can answer.
+The same expression is also a document, which can be written here and answered
+somewhere else:
+
+```csharp run
+QueryDocument document = QueryExtensions.Translate<Session>(
+    session => session.Name.StartsWith("build") && session.Attached);
+
+Console.WriteLine(document.Target);   // Session
+```
+
+You write C# and tmux receives tmux: `Session.Name` goes on the wire as
+`session_name`, and `Client.IsControlClient` as `client_control`. The catalog
+carries that pair for all twelve queryable fields, and it is closed — a field
+outside it throws `UnsupportedQueryExpressionException` rather than falling
+back, so an expression that translates is one tmux can answer.
 [LibTmux.Query.Json](src/LibTmux.Query.Json/README.md) puts the document on the
 wire.
 

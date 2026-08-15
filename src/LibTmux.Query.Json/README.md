@@ -23,16 +23,12 @@ tool that records what it queried.
 
 ## Use it
 
-A query is written over a row you declare, whose property names are the tmux
-fields it reads:
-
-```csharp
-internal sealed record SessionRow(string SessionName, bool SessionAttached);
-```
+A query is written over the objects the library hands back, and becomes a
+document that travels:
 
 ```csharp run
-QueryDocument document = QueryExtensions.Translate<SessionRow>(
-    row => row.SessionName.StartsWith("build") && row.SessionAttached);
+QueryDocument document = QueryExtensions.Translate<Session>(
+    session => session.Name.StartsWith("build") && session.Attached);
 
 string wire = QueryJson.Serialize(document);
 QueryDocument parsed = QueryJson.Deserialize(wire);
@@ -61,10 +57,12 @@ Console.WriteLine(parsed == document);
 The same document filters what you already hold, wherever it was written:
 
 ```csharp run
-SessionRow[] rows = [new("build-1", true), new("other", true), new("build-2", false)];
-IReadOnlyList<SessionRow> matched = rows.Matching(QueryJson.Deserialize(
-    QueryJson.Serialize(QueryExtensions.Translate<SessionRow>(
-        row => row.SessionName.StartsWith("build") && row.SessionAttached))));
+// However this arrived — an argument, a request body, a stored filter.
+string received = QueryJson.Serialize(QueryExtensions.Translate<Session>(
+    session => session.Name.StartsWith("build")));
+
+IReadOnlyList<Session> sessions = await server.GetSessionsAsync(ct);
+IReadOnlyList<Session> matched = sessions.Matching(QueryJson.Deserialize(received));
 
 Console.WriteLine(matched.Count);
 ```
@@ -85,6 +83,9 @@ Console.WriteLine($"depth {QueryJsonLimits.V1.MaximumDepth}, nodes {QueryJsonLim
 `session_name`, `session_attached`, `session_id`, `session_windows`,
 `window_name`, `window_id`, `window_panes`, `pane_id`, `pane_command`,
 `client_id`, `client_name`, `client_control`.
+
+You write these as the properties they are — `Session.Name`,
+`Client.IsControlClient` — and the wire carries the tmux spelling.
 
 A field outside it throws `UnsupportedQueryExpressionException` at translation
 rather than falling back to filtering in memory, so a document that exists is

@@ -221,8 +221,8 @@ internal static class Program
         await using TemporaryHierarchyScope hierarchy =
             await factory.CreateHierarchyAsync();
         Server snapshot =
-            await hierarchy.Server.CaptureSnapshotAsync(SnapshotDepth.Hierarchy);
-        IReadOnlyList<Session> sessions = snapshot.Sessions.GetItems();
+            await hierarchy.Server.CaptureSnapshotAsync(SnapshotDepth.Windows);
+        IReadOnlyList<Session> sessions = [.. snapshot.Sessions];
         QueryDocument document =
             QueryExtensions.Translate<Session>(session => session.Attached);
         IReadOnlyList<Session> attached =

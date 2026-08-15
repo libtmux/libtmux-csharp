@@ -162,28 +162,49 @@ IEnumerable<Window> building = windows.Where(
 ```
 
 Declarative filtering translates an expression into a portable document, or
-throws — it never quietly falls back to filtering in memory. The expression is
-written over a row you declare, whose property names are the tmux fields it
-reads:
-
-```csharp
-internal sealed record SessionRow(string SessionName, bool SessionAttached);
-```
+throws — it never quietly falls back to filtering in memory. Write it over the
+objects you already hold:
 
 ```csharp run
-QueryDocument document = QueryExtensions.Translate<SessionRow>(
-    row => row.SessionName.StartsWith("build") && row.SessionAttached);
-
-SessionRow[] rows = [new("build-1", true), new("other", true), new("build-2", false)];
-IReadOnlyList<SessionRow> matched = rows.Matching<SessionRow>(
-    row => row.SessionName.StartsWith("build") && row.SessionAttached);
+IReadOnlyList<Session> sessions = await server.GetSessionsAsync(ct);
+IReadOnlyList<Session> building = sessions.Matching<Session>(
+    session => session.Name.StartsWith("build") && session.Attached);
 ```
 
-The catalog is closed: `session_name`, `session_attached`, `session_id`,
-`session_windows`, `window_name`, `window_id`, `window_panes`, `pane_id`,
-`pane_command`, `client_id`, `client_name`, `client_control`. A field outside
-it throws `UnsupportedQueryExpressionException` rather than falling back, so an
-expression that translates is one tmux can answer.
+Relations quantify, and the element type carries its own fields:
+
+```csharp run
+Server captured = await server.CaptureSnapshotAsync(SnapshotDepth.Windows, ct);
+IReadOnlyList<Session> withBuild = captured.Sessions.Matching<Session>(
+    session => session.Windows.Any(each => each.Name.StartsWith("build")));
+```
+
+The same expression is also a document, which can be written here and answered
+somewhere else:
+
+```csharp run
+QueryDocument document = QueryExtensions.Translate<Session>(
+    session => session.Name.StartsWith("build") && session.Attached);
+```
+
+You write C# and tmux receives tmux. The catalog carries the pair for all
+twelve queryable fields — `Session.Name` is `session_name`,
+`Client.IsControlClient` is `client_control` — and it is closed:
+
+| Session | Window | Pane | Client |
+|---|---|---|---|
+| `Name`, `Id`, `Attached`, `Windows` | `Name`, `Id`, `Panes` | `Id`, `pane_command` | `Name`, `IsControlClient`, `client_id` |
+
+Two fields have no property on their entity, and are reached by declaring a row
+whose property names are the wire names — which is also how you query a
+projection rather than an entity:
+
+```csharp
+internal sealed record PaneRow(string PaneId, string PaneCommand);
+```
+
+A field outside the catalog throws `UnsupportedQueryExpressionException` rather
+than falling back, so an expression that translates is one tmux can answer.
 
 Put it on the wire with
 [LibTmux.Query.Json](https://www.nuget.org/packages/LibTmux.Query.Json).
