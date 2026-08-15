@@ -977,23 +977,27 @@ public sealed class VersionParityTests
         await using PtyAttachedClientScope client = await PtyAttachedClientScope.StartAsync(
             context,
             TestContext.Current.CancellationToken);
-        // A key sent before the popup exists reaches the pane underneath it,
-        // and the popup then waits for a key that already came and went. The
-        // popup says when it is there rather than being given time to be.
+        // A key sent before the popup is there reaches the pane underneath it,
+        // and the popup then waits for one that already came and went. Rather
+        // than time how long a popup takes to appear, the key is sent until it
+        // is the one that closes it: the ones that miss land on a shell prompt
+        // nothing here reads.
         Task<RawTmuxResult> closeAny = ExecuteAsync(
             context,
-            ["display-popup", "-k", "-t", TargetPane(context), PopupOpenedCommand(context, "libtmux-popup-any")]);
-        await RequireSuccessAsync(context, ["wait-for", "libtmux-popup-any"]);
-        await client.WriteAsync("x"u8.ToArray(), TestContext.Current.CancellationToken);
+            ["display-popup", "-k", "-t", TargetPane(context), "true"]);
+        await SendUntilCompletedAsync(client, closeAny, "x"u8.ToArray());
         Assert.Equal(
             0,
             (await closeAny.WaitAsync(CommandTimeout, TestContext.Current.CancellationToken)).ExitCode);
 
         Task<RawTmuxResult> reset = ExecuteAsync(
             context,
-            ["display-popup", "-k", "-t", TargetPane(context), PopupOpenedCommand(context, "libtmux-popup-reset")]);
-        await RequireSuccessAsync(context, ["wait-for", "libtmux-popup-reset"]);
-        await RequireSuccessAsync(context, ["display-popup", "-N", "-t", TargetPane(context)]);
+            ["display-popup", "-k", "-t", TargetPane(context), "true"]);
+
+        // Changing the policy of a popup that is not open is what says it is
+        // not open yet, so retrying it until it works is both the wait and the
+        // thing being waited for.
+        await WaitForSuccessAsync(context, ["display-popup", "-N", "-t", TargetPane(context)]);
         await client.WriteAsync("x"u8.ToArray(), TestContext.Current.CancellationToken);
 
         // As above: the proof is that the popup stayed open, and a popup that
@@ -1322,6 +1326,54 @@ public sealed class VersionParityTests
         // Sending a command is not running it. What running it produces differs
         // per caller, so each waits for its own result rather than being given
         // a fixed number of milliseconds here.
+    }
+
+    /// <summary>Sends one input until the work it is meant to finish has.</summary>
+    /// <remarks>
+    /// Some of what tmux does cannot be observed until it has already happened,
+    /// and a popup that has not been drawn yet is one of them. Sending until
+    /// the effect arrives replaces guessing how long drawing takes, and costs
+    /// only the inputs that missed.
+    /// </remarks>
+    private static async Task SendUntilCompletedAsync(
+        PtyAttachedClientScope client,
+        Task completed,
+        byte[] input)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + CommandTimeout;
+        while (!completed.IsCompleted && DateTimeOffset.UtcNow < deadline)
+        {
+            await client.WriteAsync(input, TestContext.Current.CancellationToken);
+            await Task.Delay(
+                TimeSpan.FromMilliseconds(10),
+                TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>Runs a command until it succeeds.</summary>
+    /// <remarks>
+    /// A command that fails because tmux is not in the state it needs yet is
+    /// not the same as one that fails. Retrying until the deadline is what
+    /// tells them apart, and the command succeeding is the state arriving.
+    /// </remarks>
+    private static async Task WaitForSuccessAsync(
+        RawTmuxTestContext context,
+        IReadOnlyList<string> arguments)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + CommandTimeout;
+        RawTmuxResult result = await ExecuteAsync(context, arguments);
+        while (result.ExitCode != 0 && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(
+                TimeSpan.FromMilliseconds(10),
+                TestContext.Current.CancellationToken);
+            result = await ExecuteAsync(context, arguments);
+        }
+
+        Assert.True(
+            result.ExitCode == 0,
+            $"tmux command never succeeded: {string.Join(' ', arguments)}: "
+            + result.StandardErrorText);
     }
 
     /// <summary>Runs a command until its result is the one being waited for.</summary>
@@ -1712,15 +1764,6 @@ public sealed class VersionParityTests
 
     private static string TargetPane(RawTmuxTestContext context) =>
         $"{context.SessionName}:0.0";
-
-    /// <summary>Builds a popup command that signals once the popup is open.</summary>
-    /// <remarks>
-    /// tmux remembers a signal that arrives before anyone waits, so signalling
-    /// from inside the popup and waiting for it afterwards cannot race: the
-    /// wait returns immediately when the popup was quicker.
-    /// </remarks>
-    private static string PopupOpenedCommand(RawTmuxTestContext context, string channel) =>
-        $"'{context.TmuxBinaryPath}' -S '{context.SocketPath}' wait-for -S {channel}";
 
     private static async Task WriteTransitionRecordAsync(TmuxCapabilityProfile profile)
     {
