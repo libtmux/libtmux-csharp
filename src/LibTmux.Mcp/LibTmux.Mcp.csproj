@@ -12,11 +12,20 @@
     <PackageId>LibTmux.Mcp</PackageId>
     <Description>A Model Context Protocol server that lets an assistant drive tmux through LibTmux.</Description>
     <PackageTags>tmux;mcp;model-context-protocol;ai</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- A tool package carries its own binaries and their symbols under
+         tools/, so a symbols package beside it would hold a second copy of
+         what already shipped. -->
+    <IncludeSymbols>false</IncludeSymbols>
 
     <!-- The server binds tool parameters by reflection, so it is not trimmed. -->
     <IsAotCompatible>false</IsAotCompatible>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\LibTmux\LibTmux.csproj" />

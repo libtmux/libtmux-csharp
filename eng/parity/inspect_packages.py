@@ -1,13 +1,21 @@
-"""Read a built package the way a consumer's restore would.
+"""Read every built package the way a consumer's restore would.
 
 Everything about a package is decided at pack time and invisible from inside
 the repository: which frameworks it carries, what it drags in with it, and
 whether the documentation a caller's editor shows is there at all.
+
+This repository ships more than one package, and they do not have one contract.
+The core library carries assemblies a project references and takes a dependency
+on nothing a caller did not ask for; an optional package is allowed the one
+dependency it exists to add; the server is a tool, which carries executables
+under ``tools/`` and no ``lib/`` at all. Holding them all to the core's shape
+would either fail the ones that are fine or pass nothing at all.
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import pathlib
 import sys
 import zipfile
@@ -15,29 +23,128 @@ from xml.etree import ElementTree
 
 TARGET_FRAMEWORKS = ("net8.0", "net10.0")
 
+
+@dataclasses.dataclass(frozen=True)
+class Contract:
+    """What one package is expected to be.
+
+    Attributes
+    ----------
+    dependencies : frozenset[str]
+        Package IDs this package may declare. Anything else is a dependency
+        chosen for the caller rather than by them.
+    tool : bool
+        Whether this packs as a .NET tool, which carries its binaries and
+        their symbols under ``tools/`` rather than ``lib/``.
+    """
+
+    dependencies: frozenset[str]
+    tool: bool = False
+
+
 #: Logging abstractions are interfaces with no implementation attached, so a
-#: caller who wants no logging still pays nothing for it. Anything beyond this
-#: would be the library choosing a caller's dependencies for them.
-ALLOWED_DEPENDENCIES = frozenset({"Microsoft.Extensions.Logging.Abstractions"})
+#: caller who wants no logging still pays nothing for it. Every other entry
+#: names exactly what that package exists to add.
+CONTRACTS = {
+    "LibTmux": Contract(frozenset({"Microsoft.Extensions.Logging.Abstractions"})),
+    "LibTmux.Query.Json": Contract(frozenset({"LibTmux"})),
+    "LibTmux.Workspace": Contract(frozenset({"LibTmux", "YamlDotNet"})),
+    "LibTmux.Mcp": Contract(frozenset(), tool=True),
+}
+
+
+def package_id(package: pathlib.Path) -> str:
+    """Return the package ID a built file name carries.
+
+    Parameters
+    ----------
+    package : pathlib.Path
+        Path to a ``.nupkg``.
+
+    Returns
+    -------
+    str
+        The ID, which is everything before the version.
+
+    Examples
+    --------
+    >>> package_id(pathlib.Path("LibTmux.Query.Json.1.2.3.nupkg"))
+    'LibTmux.Query.Json'
+    >>> package_id(pathlib.Path("LibTmux.1.0.0.nupkg"))
+    'LibTmux'
+    """
+    segments = package.name.removesuffix(".nupkg").split(".")
+    while segments and segments[-1].isdigit():
+        segments.pop()
+    return ".".join(segments)
+
+
+def assets(names: set[str], identifier: str, contract: Contract) -> list[str]:
+    """Return one message per asset a consumer would reach for and not find.
+
+    Parameters
+    ----------
+    names : set[str]
+        Entry names in the archive.
+    identifier : str
+        The package ID.
+    contract : Contract
+        What this package is expected to be.
+
+    Returns
+    -------
+    list[str]
+        Violations.
+
+    Examples
+    --------
+    >>> assets(set(), "LibTmux", CONTRACTS["LibTmux"])[0]
+    'LibTmux carries no assembly for net8.0'
+    """
+    violations: list[str] = []
+    for framework in TARGET_FRAMEWORKS:
+        directory = (
+            f"tools/{framework}/any" if contract.tool else f"lib/{framework}"
+        )
+        if f"{directory}/{identifier}.dll" not in names:
+            violations.append(f"{identifier} carries no assembly for {framework}")
+
+        # A caller's editor shows what the documentation file says, and a
+        # package without one shows nothing.
+        if f"{directory}/{identifier}.xml" not in names:
+            violations.append(f"{identifier} carries no documentation for {framework}")
+
+    return violations
 
 
 def inspect(package: pathlib.Path) -> list[str]:
-    """Return one message per way the package falls short."""
-    violations: list[str] = []
+    """Return one message per way the package falls short.
+
+    Parameters
+    ----------
+    package : pathlib.Path
+        Path to a built ``.nupkg``.
+
+    Returns
+    -------
+    list[str]
+        Violations, empty when the package is fit to publish.
+    """
+    identifier = package_id(package)
+    contract = CONTRACTS.get(identifier)
+    if contract is None:
+        message = (
+            f"{identifier} is not a package this repository declares. Add what it "
+            "is allowed to depend on to inspect_packages.py, or stop packing it."
+        )
+        return [message]
+
     with zipfile.ZipFile(package) as archive:
         names = set(archive.namelist())
-        for framework in TARGET_FRAMEWORKS:
-            if f"lib/{framework}/LibTmux.dll" not in names:
-                violations.append(f"package carries no assembly for {framework}")
-
-            # A caller's editor shows what the documentation file says, and a
-            # package without one shows nothing.
-            if f"lib/{framework}/LibTmux.xml" not in names:
-                violations.append(f"package carries no documentation for {framework}")
-
+        violations = assets(names, identifier, contract)
         specifications = [name for name in names if name.endswith(".nuspec")]
         if len(specifications) != 1:
-            violations.append("package does not carry exactly one specification")
+            violations.append(f"{identifier} does not carry exactly one specification")
             return violations
 
         with archive.open(specifications[0]) as stream:
@@ -46,33 +153,54 @@ def inspect(package: pathlib.Path) -> list[str]:
     namespace = root.tag[: root.tag.index("}") + 1]
     metadata = root.find(f"{namespace}metadata")
     if metadata is None:
-        violations.append("package specification carries no metadata")
+        violations.append(f"{identifier} carries no metadata")
         return violations
 
     violations.extend(
-        f"package declares dependency {dependency.attrib['id']}"
+        f"{identifier} declares dependency {dependency.attrib['id']}"
         for dependency in root.iter(f"{namespace}dependency")
-        if dependency.attrib.get("id") not in ALLOWED_DEPENDENCIES
+        if dependency.attrib.get("id") not in contract.dependencies
     )
 
+    # A package page that says nothing about what the package is, who wrote it,
+    # or where it came from is one a reader has to leave to evaluate.
     for field, expected in (
-        ("id", "LibTmux"),
+        ("id", identifier),
         ("license", "MIT"),
         ("readme", "README.md"),
+        ("projectUrl", "https://github.com/libtmux/libtmux-csharp"),
     ):
         element = metadata.find(f"{namespace}{field}")
         if element is None or element.text != expected:
-            violations.append(f"package {field} is not {expected}")
+            violations.append(f"{identifier} {field} is not {expected}")
+
+    for field in ("description", "authors"):
+        element = metadata.find(f"{namespace}{field}")
+        if element is None or not element.text or element.text == identifier:
+            violations.append(f"{identifier} carries no {field}")
+
+    # A debugger resolves sources by asking the named repository for one exact
+    # revision. Naming another project's repository sends it somewhere that has
+    # never heard of the commit.
+    repository = root.find(f".//{namespace}repository")
+    if repository is None or repository.attrib.get("url") != (
+        "https://github.com/libtmux/libtmux-csharp"
+    ):
+        violations.append(f"{identifier} does not name this repository")
 
     symbols = package.with_suffix(".snupkg")
-    if not symbols.is_file():
-        violations.append("no symbols package was produced beside the package")
+    if contract.tool:
+        # The tool carries its own binaries, and their symbols with them.
+        if symbols.is_file():
+            violations.append(f"{identifier} produced symbols a tool does not need")
+    elif not symbols.is_file():
+        violations.append(f"{identifier} produced no symbols package beside it")
 
     return violations
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Report whether a built package is fit to publish."""
+    """Report whether the built packages are fit to publish."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--artifacts",
@@ -83,19 +211,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--repository",
         type=pathlib.Path,
-        default=pathlib.Path(__file__).resolve().parents[3],
+        default=pathlib.Path(__file__).resolve().parents[2],
         help="the repository the package was built from",
     )
     arguments = parser.parse_args(argv)
 
-    # The optional JSON package is inspected alongside the core one, because a
-    # caller who takes it gets both and neither is checked by the other.
-    found = sorted(arguments.artifacts.glob("LibTmux*.nupkg"))
+    found = sorted(arguments.artifacts.glob("*.nupkg"))
     if not found:
         print(f"no package was found in {arguments.artifacts}")
         return 1
 
-    violations = [message for package in found for message in inspect(package)]
+    # Packing fewer packages than this repository declares is as much a failure
+    # as packing a broken one: nobody notices a package that stopped shipping.
+    packed = {package_id(package) for package in found}
+    violations = [
+        f"{identifier} was declared but not packed"
+        for identifier in sorted(set(CONTRACTS) - packed)
+    ]
+    violations.extend(message for package in found for message in inspect(package))
     for violation in violations:
         print(violation)
 

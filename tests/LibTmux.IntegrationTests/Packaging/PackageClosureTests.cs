@@ -235,13 +235,21 @@ public sealed class PackageClosureTests
 
     private static string PackagePath()
     {
-        string[] found = Directory.GetFiles(
-            Path.Combine(CSharpRoot(), "artifacts", "packages"),
-            "LibTmux.*.nupkg");
-        return found.Length > 0
+        // Packing the solution writes one package per packable project, and
+        // every name starts with "LibTmux". What separates the core package
+        // from LibTmux.Query.Json and the rest is that the segment after the
+        // name is its version, so that is what this matches: taking whichever
+        // file the filesystem listed first would make these tests read a
+        // different package on a different machine.
+        string[] found = [.. Directory
+            .GetFiles(Path.Combine(CSharpRoot(), "artifacts", "packages"), "LibTmux.*.nupkg")
+            .Where(path => char.IsAsciiDigit(
+                Path.GetFileNameWithoutExtension(path)["LibTmux.".Length]))];
+        return found.Length == 1
             ? found[0]
             : throw new FileNotFoundException(
-                "No built package was found. Run dotnet pack into artifacts/packages first.");
+                $"Expected one LibTmux package in artifacts/packages, found {found.Length}. "
+                + "Run dotnet pack into artifacts/packages first.");
     }
 
     private static string BuildRoot() => CSharpRoot();

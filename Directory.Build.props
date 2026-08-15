@@ -15,4 +15,30 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <RestoreLockedMode>true</RestoreLockedMode>
   </PropertyGroup>
+
+  <!-- Packaging identity every published package shares. A project says what
+       it is; where it came from and who to ask is the same answer for all of
+       them, so it is answered once. -->
+  <PropertyGroup>
+    <!-- One version for the whole repository. "LibTmux.Mcp 1.0.0 goes with
+         LibTmux 1.0.0" is then true by construction rather than by a
+         compatibility table somebody has to keep current. -->
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Authors>Tony Narlock</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/libtmux/libtmux-csharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/libtmux/libtmux-csharp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- Debugging a tmux problem means reading this library's source, so the
+         symbols and the sources they point at ship alongside each package. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Publishing is opted into. A new test project, tool, or sample cannot
+         reach a feed by being forgotten about. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
 </Project>

@@ -9,13 +9,17 @@
     <PackageId>LibTmux.Workspace</PackageId>
     <Description>Builds tmux sessions from tmuxp workspace files, on top of LibTmux.</Description>
     <PackageTags>tmux;tmuxp;workspace;yaml</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <!-- The YAML reader binds to properties by name, which a trimmer cannot
          see, so this package does not claim to be trimmable. Nothing in the
          core library depends on it. -->
     <IsAotCompatible>false</IsAotCompatible>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\LibTmux\LibTmux.csproj" />
