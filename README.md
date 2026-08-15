@@ -1,5 +1,11 @@
 # LibTmux
 
+> **Alpha.** `0.0.0-alpha.1` is the first prerelease. The public API is not
+> settled and can change between prereleases without notice, so pin an exact
+> version rather than a range. Everything published here is tested against
+> tmux 3.2a through 3.7b on every commit — what is unsettled is the shape of
+> the API, not whether it works.
+
 A typed, async-first client for [tmux](https://github.com/tmux/tmux). Drive
 servers, sessions, windows, panes, clients, options, hooks, and buffers from
 .NET, against the same tmux versions Python

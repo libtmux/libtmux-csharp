@@ -68,9 +68,10 @@ def build(
     tool: bool = False,
     repository_url: str = PROJECT_URL,
     project_url: str = PROJECT_URL,
+    version: str = "1.0.0",
 ) -> pathlib.Path:
     """Write a package shaped the way dotnet pack writes one."""
-    package = directory / f"{identifier}.1.0.0.nupkg"
+    package = directory / f"{identifier}.{version}.nupkg"
     with zipfile.ZipFile(package, "w") as archive:
         archive.writestr(
             f"{identifier}.nuspec",
@@ -91,7 +92,7 @@ def build(
                 archive.writestr(f"{directory_name}/{identifier}.xml", "<doc />")
 
     if symbols:
-        (directory / f"{identifier}.1.0.0.snupkg").write_bytes(b"symbols")
+        (directory / f"{identifier}.{version}.snupkg").write_bytes(b"symbols")
 
     return package
 
@@ -99,6 +100,13 @@ def build(
 def test_a_complete_package_passes(tmp_path: pathlib.Path) -> None:
     """A package carrying everything a consumer needs has nothing to report."""
     assert inspect(build(tmp_path)) == []
+
+
+def test_a_prerelease_package_is_recognised(tmp_path: pathlib.Path) -> None:
+    """A prerelease label is dotted, and trimming it off leaves another name."""
+    package = build(tmp_path, version="0.0.1-alpha.1")
+
+    assert inspect(package) == []
 
 
 def test_a_missing_framework_is_reported(tmp_path: pathlib.Path) -> None:

@@ -1,5 +1,9 @@
 # LibTmux
 
+> **Alpha.** Everything here describes `0.0.0-alpha.1`. The behaviour is
+> proven against tmux 3.2a through 3.7b on every commit; the shape of the API
+> is what is not settled yet.
+
 A .NET class library for tmux. Every call reaches a real tmux server, and
 which of the three execution modes you are in is visible where the call
 starts.

@@ -17,11 +17,16 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import pathlib
+import re
 import sys
 import zipfile
 from xml.etree import ElementTree
 
 TARGET_FRAMEWORKS = ("net8.0", "net10.0")
+
+#: The version a built file name ends with: three numbers, then whatever a
+#: prerelease label or build metadata adds.
+VERSION_SUFFIX = re.compile(r"\.\d+\.\d+\.\d+(?:[-+][0-9A-Za-z][0-9A-Za-z.-]*)?$")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -72,11 +77,15 @@ def package_id(package: pathlib.Path) -> str:
     'LibTmux.Query.Json'
     >>> package_id(pathlib.Path("LibTmux.1.0.0.nupkg"))
     'LibTmux'
+    >>> package_id(pathlib.Path("LibTmux.0.0.1-alpha.1.nupkg"))
+    'LibTmux'
+    >>> package_id(pathlib.Path("LibTmux.Mcp.0.0.1-alpha.nupkg"))
+    'LibTmux.Mcp'
     """
-    segments = package.name.removesuffix(".nupkg").split(".")
-    while segments and segments[-1].isdigit():
-        segments.pop()
-    return ".".join(segments)
+    # A prerelease label is dotted too, so trimming trailing numbers off the
+    # name leaves "-alpha" behind and the package stops being recognised. The
+    # version is what it is: three numbers and whatever a label adds.
+    return VERSION_SUFFIX.sub("", package.name.removesuffix(".nupkg"))
 
 
 def assets(names: set[str], identifier: str, contract: Contract) -> list[str]:

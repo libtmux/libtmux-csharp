@@ -1,5 +1,9 @@
 # LibTmux.Query.Json
 
+> **Alpha.** `0.0.0-alpha.1` is the first prerelease. The public API is not
+> settled and can change between prereleases without notice, so pin an exact
+> version.
+
 `System.Text.Json` support for [LibTmux](https://www.nuget.org/packages/LibTmux)
 query documents. The core library does not reference it, so a caller who does
 not want a JSON dependency does not get one.

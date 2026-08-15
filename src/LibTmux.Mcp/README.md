@@ -1,5 +1,9 @@
 # LibTmux.Mcp
 
+> **Alpha.** `0.0.0-alpha.1` is the first prerelease. The public API is not
+> settled and can change between prereleases without notice, so pin an exact
+> version.
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server that lets an
 assistant drive tmux through
 [LibTmux](https://www.nuget.org/packages/LibTmux).
