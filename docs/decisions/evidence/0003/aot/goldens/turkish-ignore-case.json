@@ -1,0 +1,1 @@
+{"schema":"libtmux-query","version":1,"target":"session","predicate":{"kind":"comparison","operator":"stringEqualOrdinalIgnoreCase","left":{"kind":"field","target":"session","wireName":"session_name"},"right":{"kind":"constant","value":{"kind":"string","value":"FILE"}}}}

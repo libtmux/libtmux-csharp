@@ -1,0 +1,25 @@
+#nullable enable
+LibTmux.Query.Json.QueryJson
+LibTmux.Query.Json.QueryJsonLimits
+LibTmux.Query.Json.QueryJsonLimits.<Clone>$() -> LibTmux.Query.Json.QueryJsonLimits!
+LibTmux.Query.Json.QueryJsonLimits.Deconstruct(out int MaximumDepth, out int MaximumNodes, out int MaximumStringLength, out int MaximumPatternLength, out int MaximumUtf8Bytes) -> void
+LibTmux.Query.Json.QueryJsonLimits.Equals(LibTmux.Query.Json.QueryJsonLimits? other) -> bool
+LibTmux.Query.Json.QueryJsonLimits.MaximumDepth.get -> int
+LibTmux.Query.Json.QueryJsonLimits.MaximumDepth.init -> void
+LibTmux.Query.Json.QueryJsonLimits.MaximumNodes.get -> int
+LibTmux.Query.Json.QueryJsonLimits.MaximumNodes.init -> void
+LibTmux.Query.Json.QueryJsonLimits.MaximumPatternLength.get -> int
+LibTmux.Query.Json.QueryJsonLimits.MaximumPatternLength.init -> void
+LibTmux.Query.Json.QueryJsonLimits.MaximumStringLength.get -> int
+LibTmux.Query.Json.QueryJsonLimits.MaximumStringLength.init -> void
+LibTmux.Query.Json.QueryJsonLimits.MaximumUtf8Bytes.get -> int
+LibTmux.Query.Json.QueryJsonLimits.MaximumUtf8Bytes.init -> void
+LibTmux.Query.Json.QueryJsonLimits.QueryJsonLimits(int MaximumDepth, int MaximumNodes, int MaximumStringLength, int MaximumPatternLength, int MaximumUtf8Bytes) -> void
+override LibTmux.Query.Json.QueryJsonLimits.Equals(object? obj) -> bool
+override LibTmux.Query.Json.QueryJsonLimits.GetHashCode() -> int
+override LibTmux.Query.Json.QueryJsonLimits.ToString() -> string!
+static LibTmux.Query.Json.QueryJson.Deserialize(string! json, LibTmux.Query.Json.QueryJsonLimits? limits = null) -> LibTmux.Query.QueryDocument!
+static LibTmux.Query.Json.QueryJson.Serialize(LibTmux.Query.QueryDocument! document) -> string!
+static LibTmux.Query.Json.QueryJsonLimits.V1.get -> LibTmux.Query.Json.QueryJsonLimits!
+static LibTmux.Query.Json.QueryJsonLimits.operator !=(LibTmux.Query.Json.QueryJsonLimits? left, LibTmux.Query.Json.QueryJsonLimits? right) -> bool
+static LibTmux.Query.Json.QueryJsonLimits.operator ==(LibTmux.Query.Json.QueryJsonLimits? left, LibTmux.Query.Json.QueryJsonLimits? right) -> bool

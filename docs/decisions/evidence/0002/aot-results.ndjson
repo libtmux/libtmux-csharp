@@ -1,0 +1,6 @@
+{"contender":"Mutable","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net10.0","status":"passed"}
+{"contender":"Mutable","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net8.0","status":"passed"}
+{"contender":"Services","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net10.0","status":"passed"}
+{"contender":"Services","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net8.0","status":"passed"}
+{"contender":"Hybrid","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net10.0","status":"passed"}
+{"contender":"Hybrid","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net8.0","status":"passed"}

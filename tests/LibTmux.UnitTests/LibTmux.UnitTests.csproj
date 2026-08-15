@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CA1707</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/LibTmux/LibTmux.csproj" />
+    <ProjectReference Include="..\..\src\LibTmux.Query.Json\LibTmux.Query.Json.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="../../src/LibTmux/Server.cs" Condition="Exists('$(MSBuildProjectDirectory)/../../src/LibTmux/Server.cs')" LogicalName="LibTmux.UnitTests.EntitySources.Server.cs" />
+    <EmbeddedResource Include="../../src/LibTmux/Session.cs" Condition="Exists('$(MSBuildProjectDirectory)/../../src/LibTmux/Session.cs')" LogicalName="LibTmux.UnitTests.EntitySources.Session.cs" />
+    <EmbeddedResource Include="../../src/LibTmux/Window.cs" Condition="Exists('$(MSBuildProjectDirectory)/../../src/LibTmux/Window.cs')" LogicalName="LibTmux.UnitTests.EntitySources.Window.cs" />
+    <EmbeddedResource Include="../../src/LibTmux/Pane.cs" Condition="Exists('$(MSBuildProjectDirectory)/../../src/LibTmux/Pane.cs')" LogicalName="LibTmux.UnitTests.EntitySources.Pane.cs" />
+    <EmbeddedResource Include="../../src/LibTmux/Client.cs" Condition="Exists('$(MSBuildProjectDirectory)/../../src/LibTmux/Client.cs')" LogicalName="LibTmux.UnitTests.EntitySources.Client.cs" />
+  </ItemGroup>
+</Project>

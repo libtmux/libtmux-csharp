@@ -1,0 +1,155 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Text.RegularExpressions;
+
+namespace LibTmux.Query;
+
+/// <summary>Evaluates a query document against in-memory elements.</summary>
+/// <remarks>
+/// The interpreter is the semantic owner: translation defines the shape and
+/// this defines what the shape means. Compiling from the document rather than
+/// from the original expression is what guarantees the in-memory answer
+/// matches the wire answer.
+/// </remarks>
+internal static class QueryInterpreter
+{
+    internal static Func<T, bool> Compile<T>(QueryDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return element => Evaluate(document.Predicate, element!);
+    }
+
+    private static bool Evaluate(QueryNode node, object element) => node switch
+    {
+        AndNode and => and.Operands.All(operand => Evaluate(operand, element)),
+        OrNode or => or.Operands.Any(operand => Evaluate(operand, element)),
+        NotNode not => !Evaluate(not.Operand, element),
+        ComparisonNode comparison => Compare(comparison, element),
+        StringNode text => CompareText(text, element),
+        RegexNode regex => Regex.IsMatch(
+            ReadText(regex.Input, element) ?? string.Empty,
+            regex.Pattern,
+            regex.SemanticOptions),
+        QuantifierNode quantifier => Quantify(quantifier, element),
+        _ => throw new UnsupportedQueryExpressionException(
+            $"Node '{node.GetType().Name}' has no interpretation."),
+    };
+
+    private static bool Quantify(QuantifierNode quantifier, object element)
+    {
+        object? relation = Read(quantifier.Relation, element);
+        IEnumerable<object> children = relation is System.Collections.IEnumerable sequence
+            ? sequence.Cast<object>()
+            : [];
+        // Any over nothing is false and All over nothing is true, matching both
+        // the design spec and LINQ.
+        return quantifier.Quantifier == QueryQuantifier.Any
+            ? children.Any(child => Evaluate(quantifier.Predicate, child))
+            : children.All(child => Evaluate(quantifier.Predicate, child));
+    }
+
+    private static bool Compare(ComparisonNode comparison, object element)
+    {
+        object? left = Read(comparison.Left, element);
+        object? right = Read(comparison.Right, element);
+        if (left is null || right is null)
+        {
+            return comparison.Operator switch
+            {
+                QueryComparison.Equal => left is null && right is null,
+                QueryComparison.NotEqual => (left is null) != (right is null),
+                // An ordering against an absent value has no answer, so it is
+                // false rather than an arbitrary side.
+                _ => false,
+            };
+        }
+
+        if (comparison.Operator is QueryComparison.Equal or QueryComparison.NotEqual
+            && (left is string || right is string))
+        {
+            bool equal = string.Equals(
+                Convert.ToString(left, CultureInfo.InvariantCulture),
+                Convert.ToString(right, CultureInfo.InvariantCulture),
+                StringComparison.Ordinal);
+            return comparison.Operator == QueryComparison.Equal ? equal : !equal;
+        }
+
+        int order = Comparer<object>.Default.Compare(left, right);
+        return comparison.Operator switch
+        {
+            QueryComparison.Equal => order == 0,
+            QueryComparison.NotEqual => order != 0,
+            QueryComparison.LessThan => order < 0,
+            QueryComparison.LessThanOrEqual => order <= 0,
+            QueryComparison.GreaterThan => order > 0,
+            QueryComparison.GreaterThanOrEqual => order >= 0,
+            _ => false,
+        };
+    }
+
+    private static bool CompareText(StringNode text, object element)
+    {
+        string left = ReadText(text.Left, element) ?? string.Empty;
+        string right = ReadText(text.Right, element) ?? string.Empty;
+        return text.Operator switch
+        {
+            QueryStringOperation.EqualsOrdinal =>
+                string.Equals(left, right, StringComparison.Ordinal),
+            QueryStringOperation.EqualsOrdinalIgnoreCase =>
+                string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
+            QueryStringOperation.StartsWithOrdinal =>
+                left.StartsWith(right, StringComparison.Ordinal),
+            QueryStringOperation.EndsWithOrdinal =>
+                left.EndsWith(right, StringComparison.Ordinal),
+            QueryStringOperation.ContainsOrdinal =>
+                left.Contains(right, StringComparison.Ordinal),
+            _ => false,
+        };
+    }
+
+    private static string? ReadText(QueryNode node, object element) =>
+        Read(node, element) is object value
+            ? Convert.ToString(value, CultureInfo.InvariantCulture)
+            : null;
+
+    private static object? Read(QueryNode node, object element) => node switch
+    {
+        ConstantNode constant => Literal(constant.Value),
+        FieldNode field => ReadMember(field, element),
+        _ => throw new UnsupportedQueryExpressionException(
+            $"Node '{node.GetType().Name}' is not an operand."),
+    };
+
+    // Matching in memory reads the element's own properties by name, which a
+    // trimmer cannot see and may therefore remove. The whole interpreter is
+    // marked so that a caller trimming their app is told, rather than finding
+    // out when a filter silently stops matching.
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2075:Members might be removed",
+        Justification = "Marked on the query surface a caller reaches this through.")]
+    private static object? ReadMember(FieldNode field, object element) =>
+        element.GetType()
+            .GetProperty(ToClrName(field.WireName))
+            ?.GetValue(element)
+        ?? throw new UnsupportedQueryExpressionException(
+            $"Element exposes no member for field '{field.WireName}'.");
+
+    private static object? Literal(QueryConstant constant) => constant switch
+    {
+        NullConstant => null,
+        BooleanConstant boolean => boolean.Value,
+        Int64Constant number => number.Value,
+        StringConstant text => text.Value,
+        InstantConstant instant => instant.UnixSeconds,
+        EnumConstant member => member.Value,
+        TypedIdConstant id => id.Value,
+        _ => throw new UnsupportedQueryExpressionException(
+            $"Constant '{constant.GetType().Name}' has no value."),
+    };
+
+    private static string ToClrName(string wireName) =>
+        string.Concat(
+            wireName.Split('_', StringSplitOptions.RemoveEmptyEntries)
+                .Select(static part => char.ToUpperInvariant(part[0]) + part[1..]));
+}

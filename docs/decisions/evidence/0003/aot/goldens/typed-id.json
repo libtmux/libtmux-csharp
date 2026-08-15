@@ -1,0 +1,1 @@
+{"schema":"libtmux-query","version":1,"target":"session","predicate":{"kind":"comparison","operator":"equal","left":{"kind":"field","target":"session","wireName":"session_id"},"right":{"kind":"constant","value":{"kind":"typedId","type":"session","value":"$1"}}}}

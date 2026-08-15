@@ -1,0 +1,56 @@
+# Control mode: what tmux says unasked
+
+A control session keeps one tmux client running for as long as you hold it.
+That is what makes tmux willing to report things nobody asked for: panes
+producing output, windows appearing, sessions changing.
+
+```csharp
+await using IControlModeSession control = await server.EnterControlModeAsync(cancellationToken: ct);
+
+await control.SendAsync("new-window -d -n build", ct);
+
+await foreach (TmuxEvent observed in control.Events.WithCancellation(ct))
+{
+    if (observed is TmuxNotificationEvent { Name: "window-add" } added)
+    {
+        Console.WriteLine($"window-add {added.Arguments[0]}");
+        break;
+    }
+}
+```
+
+Example output:
+
+```
+window-add @1
+```
+
+Pane output arrives as `TmuxOutputEvent`, already decoded — tmux escapes the
+payload the same way it escapes an option value, and this undoes that:
+
+```
+%output %1 \033[1m\033[7m%\033[27m ...
+```
+
+becomes a `TmuxOutputEvent` whose `Data` holds the real control bytes.
+
+## Two things worth knowing
+
+Entering control mode **attaches**. A control client that never attaches is
+told about the hierarchy but not about pane output, so `%output` never arrives
+and the stream looks mysteriously quiet.
+
+The stream ends with `TmuxExitEvent` and then completes, so an `await foreach`
+is released rather than hanging when the server goes away.
+
+`SendAsync` is safe to call concurrently: tmux answers in the order it was
+asked, and each caller gets its own answer.
+
+## When this is not the right mode
+
+For a single command it is more machinery than the job needs — use
+[one-shot](one-shot.md). For many commands with nothing to observe, use
+[chaining](chaining.md).
+
+What each mode costs, measured for one command and for fifty, is in
+[choosing a mode](matrix.md).

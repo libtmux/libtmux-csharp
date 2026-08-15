@@ -1,0 +1,23 @@
+{
+  "evaluatedCommit": "6f6b0c6debe90447d42b4c1dd4b1efd571824f43",
+  "frameworks": [
+    "net10.0",
+    "net8.0"
+  ],
+  "includeMasterAdvisory": true,
+  "platform": "linux",
+  "redactionProof": true,
+  "schemaVersion": 1,
+  "sdkVersion": "10.0.302",
+  "sourceState": "clean",
+  "sourceTreeFingerprint": "40ee8b4ee16c285f4c5a8e572ea7a9ee2d42edca68448360897334009cb52318",
+  "tmuxVersions": [
+    "3.2a",
+    "3.3a",
+    "3.4",
+    "3.5",
+    "3.6",
+    "3.7a",
+    "3.7b"
+  ]
+}

@@ -1,0 +1,114 @@
+using System.Runtime.Versioning;
+
+namespace LibTmux.Internal;
+
+internal sealed class TmuxCommandDispatcher
+{
+    private readonly Func<IReadOnlyList<string>, CancellationToken, Task<TmuxCommandResult>> _execute;
+
+    // A grouped run is a different shape, not a longer argument list: tmux
+    // separates the commands itself and a literal semicolon stays data. Only a
+    // real transport can express that, so an injected single-command executor
+    // leaves this null and grouping is refused rather than faked.
+    private readonly Func<
+        IReadOnlyList<IReadOnlyList<string>>,
+        CancellationToken,
+        Task<TmuxCommandResult>>? _executeGroup;
+
+    private readonly TmuxCommandContext? _context;
+
+    [UnsupportedOSPlatform("windows")]
+    internal TmuxCommandDispatcher(TmuxProcessTransport transport)
+    {
+        ArgumentNullException.ThrowIfNull(transport);
+        _execute = transport.ExecuteAsync;
+        _executeGroup = (commands, cancellationToken) => transport.ExecuteAsync(
+            TmuxCommandRequest.Group([.. commands]),
+            cancellationToken);
+    }
+
+    internal TmuxCommandDispatcher(
+        Func<IReadOnlyList<string>, CancellationToken, Task<TmuxCommandResult>> execute,
+        TmuxCommandContext? context = null,
+        Func<
+            IReadOnlyList<IReadOnlyList<string>>,
+            CancellationToken,
+            Task<TmuxCommandResult>>? executeGroup = null)
+    {
+        ArgumentNullException.ThrowIfNull(execute);
+        _execute = execute;
+        _executeGroup = executeGroup;
+        _context = context;
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    internal async Task<TmuxCommandResult> ExecuteGroupAsync(
+        IReadOnlyList<IReadOnlyList<string>> commands,
+        CancellationToken cancellationToken = default)
+    {
+        PlatformGuard.ThrowIfWindows();
+        ArgumentNullException.ThrowIfNull(commands);
+        if (_executeGroup is null)
+        {
+            throw new NotSupportedException(
+                "This dispatcher cannot run a grouped command.");
+        }
+
+        foreach (IReadOnlyList<string> command in commands)
+        {
+            ValidateArguments(command);
+        }
+
+        TmuxCommandResult result = await _executeGroup(commands, cancellationToken)
+            .ConfigureAwait(false);
+
+        // A group is one tmux run, so it is recorded once, under the arguments
+        // tmux actually received.
+        TmuxLog.CommandCompleted(_context, [.. commands.SelectMany(static c => c)], result);
+        return result;
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    internal async Task<TmuxCommandResult> ExecuteAsync(
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken = default)
+    {
+        PlatformGuard.ThrowIfWindows();
+        ValidateArguments(arguments);
+        string[] copy = [.. arguments];
+        TmuxCommandResult result = await _execute(copy, cancellationToken).ConfigureAwait(false);
+
+        // Every tmux command a caller makes arrives here, so this is the one
+        // place that has to know how a command is recorded.
+        TmuxLog.CommandCompleted(_context, copy, result);
+
+        if (copy.Contains("has-session", StringComparer.Ordinal)
+            && result.StandardOutputLines.Count == 0
+            && result.StandardErrorLines.Count > 0)
+        {
+            return new TmuxCommandResult(
+                result.Arguments,
+                result.ExitCode,
+                result.StandardOutput,
+                result.StandardError,
+                [result.StandardErrorLines[0]],
+                result.StandardErrorLines);
+        }
+
+        return result;
+    }
+
+    internal static void ValidateArguments(IReadOnlyList<string> arguments)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        if (arguments.Count == 0)
+        {
+            throw new ArgumentException("At least one tmux argument is required.", nameof(arguments));
+        }
+
+        if (arguments.Any(static argument => argument is null))
+        {
+            throw new ArgumentException("Tmux arguments cannot be null.", nameof(arguments));
+        }
+    }
+}

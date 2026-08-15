@@ -1,0 +1,1 @@
+{"schema":"libtmux-query","version":1,"target":"session","predicate":{"kind":"regex","input":{"kind":"field","target":"session","wireName":"session_name"},"dialect":"dotnet","pattern":"^prod-[0-9]+$","semanticOptions":512}}

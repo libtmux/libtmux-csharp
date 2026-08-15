@@ -1,0 +1,70 @@
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net10.0 tmux-version=3.2a
+event=control-tombstone phase=before-drain state=blocking framework=net10.0 tmux-version=3.2a
+event=control-following-request phase=before-drain state=blocked framework=net10.0 tmux-version=3.2a
+event=control-tombstone phase=after-drain state=drained framework=net10.0 tmux-version=3.2a
+event=control-following-request phase=after-drain state=completed framework=net10.0 tmux-version=3.2a
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net8.0 tmux-version=3.2a
+event=control-tombstone phase=before-drain state=blocking framework=net8.0 tmux-version=3.2a
+event=control-following-request phase=before-drain state=blocked framework=net8.0 tmux-version=3.2a
+event=control-tombstone phase=after-drain state=drained framework=net8.0 tmux-version=3.2a
+event=control-following-request phase=after-drain state=completed framework=net8.0 tmux-version=3.2a
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net10.0 tmux-version=3.3a
+event=control-tombstone phase=before-drain state=blocking framework=net10.0 tmux-version=3.3a
+event=control-following-request phase=before-drain state=blocked framework=net10.0 tmux-version=3.3a
+event=control-tombstone phase=after-drain state=drained framework=net10.0 tmux-version=3.3a
+event=control-following-request phase=after-drain state=completed framework=net10.0 tmux-version=3.3a
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net8.0 tmux-version=3.3a
+event=control-tombstone phase=before-drain state=blocking framework=net8.0 tmux-version=3.3a
+event=control-following-request phase=before-drain state=blocked framework=net8.0 tmux-version=3.3a
+event=control-tombstone phase=after-drain state=drained framework=net8.0 tmux-version=3.3a
+event=control-following-request phase=after-drain state=completed framework=net8.0 tmux-version=3.3a
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net10.0 tmux-version=3.4
+event=control-tombstone phase=before-drain state=blocking framework=net10.0 tmux-version=3.4
+event=control-following-request phase=before-drain state=blocked framework=net10.0 tmux-version=3.4
+event=control-tombstone phase=after-drain state=drained framework=net10.0 tmux-version=3.4
+event=control-following-request phase=after-drain state=completed framework=net10.0 tmux-version=3.4
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net8.0 tmux-version=3.4
+event=control-tombstone phase=before-drain state=blocking framework=net8.0 tmux-version=3.4
+event=control-following-request phase=before-drain state=blocked framework=net8.0 tmux-version=3.4
+event=control-tombstone phase=after-drain state=drained framework=net8.0 tmux-version=3.4
+event=control-following-request phase=after-drain state=completed framework=net8.0 tmux-version=3.4
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net10.0 tmux-version=3.5
+event=control-tombstone phase=before-drain state=blocking framework=net10.0 tmux-version=3.5
+event=control-following-request phase=before-drain state=blocked framework=net10.0 tmux-version=3.5
+event=control-tombstone phase=after-drain state=drained framework=net10.0 tmux-version=3.5
+event=control-following-request phase=after-drain state=completed framework=net10.0 tmux-version=3.5
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net8.0 tmux-version=3.5
+event=control-tombstone phase=before-drain state=blocking framework=net8.0 tmux-version=3.5
+event=control-following-request phase=before-drain state=blocked framework=net8.0 tmux-version=3.5
+event=control-tombstone phase=after-drain state=drained framework=net8.0 tmux-version=3.5
+event=control-following-request phase=after-drain state=completed framework=net8.0 tmux-version=3.5
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net10.0 tmux-version=3.6
+event=control-tombstone phase=before-drain state=blocking framework=net10.0 tmux-version=3.6
+event=control-following-request phase=before-drain state=blocked framework=net10.0 tmux-version=3.6
+event=control-tombstone phase=after-drain state=drained framework=net10.0 tmux-version=3.6
+event=control-following-request phase=after-drain state=completed framework=net10.0 tmux-version=3.6
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net8.0 tmux-version=3.6
+event=control-tombstone phase=before-drain state=blocking framework=net8.0 tmux-version=3.6
+event=control-following-request phase=before-drain state=blocked framework=net8.0 tmux-version=3.6
+event=control-tombstone phase=after-drain state=drained framework=net8.0 tmux-version=3.6
+event=control-following-request phase=after-drain state=completed framework=net8.0 tmux-version=3.6
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net10.0 tmux-version=3.7a
+event=control-tombstone phase=before-drain state=blocking framework=net10.0 tmux-version=3.7a
+event=control-following-request phase=before-drain state=blocked framework=net10.0 tmux-version=3.7a
+event=control-tombstone phase=after-drain state=drained framework=net10.0 tmux-version=3.7a
+event=control-following-request phase=after-drain state=completed framework=net10.0 tmux-version=3.7a
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net8.0 tmux-version=3.7a
+event=control-tombstone phase=before-drain state=blocking framework=net8.0 tmux-version=3.7a
+event=control-following-request phase=before-drain state=blocked framework=net8.0 tmux-version=3.7a
+event=control-tombstone phase=after-drain state=drained framework=net8.0 tmux-version=3.7a
+event=control-following-request phase=after-drain state=completed framework=net8.0 tmux-version=3.7a
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net10.0 tmux-version=3.7b
+event=control-tombstone phase=before-drain state=blocking framework=net10.0 tmux-version=3.7b
+event=control-following-request phase=before-drain state=blocked framework=net10.0 tmux-version=3.7b
+event=control-tombstone phase=after-drain state=drained framework=net10.0 tmux-version=3.7b
+event=control-following-request phase=after-drain state=completed framework=net10.0 tmux-version=3.7b
+event=control-cancellation phase=after-write result=typed command-may-have-executed=true framework=net8.0 tmux-version=3.7b
+event=control-tombstone phase=before-drain state=blocking framework=net8.0 tmux-version=3.7b
+event=control-following-request phase=before-drain state=blocked framework=net8.0 tmux-version=3.7b
+event=control-tombstone phase=after-drain state=drained framework=net8.0 tmux-version=3.7b
+event=control-following-request phase=after-drain state=completed framework=net8.0 tmux-version=3.7b

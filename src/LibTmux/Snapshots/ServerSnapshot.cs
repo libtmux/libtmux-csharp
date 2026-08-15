@@ -1,0 +1,271 @@
+using System.Globalization;
+using System.Runtime.Versioning;
+using LibTmux.Internal;
+
+namespace LibTmux;
+
+/// <summary>Holds one point-in-time read of a tmux server's hierarchy.</summary>
+/// <remarks>
+/// Enumerating a snapshot never runs a tmux command. Every level was read
+/// during capture, so traversal is deterministic even while the live server
+/// changes underneath it.
+///
+/// The whole graph is built while capturing, which is why reading any of it
+/// is free and works anywhere. A window knows the sessions it is linked into
+/// and those sessions know their windows, so walking up and back down lands
+/// on the same handles rather than on a second, emptier copy of them.
+/// </remarks>
+public sealed class ServerSnapshot
+{
+    internal ServerSnapshot(
+        Server server,
+        ServerGeneration generation,
+        SnapshotDepth depth,
+        CapturedRelation<Session> sessions,
+        CapturedRelation<Window> windows,
+        CapturedRelation<Pane> panes,
+        IReadOnlyList<SessionWindowEdge> windowEdges)
+    {
+        Server = server;
+        Generation = generation;
+        Depth = depth;
+        Sessions = sessions;
+        Windows = windows;
+        Panes = panes;
+        WindowEdges = windowEdges;
+    }
+
+    /// <summary>Gets the server this snapshot was read from.</summary>
+    public Server Server { get; }
+
+    /// <summary>Gets the generation observed during capture.</summary>
+    public ServerGeneration Generation { get; }
+
+    /// <summary>Gets how far down the hierarchy the capture reached.</summary>
+    public SnapshotDepth Depth { get; }
+
+    /// <summary>Gets the captured sessions.</summary>
+    public CapturedRelation<Session> Sessions { get; }
+
+    /// <summary>Gets the captured windows, once per session they are linked into.</summary>
+    public CapturedRelation<Window> Windows { get; }
+
+    /// <summary>Gets the captured panes, across every window.</summary>
+    public CapturedRelation<Pane> Panes { get; }
+
+    /// <summary>Gets every session-to-window edge the capture observed.</summary>
+    /// <remarks>
+    /// A window linked into several sessions appears once per session, so the
+    /// edge list is the only place linkage is fully represented.
+    /// </remarks>
+    public IReadOnlyList<SessionWindowEdge> WindowEdges { get; }
+
+    /// <summary>Reads one server hierarchy to the requested depth.</summary>
+    /// <param name="server">A connected server.</param>
+    /// <param name="depth">How far down to read.</param>
+    /// <param name="cancellationToken">Cancels the tmux commands.</param>
+    /// <returns>The captured snapshot.</returns>
+    [UnsupportedOSPlatform("windows")]
+    public static async Task<ServerSnapshot> CaptureAsync(
+        Server server,
+        SnapshotDepth depth = SnapshotDepth.Panes,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(server);
+        ServerGeneration generation = server.Generation
+            ?? throw new InvalidOperationException(
+                "The server has no live generation; connect before capturing.");
+        var context = new MaterializationContext(server, ParseVersion(server));
+        var query = new MaterializationQuery(context);
+        if (depth == SnapshotDepth.Server)
+        {
+            return Empty(server, generation, depth);
+        }
+
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> sessionRows =
+            await query.FetchAsync("list-sessions", null, cancellationToken)
+                .ConfigureAwait(false);
+        if (depth == SnapshotDepth.Sessions)
+        {
+            return new ServerSnapshot(
+                server,
+                generation,
+                depth,
+                CapturedRelation.Capture(
+                    [.. sessionRows.Select(row => RelationReader.ToSession(server, row))],
+                    "sessions",
+                    depth),
+                CapturedRelation.Uncaptured<Window>("windows", depth),
+                CapturedRelation.Uncaptured<Pane>("panes", depth),
+                []);
+        }
+
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> windowRows =
+            await query.FetchAsync("list-windows", ["-a"], cancellationToken)
+                .ConfigureAwait(false);
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> paneRows =
+            depth < SnapshotDepth.Panes
+                ? []
+                : await query.FetchAsync("list-panes", ["-a"], cancellationToken)
+                    .ConfigureAwait(false);
+        return Build(server, generation, depth, sessionRows, windowRows, paneRows);
+    }
+
+    private static ServerSnapshot Empty(
+        Server server,
+        ServerGeneration generation,
+        SnapshotDepth depth) =>
+        new(
+            server,
+            generation,
+            depth,
+            CapturedRelation.Uncaptured<Session>("sessions", depth),
+            CapturedRelation.Uncaptured<Window>("windows", depth),
+            CapturedRelation.Uncaptured<Pane>("panes", depth),
+            []);
+
+    [UnsupportedOSPlatform("windows")]
+    private static ServerSnapshot Build(
+        Server server,
+        ServerGeneration generation,
+        SnapshotDepth depth,
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> sessionRows,
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> windowRows,
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> paneRows)
+    {
+        SessionWindowEdge[] edges = BuildEdges(windowRows);
+        Pane[] panes = [.. paneRows.Select(row => RelationReader.ToPane(server, row))];
+
+        // A window names the sessions it is linked into and those sessions name
+        // their windows, which is a cycle no build order resolves. The sessions
+        // are made first and handed their windows once, so both directions end
+        // up holding the same handles instead of two copies of them.
+        var windowsBySession = new Dictionary<SessionId, List<Window>>();
+        Session[] sessions =
+        [
+            .. sessionRows.Select(row =>
+            {
+                Session session = RelationReader.ToSession(server, row);
+                windowsBySession[session.Id] = [];
+                return session.WithCaptured(
+                    () => Relation(windowsBySession[session.Id], "windows", depth),
+                    Relation(
+                        [.. panes.Where(pane => Owns(paneRows, pane, "session_id", session.Id.ToString()))],
+                        "panes",
+                        depth,
+                        depth >= SnapshotDepth.Panes));
+            }),
+        ];
+        var sessionsById = sessions.ToDictionary(session => session.Id);
+
+        Window[] windows =
+        [
+            .. windowRows.Select(row =>
+            {
+                Window window = RelationReader.ToWindow(server, row);
+                SessionWindowEdge? edge = edges.FirstOrDefault(candidate =>
+                    candidate.WindowId == window.Id
+                    && candidate.SessionId.ToString() == Field(row, "session_id"));
+                Session[] linked =
+                [
+                    .. edges
+                        .Where(candidate => candidate.WindowId == window.Id)
+                        .Select(candidate => sessionsById.GetValueOrDefault(candidate.SessionId))
+                        .OfType<Session>(),
+                ];
+                return window.WithCaptured(
+                    Relation(
+                        [.. panes.Where(pane => Owns(paneRows, pane, "window_id", window.Id.ToString()))],
+                        "panes",
+                        depth,
+                        depth >= SnapshotDepth.Panes),
+                    Relation(linked, "linked sessions", depth),
+                    edge);
+            }),
+        ];
+        foreach (Window window in windows)
+        {
+            if (window.Edge is SessionWindowEdge edge
+                && windowsBySession.TryGetValue(edge.SessionId, out List<Window>? owned))
+            {
+                owned.Add(window);
+            }
+        }
+
+        return new ServerSnapshot(
+            server,
+            generation,
+            depth,
+            Relation(sessions, "sessions", depth),
+            Relation(windows, "windows", depth),
+            Relation(panes, "panes", depth, depth >= SnapshotDepth.Panes),
+            edges);
+    }
+
+    private static CapturedRelation<T> Relation<T>(
+        IReadOnlyList<T> items,
+        string relation,
+        SnapshotDepth depth,
+        bool captured = true) =>
+        captured
+            ? CapturedRelation.Capture(items, relation, depth)
+            : CapturedRelation.Uncaptured<T>(relation, depth);
+
+    private static bool Owns(
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> rows,
+        Pane pane,
+        string wireName,
+        string owner) =>
+        rows.Any(row =>
+            Field(row, "pane_id") == pane.Id.ToString() && Field(row, wireName) == owner);
+
+    private static SessionWindowEdge[] BuildEdges(
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> windowRows)
+    {
+        var ordinals = new Dictionary<SessionId, int>();
+        var edges = new List<SessionWindowEdge>(windowRows.Count);
+        foreach (IReadOnlyDictionary<string, string?> row in windowRows)
+        {
+            if (!SessionId.TryParse(Read(row, "session_id"), out SessionId sessionId)
+                || !WindowId.TryParse(Read(row, "window_id"), out WindowId windowId)
+                || !int.TryParse(
+                    Read(row, "window_index"),
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out int windowIndex))
+            {
+                throw new InvalidDataException("tmux reported a malformed window edge.");
+            }
+
+            // "list-windows -a" walks sessions in order, so the running count
+            // per session is the window's position within that session.
+            ordinals.TryGetValue(sessionId, out int ordinal);
+            ordinals[sessionId] = ordinal + 1;
+            edges.Add(
+                new SessionWindowEdge
+                {
+                    SessionId = sessionId,
+                    WindowId = windowId,
+                    WindowIndex = windowIndex,
+                    Ordinal = ordinal,
+                });
+        }
+
+        return [.. edges];
+    }
+
+    private static string? Field(IReadOnlyDictionary<string, string?> row, string wireName) =>
+        row.TryGetValue(wireName, out string? value) ? value : null;
+
+    private static string Read(IReadOnlyDictionary<string, string?> row, string wireName) =>
+        Field(row, wireName)
+        ?? throw new InvalidDataException($"tmux window row is missing '{wireName}'.");
+
+    private static TmuxVersion ParseVersion(Server server)
+    {
+        string raw = server.RawVersion
+            ?? throw new InvalidOperationException("The server reported no tmux version.");
+        return TmuxVersion.Parse(
+            raw.StartsWith("tmux ", StringComparison.Ordinal) ? raw[5..] : raw);
+    }
+}

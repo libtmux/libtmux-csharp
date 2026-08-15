@@ -1,0 +1,22 @@
+{
+  "absentDirectories": [
+    "csharp/spikes/LibTmux.TransportBakeoff",
+    "csharp/spikes/LibTmux.TransportBakeoff.Tests"
+  ],
+  "absentGlobs": [],
+  "evaluatedCommit": "d1a018074cdfc5ca7408c75f7161245f4ae8363d",
+  "expectedSolutionProjectCount": null,
+  "passed": true,
+  "projectTokens": [
+    "LibTmux.TransportBakeoff"
+  ],
+  "remainingSolutionProjects": [
+    "spikes/LibTmux.BakeoffSupport.Tests/LibTmux.BakeoffSupport.Tests.csproj",
+    "spikes/LibTmux.BakeoffSupport/LibTmux.BakeoffSupport.csproj",
+    "spikes/LibTmux.TestChild/LibTmux.TestChild.csproj"
+  ],
+  "solution": "csharp/LibTmux.slnx",
+  "trackedPrefixes": [
+    "csharp/spikes/LibTmux.TransportBakeoff"
+  ]
+}

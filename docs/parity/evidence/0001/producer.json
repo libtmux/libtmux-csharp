@@ -1,0 +1,14 @@
+{
+  "evaluatedCommit": "67123c8ce26eca6aaacfabdb7882d9915deb1e00",
+  "files": [
+    "environment.json",
+    "protocol-transcripts/break-pane-transition.txt",
+    "protocol-transcripts/control.txt",
+    "protocol-transcripts/pty.txt",
+    "redaction-proof.json",
+    "results.ndjson"
+  ],
+  "producer": "matrix",
+  "schemaVersion": 1,
+  "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3"
+}

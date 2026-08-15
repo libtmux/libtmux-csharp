@@ -1,0 +1,84 @@
+event=client-attachment phase=before primary=attached selected=unattached framework=net10.0 tmux-version=3.2a
+event=client-attachment phase=during primary=attached selected=attached framework=net10.0 tmux-version=3.2a
+event=client-observability phase=during control-client=visible framework=net10.0 tmux-version=3.2a
+event=client-attachment phase=after primary=attached selected=unattached framework=net10.0 tmux-version=3.2a
+event=client-hook kind=attached count=1 framework=net10.0 tmux-version=3.2a
+event=client-hook kind=detached count=1 framework=net10.0 tmux-version=3.2a
+event=client-attachment phase=before primary=attached selected=unattached framework=net8.0 tmux-version=3.2a
+event=client-attachment phase=during primary=attached selected=attached framework=net8.0 tmux-version=3.2a
+event=client-observability phase=during control-client=visible framework=net8.0 tmux-version=3.2a
+event=client-attachment phase=after primary=attached selected=unattached framework=net8.0 tmux-version=3.2a
+event=client-hook kind=attached count=1 framework=net8.0 tmux-version=3.2a
+event=client-hook kind=detached count=1 framework=net8.0 tmux-version=3.2a
+event=client-attachment phase=before primary=attached selected=unattached framework=net10.0 tmux-version=3.3a
+event=client-attachment phase=during primary=attached selected=attached framework=net10.0 tmux-version=3.3a
+event=client-observability phase=during control-client=visible framework=net10.0 tmux-version=3.3a
+event=client-attachment phase=after primary=attached selected=unattached framework=net10.0 tmux-version=3.3a
+event=client-hook kind=attached count=1 framework=net10.0 tmux-version=3.3a
+event=client-hook kind=detached count=1 framework=net10.0 tmux-version=3.3a
+event=client-attachment phase=before primary=attached selected=unattached framework=net8.0 tmux-version=3.3a
+event=client-attachment phase=during primary=attached selected=attached framework=net8.0 tmux-version=3.3a
+event=client-observability phase=during control-client=visible framework=net8.0 tmux-version=3.3a
+event=client-attachment phase=after primary=attached selected=unattached framework=net8.0 tmux-version=3.3a
+event=client-hook kind=attached count=1 framework=net8.0 tmux-version=3.3a
+event=client-hook kind=detached count=1 framework=net8.0 tmux-version=3.3a
+event=client-attachment phase=before primary=attached selected=unattached framework=net10.0 tmux-version=3.4
+event=client-attachment phase=during primary=attached selected=attached framework=net10.0 tmux-version=3.4
+event=client-observability phase=during control-client=visible framework=net10.0 tmux-version=3.4
+event=client-attachment phase=after primary=attached selected=unattached framework=net10.0 tmux-version=3.4
+event=client-hook kind=attached count=1 framework=net10.0 tmux-version=3.4
+event=client-hook kind=detached count=1 framework=net10.0 tmux-version=3.4
+event=client-attachment phase=before primary=attached selected=unattached framework=net8.0 tmux-version=3.4
+event=client-attachment phase=during primary=attached selected=attached framework=net8.0 tmux-version=3.4
+event=client-observability phase=during control-client=visible framework=net8.0 tmux-version=3.4
+event=client-attachment phase=after primary=attached selected=unattached framework=net8.0 tmux-version=3.4
+event=client-hook kind=attached count=1 framework=net8.0 tmux-version=3.4
+event=client-hook kind=detached count=1 framework=net8.0 tmux-version=3.4
+event=client-attachment phase=before primary=attached selected=unattached framework=net10.0 tmux-version=3.5
+event=client-attachment phase=during primary=attached selected=attached framework=net10.0 tmux-version=3.5
+event=client-observability phase=during control-client=visible framework=net10.0 tmux-version=3.5
+event=client-attachment phase=after primary=attached selected=unattached framework=net10.0 tmux-version=3.5
+event=client-hook kind=attached count=1 framework=net10.0 tmux-version=3.5
+event=client-hook kind=detached count=1 framework=net10.0 tmux-version=3.5
+event=client-attachment phase=before primary=attached selected=unattached framework=net8.0 tmux-version=3.5
+event=client-attachment phase=during primary=attached selected=attached framework=net8.0 tmux-version=3.5
+event=client-observability phase=during control-client=visible framework=net8.0 tmux-version=3.5
+event=client-attachment phase=after primary=attached selected=unattached framework=net8.0 tmux-version=3.5
+event=client-hook kind=attached count=1 framework=net8.0 tmux-version=3.5
+event=client-hook kind=detached count=1 framework=net8.0 tmux-version=3.5
+event=client-attachment phase=before primary=attached selected=unattached framework=net10.0 tmux-version=3.6
+event=client-attachment phase=during primary=attached selected=attached framework=net10.0 tmux-version=3.6
+event=client-observability phase=during control-client=visible framework=net10.0 tmux-version=3.6
+event=client-attachment phase=after primary=attached selected=unattached framework=net10.0 tmux-version=3.6
+event=client-hook kind=attached count=1 framework=net10.0 tmux-version=3.6
+event=client-hook kind=detached count=1 framework=net10.0 tmux-version=3.6
+event=client-attachment phase=before primary=attached selected=unattached framework=net8.0 tmux-version=3.6
+event=client-attachment phase=during primary=attached selected=attached framework=net8.0 tmux-version=3.6
+event=client-observability phase=during control-client=visible framework=net8.0 tmux-version=3.6
+event=client-attachment phase=after primary=attached selected=unattached framework=net8.0 tmux-version=3.6
+event=client-hook kind=attached count=1 framework=net8.0 tmux-version=3.6
+event=client-hook kind=detached count=1 framework=net8.0 tmux-version=3.6
+event=client-attachment phase=before primary=attached selected=unattached framework=net10.0 tmux-version=3.7a
+event=client-attachment phase=during primary=attached selected=attached framework=net10.0 tmux-version=3.7a
+event=client-observability phase=during control-client=visible framework=net10.0 tmux-version=3.7a
+event=client-attachment phase=after primary=attached selected=unattached framework=net10.0 tmux-version=3.7a
+event=client-hook kind=attached count=1 framework=net10.0 tmux-version=3.7a
+event=client-hook kind=detached count=1 framework=net10.0 tmux-version=3.7a
+event=client-attachment phase=before primary=attached selected=unattached framework=net8.0 tmux-version=3.7a
+event=client-attachment phase=during primary=attached selected=attached framework=net8.0 tmux-version=3.7a
+event=client-observability phase=during control-client=visible framework=net8.0 tmux-version=3.7a
+event=client-attachment phase=after primary=attached selected=unattached framework=net8.0 tmux-version=3.7a
+event=client-hook kind=attached count=1 framework=net8.0 tmux-version=3.7a
+event=client-hook kind=detached count=1 framework=net8.0 tmux-version=3.7a
+event=client-attachment phase=before primary=attached selected=unattached framework=net10.0 tmux-version=3.7b
+event=client-attachment phase=during primary=attached selected=attached framework=net10.0 tmux-version=3.7b
+event=client-observability phase=during control-client=visible framework=net10.0 tmux-version=3.7b
+event=client-attachment phase=after primary=attached selected=unattached framework=net10.0 tmux-version=3.7b
+event=client-hook kind=attached count=1 framework=net10.0 tmux-version=3.7b
+event=client-hook kind=detached count=1 framework=net10.0 tmux-version=3.7b
+event=client-attachment phase=before primary=attached selected=unattached framework=net8.0 tmux-version=3.7b
+event=client-attachment phase=during primary=attached selected=attached framework=net8.0 tmux-version=3.7b
+event=client-observability phase=during control-client=visible framework=net8.0 tmux-version=3.7b
+event=client-attachment phase=after primary=attached selected=unattached framework=net8.0 tmux-version=3.7b
+event=client-hook kind=attached count=1 framework=net8.0 tmux-version=3.7b
+event=client-hook kind=detached count=1 framework=net8.0 tmux-version=3.7b

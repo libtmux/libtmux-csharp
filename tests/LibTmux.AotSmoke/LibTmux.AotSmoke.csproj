@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>LibTmux.AotSmoke</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- Publishing this ahead of time is the point: the trim and AOT
+         analyzers only tell the whole truth when something is actually
+         published, and a warning here is a caller's runtime failure. -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LibTmux\LibTmux.csproj" />
+
+    <!-- Real tmux runs here, so this assembly claims a socket root of its own. -->
+    <Compile Include="../../eng/dotnet/WorkspaceSocketRoot.cs"
+             Link="WorkspaceSocketRoot.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+{"allocatedBytes":2202592,"contender":"Mutable","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net10.0","scenario":"materialization"}
+{"allocatedBytes":2339536,"contender":"Mutable","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net8.0","scenario":"materialization"}
+{"allocatedBytes":295080,"contender":"Services","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net10.0","scenario":"materialization"}
+{"allocatedBytes":411520,"contender":"Services","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net8.0","scenario":"materialization"}
+{"allocatedBytes":286048,"contender":"Hybrid","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net10.0","scenario":"materialization"}
+{"allocatedBytes":283944,"contender":"Hybrid","evaluatedCommit":"6f6b0c6debe90447d42b4c1dd4b1efd571824f43","framework":"net8.0","scenario":"materialization"}

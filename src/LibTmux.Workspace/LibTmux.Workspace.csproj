@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <AssemblyName>LibTmux.Workspace</AssemblyName>
+    <RootNamespace>LibTmux.Workspace</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <PackageId>LibTmux.Workspace</PackageId>
+    <Description>Builds tmux sessions from tmuxp workspace files, on top of LibTmux.</Description>
+    <PackageTags>tmux;tmuxp;workspace;yaml</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+    <!-- The YAML reader binds to properties by name, which a trimmer cannot
+         see, so this package does not claim to be trimmable. Nothing in the
+         core library depends on it. -->
+    <IsAotCompatible>false</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LibTmux\LibTmux.csproj" />
+    <PackageReference Include="YamlDotNet" />
+    <InternalsVisibleTo Include="LibTmux.IntegrationTests" />
+  </ItemGroup>
+</Project>

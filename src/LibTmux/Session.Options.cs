@@ -1,0 +1,23 @@
+using System.Runtime.Versioning;
+using LibTmux.Internal;
+
+namespace LibTmux;
+
+/// <summary>Reaches this session's option table.</summary>
+public sealed partial class Session
+{
+    private TmuxOptions? _options;
+
+    /// <summary>Gets the options of this session.</summary>
+    [UnsupportedOSPlatform("windows")]
+    public TmuxOptions Options => _options ??= new TmuxOptions(
+        _commandDispatcher,
+        OptionScope.Session,
+        _id.ToString(),
+        DoubleEscapesDollar(Server));
+
+    private static bool DoubleEscapesDollar(Server? owner) =>
+        owner?.Version is TmuxVersion version
+        && TmuxCapabilities.TryGetExact(version, out TmuxCapabilityProfile? profile)
+        && profile.Capabilities.Contains("option_dollar_double_escape");
+}

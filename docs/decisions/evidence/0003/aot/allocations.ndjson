@@ -1,0 +1,6 @@
+{"allocatedBytes":48792,"catalog":"Attributes","evaluatedCommit":"953a1970d91bbe319906a8a2e294799eb4b966ca","framework":"net10.0","scenario":"query"}
+{"allocatedBytes":53152,"catalog":"Attributes","evaluatedCommit":"953a1970d91bbe319906a8a2e294799eb4b966ca","framework":"net8.0","scenario":"query"}
+{"allocatedBytes":43072,"catalog":"Static","evaluatedCommit":"953a1970d91bbe319906a8a2e294799eb4b966ca","framework":"net10.0","scenario":"query"}
+{"allocatedBytes":52880,"catalog":"Static","evaluatedCommit":"953a1970d91bbe319906a8a2e294799eb4b966ca","framework":"net8.0","scenario":"query"}
+{"allocatedBytes":48760,"catalog":"Generated","evaluatedCommit":"953a1970d91bbe319906a8a2e294799eb4b966ca","framework":"net10.0","scenario":"query"}
+{"allocatedBytes":52832,"catalog":"Generated","evaluatedCommit":"953a1970d91bbe319906a8a2e294799eb4b966ca","framework":"net8.0","scenario":"query"}
