@@ -40,8 +40,8 @@
          parity with. nuget.org takes PNG or JPEG only, so an SVG would have to
          be exported before it could ship. -->
     <PackageIcon>icon.png</PackageIcon>
-    <PackageProjectUrl>https://github.com/libtmux/libtmux-csharp</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/libtmux/libtmux-csharp</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/libtmux/libtmux-dotnet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/libtmux/libtmux-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
 
     <!-- Debugging a tmux problem means reading this library's source, so the

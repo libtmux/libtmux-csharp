@@ -16,7 +16,7 @@ namespace LibTmux.Engineering;
 internal static class WorkspaceSocketRoot
 {
     /// <summary>The directory this repository's tmux sockets live under.</summary>
-    internal const string Root = "/tmp/libtmux-csharp-test";
+    internal const string Root = "/tmp/libtmux-dotnet-test";
 
     /// <summary>Points tmux and the temporary directory at <see cref="Root"/>.</summary>
     /// <remarks>

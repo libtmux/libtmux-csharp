@@ -184,7 +184,7 @@ def inspect(package: pathlib.Path) -> list[str]:
         ("license", "MIT"),
         ("readme", "README.md"),
         ("icon", "icon.png"),
-        ("projectUrl", "https://github.com/libtmux/libtmux-csharp"),
+        ("projectUrl", "https://github.com/libtmux/libtmux-dotnet"),
     ):
         element = metadata.find(f"{namespace}{field}")
         if element is None or element.text != expected:
@@ -200,7 +200,7 @@ def inspect(package: pathlib.Path) -> list[str]:
     # never heard of the commit.
     repository = root.find(f".//{namespace}repository")
     if repository is None or repository.attrib.get("url") != (
-        "https://github.com/libtmux/libtmux-csharp"
+        "https://github.com/libtmux/libtmux-dotnet"
     ):
         violations.append(f"{identifier} does not name this repository")
 

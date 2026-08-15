@@ -60,8 +60,8 @@ def write(root: pathlib.Path, build: str, matrix: str) -> pathlib.Path:
     """Lay out a repository holding the two workflows."""
     workflows = root / ".github" / "workflows"
     workflows.mkdir(parents=True)
-    (workflows / "csharp.yml").write_text(build, encoding="utf-8")
-    (workflows / "csharp-tmux.yml").write_text(matrix, encoding="utf-8")
+    (workflows / "dotnet.yml").write_text(build, encoding="utf-8")
+    (workflows / "dotnet-tmux.yml").write_text(matrix, encoding="utf-8")
     return root
 
 
@@ -82,7 +82,7 @@ def test_a_dropped_tmux_version_is_reported(tmp_path: pathlib.Path) -> None:
     versions = ", ".join(f"'{version}'" for version in SUPPORTED_TMUX_VERSIONS[:-1])
     root = write(tmp_path, BUILD, MATRIX.format(versions=versions))
 
-    assert verify(root) == [f"csharp-tmux.yml omits tmux {SUPPORTED_TMUX_VERSIONS[-1]}"]
+    assert verify(root) == [f"dotnet-tmux.yml omits tmux {SUPPORTED_TMUX_VERSIONS[-1]}"]
 
 
 def test_a_matrix_that_stops_early_is_reported(tmp_path: pathlib.Path) -> None:
@@ -90,7 +90,7 @@ def test_a_matrix_that_stops_early_is_reported(tmp_path: pathlib.Path) -> None:
     matrix = MATRIX.format(versions=every_version()).replace("fail-fast: false", "")
     root = write(tmp_path, BUILD, matrix)
 
-    assert "csharp-tmux.yml stops the matrix at the first failure" in verify(root)
+    assert "dotnet-tmux.yml stops the matrix at the first failure" in verify(root)
 
 
 def test_skipped_integration_tests_are_reported(tmp_path: pathlib.Path) -> None:
@@ -100,7 +100,7 @@ def test_skipped_integration_tests_are_reported(tmp_path: pathlib.Path) -> None:
     )
     root = write(tmp_path, BUILD, matrix)
 
-    assert "csharp-tmux.yml does not require its integration tests to run" in verify(
+    assert "dotnet-tmux.yml does not require its integration tests to run" in verify(
         root
     )
 
@@ -117,12 +117,12 @@ def test_a_dropped_build_step_is_reported(tmp_path: pathlib.Path, step: str) -> 
         MATRIX.format(versions=every_version()),
     )
 
-    assert f"csharp.yml omits {step}" in verify(root)
+    assert f"dotnet.yml omits {step}" in verify(root)
 
 
 def test_a_missing_workflow_is_reported(tmp_path: pathlib.Path) -> None:
     """Deleting a workflow is the loudest way to stop testing."""
     root = write(tmp_path, BUILD, MATRIX.format(versions=every_version()))
-    (root / ".github" / "workflows" / "csharp-tmux.yml").unlink()
+    (root / ".github" / "workflows" / "dotnet-tmux.yml").unlink()
 
-    assert verify(root) == ["missing workflow: csharp-tmux.yml"]
+    assert verify(root) == ["missing workflow: dotnet-tmux.yml"]

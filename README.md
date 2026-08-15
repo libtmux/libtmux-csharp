@@ -2,8 +2,8 @@
 
 [![LibTmux](https://img.shields.io/nuget/vpre/LibTmux?logo=nuget&label=LibTmux)](https://www.nuget.org/packages/LibTmux)
 [![downloads](https://img.shields.io/nuget/dt/LibTmux?logo=nuget&label=downloads)](https://www.nuget.org/packages/LibTmux)
-[![build](https://github.com/libtmux/libtmux-csharp/actions/workflows/csharp.yml/badge.svg)](https://github.com/libtmux/libtmux-csharp/actions/workflows/csharp.yml)
-[![tmux 3.2a – 3.7b](https://github.com/libtmux/libtmux-csharp/actions/workflows/csharp-tmux.yml/badge.svg)](https://github.com/libtmux/libtmux-csharp/actions/workflows/csharp-tmux.yml)
+[![build](https://github.com/libtmux/libtmux-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/libtmux/libtmux-dotnet/actions/workflows/dotnet.yml)
+[![tmux 3.2a – 3.7b](https://github.com/libtmux/libtmux-dotnet/actions/workflows/dotnet-tmux.yml/badge.svg)](https://github.com/libtmux/libtmux-dotnet/actions/workflows/dotnet-tmux.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Drive [tmux](https://github.com/tmux/tmux) from .NET. Servers, sessions,
@@ -220,7 +220,7 @@ Console.WriteLine($"tmux {version?.Raw} 3.4-or-newer={version?.IsAtLeast(TmuxVer
 ```
 
 Every difference between 3.2a and 3.7b is [recorded with the test that proves
-it](docs/parity/version-deltas.json), and [csharp-tmux.yml](.github/workflows/csharp-tmux.yml)
+it](docs/parity/version-deltas.json), and [dotnet-tmux.yml](.github/workflows/dotnet-tmux.yml)
 builds all seven from source on every commit.
 
 ## Testing your own code

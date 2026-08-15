@@ -34,8 +34,8 @@ def verify(root: pathlib.Path) -> list[str]:
     violations: list[str] = []
     workflows = root / ".github" / "workflows"
 
-    build = workflows / "csharp.yml"
-    matrix = workflows / "csharp-tmux.yml"
+    build = workflows / "dotnet.yml"
+    matrix = workflows / "dotnet-tmux.yml"
     violations.extend(
         f"missing workflow: {path.name}"
         for path in (build, matrix)
@@ -49,17 +49,17 @@ def verify(root: pathlib.Path) -> list[str]:
     matrix_text = matrix.read_text(encoding="utf-8")
 
     violations.extend(
-        f"csharp.yml omits {step}"
+        f"dotnet.yml omits {step}"
         for step in REQUIRED_BUILD_STEPS
         if step not in build_text
     )
     violations.extend(
-        f"csharp-tmux.yml omits tmux {version}"
+        f"dotnet-tmux.yml omits tmux {version}"
         for version in SUPPORTED_TMUX_VERSIONS
         if f"'{version}'" not in matrix_text
     )
     violations.extend(
-        f"csharp-tmux.yml omits {framework}"
+        f"dotnet-tmux.yml omits {framework}"
         for framework in TARGET_FRAMEWORKS
         if f"'{framework}'" not in matrix_text
     )
@@ -67,13 +67,13 @@ def verify(root: pathlib.Path) -> list[str]:
     # One lane failing says something about that tmux version, which is only
     # readable when the other lanes still run.
     if "fail-fast: false" not in matrix_text:
-        violations.append("csharp-tmux.yml stops the matrix at the first failure")
+        violations.append("dotnet-tmux.yml stops the matrix at the first failure")
 
     # A lane whose integration tests silently skipped would pass while proving
     # nothing at all.
     if "LIBTMUX_INTEGRATION_REQUIRED" not in matrix_text:
         violations.append(
-            "csharp-tmux.yml does not require its integration tests to run"
+            "dotnet-tmux.yml does not require its integration tests to run"
         )
 
     return violations

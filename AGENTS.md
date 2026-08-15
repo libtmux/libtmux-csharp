@@ -10,11 +10,11 @@ sweep kills another port's servers mid-run — and the failure surfaces in
 whichever suite noticed first, which is rarely the one that caused it. That
 misattribution is what turns socket sharing into a debugging loop.
 
-Give this repository a socket root of its own, named for the language and what
-it is for:
+Give this repository a socket root of its own, named for the port and what it
+is for:
 
-- Tests: `TMUX_TMPDIR=/tmp/libtmux-csharp-test`
-- Servers you start by hand: `TMUX_TMPDIR=/tmp/libtmux-csharp-dev`
+- Tests: `TMUX_TMPDIR=/tmp/libtmux-dotnet-test`
+- Servers you start by hand: `TMUX_TMPDIR=/tmp/libtmux-dotnet-dev`
 
 tmux reads `TMUX_TMPDIR` when it execs and puts a `-L name` socket in
 `$TMUX_TMPDIR/tmux-$UID/name`, so exporting it before the run is enough. A
@@ -31,7 +31,7 @@ process names. A socket file outlives the server that made it, so read the
 listing as candidates and confirm each with `has-session`:
 
 ```console
-$ ls /tmp/libtmux-csharp-test/tmux-$(id -u)
+$ ls /tmp/libtmux-dotnet-test/tmux-$(id -u)
 ```
 
 ## The toolchain is not on `PATH`
@@ -44,7 +44,7 @@ $ mise exec -- dotnet build LibTmux.slnx --configuration Release --warnaserror
 
 ## What gates this repository
 
-`.github/workflows/csharp.yml` is the source of truth. Beyond building and
+`.github/workflows/dotnet.yml` is the source of truth. Beyond building and
 `dotnet test`, two validators run on documents rather than the build, and are
 easy to forget locally:
 
@@ -74,7 +74,7 @@ there and regenerating:
 $ mise exec -- dotnet restore LibTmux.slnx --force-evaluate
 ```
 
-`.github/workflows/csharp-tmux.yml` builds each supported tmux from source and
+`.github/workflows/dotnet-tmux.yml` builds each supported tmux from source and
 runs the integration suite against it. That is what proves the compatibility
 range; the build workflow only ever sees whatever tmux Ubuntu ships.
 
@@ -97,7 +97,7 @@ commit and stale at the next.
 
 That is why recording belongs at a release boundary rather than in the gate,
 and why `reconcile_versions.py` and `verify_ledger.py` are not in
-`.github/workflows/csharp.yml`. Between releases every row is `pending`, which
+`.github/workflows/dotnet.yml`. Between releases every row is `pending`, which
 is the honest state: nobody has run the matrix against this tree.
 
 To record, on the commit being released:

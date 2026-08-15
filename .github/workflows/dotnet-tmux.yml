@@ -1,7 +1,7 @@
 # The compatibility claim. The README and the package say which tmux versions
 # this works on; each one is built from source here and driven for real, so the
 # claim is something this repository can fail.
-name: csharp-tmux
+name: dotnet-tmux
 
 on:
   push:
@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: csharp-tmux-${{ github.ref }}
+  group: dotnet-tmux-${{ github.ref }}
   cancel-in-progress: true
 
 env:

@@ -9,7 +9,7 @@ import zipfile
 
 import pytest
 
-PROJECT_URL = "https://github.com/libtmux/libtmux-csharp"
+PROJECT_URL = "https://github.com/libtmux/libtmux-dotnet"
 
 SPECIFICATION = """<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">

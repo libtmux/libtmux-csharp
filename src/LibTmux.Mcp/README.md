@@ -77,8 +77,8 @@ The supported range is 3.2a to 3.7b, proven from source on every commit.
 | [LibTmux.Query.Json](https://www.nuget.org/packages/LibTmux.Query.Json) | JSON for query documents |
 | [LibTmux.Workspace](https://www.nuget.org/packages/LibTmux.Workspace) | Sessions from tmuxp YAML |
 
-Source, docs and issues: <https://github.com/libtmux/libtmux-csharp>
+Source, docs and issues: <https://github.com/libtmux/libtmux-dotnet>
 
 ## License
 
-[MIT](https://github.com/libtmux/libtmux-csharp/blob/master/LICENSE)
+[MIT](https://github.com/libtmux/libtmux-dotnet/blob/master/LICENSE)

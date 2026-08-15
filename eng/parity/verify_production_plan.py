@@ -307,8 +307,8 @@ COMPONENT_FILES: dict[int, tuple[str, ...]] = {
         "examples/LibTmux.Examples/Program.cs",
         "tests/LibTmux.IntegrationTests/Parity/Component18ParityTests.cs",
         "tests/LibTmux.IntegrationTests/Testing/TestingHelpersTests.cs",
-        ".github/workflows/csharp.yml",
-        ".github/workflows/csharp-tmux.yml",
+        ".github/workflows/dotnet.yml",
+        ".github/workflows/dotnet-tmux.yml",
         "README.md",
         "src/LibTmux/PublicAPI.Shipped.txt",
         "src/LibTmux/PublicAPI.Unshipped.txt",
@@ -1009,8 +1009,8 @@ REQUIRED_PROJECT_FILES: dict[int, frozenset[str]] = {
     ),
     18: frozenset(
         {
-            ".github/workflows/csharp.yml",
-            ".github/workflows/csharp-tmux.yml",
+            ".github/workflows/dotnet.yml",
+            ".github/workflows/dotnet-tmux.yml",
             "README.md",
             "src/LibTmux/PublicAPI.Shipped.txt",
             "src/LibTmux/PublicAPI.Unshipped.txt",
@@ -1200,8 +1200,8 @@ C18_RESTORE_PAIRS = (
     AOT_RID_RESTORE_PAIR,
 )
 WORKFLOW_CONFIGURATION_COMMANDS = (
-    "uv run python eng/parity/verify_workflows.py --lane platform .github/workflows/csharp.yml",
-    "uv run python eng/parity/verify_workflows.py --lane macos-tmux .github/workflows/csharp-tmux.yml",
+    "uv run python eng/parity/verify_workflows.py --lane platform .github/workflows/dotnet.yml",
+    "uv run python eng/parity/verify_workflows.py --lane macos-tmux .github/workflows/dotnet-tmux.yml",
 )
 FINAL_EVIDENCE_ROOT = "docs/parity/evidence/final"
 C3_EVIDENCE_ROOT = "docs/parity/evidence/0001"

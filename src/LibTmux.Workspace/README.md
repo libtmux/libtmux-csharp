@@ -84,8 +84,8 @@ configuration search path are out of scope — if you need those, run tmuxp.
 | [LibTmux.Query.Json](https://www.nuget.org/packages/LibTmux.Query.Json) | JSON for query documents |
 | [LibTmux.Mcp](https://www.nuget.org/packages/LibTmux.Mcp) | A Model Context Protocol server, as a .NET tool |
 
-Source, docs and issues: <https://github.com/libtmux/libtmux-csharp>
+Source, docs and issues: <https://github.com/libtmux/libtmux-dotnet>
 
 ## License
 
-[MIT](https://github.com/libtmux/libtmux-csharp/blob/master/LICENSE)
+[MIT](https://github.com/libtmux/libtmux-dotnet/blob/master/LICENSE)

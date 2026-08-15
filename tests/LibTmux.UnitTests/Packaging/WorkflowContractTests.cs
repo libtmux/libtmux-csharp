@@ -16,7 +16,7 @@ public sealed class WorkflowContractTests
     [Fact]
     public void Platform_and_macos_tmux_configurations_are_exact()
     {
-        string workflow = ReadWorkflow("csharp-tmux.yml");
+        string workflow = ReadWorkflow("dotnet-tmux.yml");
 
         foreach (string version in SupportedTmuxVersions)
         {
@@ -40,7 +40,7 @@ public sealed class WorkflowContractTests
     [Fact]
     public void The_build_workflow_gates_what_the_repository_gates()
     {
-        string workflow = ReadWorkflow("csharp.yml");
+        string workflow = ReadWorkflow("dotnet.yml");
 
         // These are the checks a change has to pass locally, so a change that
         // passes here and fails there would make one of them a lie.
@@ -57,7 +57,7 @@ public sealed class WorkflowContractTests
     [Fact]
     public void The_build_workflow_proves_the_package_before_publishing_it()
     {
-        string workflow = ReadWorkflow("csharp.yml");
+        string workflow = ReadWorkflow("dotnet.yml");
 
         // A package nobody has installed is a package nobody knows works.
         Assert.Contains("dotnet pack", workflow, StringComparison.Ordinal);
