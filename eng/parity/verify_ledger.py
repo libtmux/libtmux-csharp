@@ -11,10 +11,16 @@ import subprocess
 import sys
 import typing as t
 
+REPOSITORY_ROOT = pathlib.Path(__file__).parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from eng.parity import python_source  # noqa: E402
+
 DOCUMENT_ROOT = pathlib.Path(__file__).parents[2] / "docs" / "parity"
 CSHARP_CONTRACT_PATH = DOCUMENT_ROOT.parent / "public-api.json"
 GENERATOR_PATH = pathlib.Path(__file__).with_name("generate_inventory.py")
-SOURCE_URL_PREFIX = "https://github.com/tmux-python/libtmux/blob/c4a980b/"
+SOURCE_URL_PREFIX = python_source.BLOB_URL_PREFIX
 DESTINATION_STATUSES = {"approved", "internalized", "excluded"}
 COMPONENT_IDS = set(range(1, 19))
 LENIENT_ACCESSOR_IDS = {
@@ -256,15 +262,7 @@ def source_contains(source_url: object, text: str) -> bool:
     path = source_path(source_url)
     if path is None:
         return False
-    return (
-        text
-        in subprocess.run(
-            ["git", "show", f"c4a980b:{path}"],
-            check=True,
-            stdout=subprocess.PIPE,
-            text=True,
-        ).stdout
-    )
+    return text in python_source.show(path)
 
 
 @functools.cache
@@ -276,12 +274,7 @@ def pinned_source(path: str) -> str:
     >>> "raise_if_stderr" in pinned_source("src/libtmux/common.py")
     True
     """
-    return subprocess.run(
-        ["git", "show", f"c4a980b:{path}"],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-    ).stdout
+    return python_source.show(path)
 
 
 def named_definition(

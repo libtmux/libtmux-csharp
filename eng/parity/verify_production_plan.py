@@ -29,308 +29,308 @@ LEDGER_VALIDATOR_PATH = pathlib.Path(__file__).with_name("verify_ledger.py")
 COMPONENT_IDS = frozenset(range(1, 19))
 COMPONENT_FILES: dict[int, tuple[str, ...]] = {
     1: (
-        "csharp/LibTmux.slnx",
-        "csharp/src/LibTmux/LibTmux.csproj",
-        "csharp/src/LibTmux/packages.lock.json",
-        "csharp/tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj",
-        "csharp/tests/LibTmux.UnitTests/packages.lock.json",
-        "csharp/tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj",
-        "csharp/tests/LibTmux.IntegrationTests/packages.lock.json",
-        "csharp/src/LibTmux/Transport/TmuxCommandRequest.cs",
-        "csharp/src/LibTmux/Transport/TmuxCommandResult.cs",
-        "csharp/src/LibTmux/Transport/TmuxProcessTransport.cs",
-        "csharp/src/LibTmux/Transport/TmuxCommandDispatcher.cs",
-        "csharp/src/LibTmux/Transport/TmuxCommandFailure.cs",
-        "csharp/src/LibTmux/Transport/TmuxTransportLimits.cs",
-        "csharp/src/LibTmux/Transport/Utf8BackslashDecoder.cs",
-        "csharp/src/LibTmux/Server.cs",
-        "csharp/src/LibTmux/Session.cs",
-        "csharp/src/LibTmux/Window.cs",
-        "csharp/src/LibTmux/Pane.cs",
-        "csharp/src/LibTmux/Client.cs",
-        "csharp/src/LibTmux/Server.Command.cs",
-        "csharp/src/LibTmux/Session.Command.cs",
-        "csharp/src/LibTmux/Window.Command.cs",
-        "csharp/src/LibTmux/Pane.Command.cs",
-        "csharp/tests/LibTmux.UnitTests/Entities/EntityShellTests.cs",
-        "csharp/tests/LibTmux.UnitTests/Transport/TmuxProcessTransportTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Transport/ProcessTransportTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component01ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/LibTmuxException.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxCommandException.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxCommandNotFoundException.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxTransportException.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxOperationCanceledException.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxCleanupException.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxWaitTimeoutException.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Infrastructure/RawTmuxTestContext.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Infrastructure/ControlModeClientScope.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Infrastructure/PtyAttachedClientScope.cs",
-        "csharp/eng/parity/require_red.py",
-        "csharp/eng/parity/tests/test_require_red.py",
-        "csharp/tests/LibTmux.TestChild/LibTmux.TestChild.csproj",
-        "csharp/tests/LibTmux.TestChild/packages.lock.json",
-        "csharp/tests/LibTmux.TestChild/Program.cs",
+        "LibTmux.slnx",
+        "src/LibTmux/LibTmux.csproj",
+        "src/LibTmux/packages.lock.json",
+        "tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj",
+        "tests/LibTmux.UnitTests/packages.lock.json",
+        "tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj",
+        "tests/LibTmux.IntegrationTests/packages.lock.json",
+        "src/LibTmux/Transport/TmuxCommandRequest.cs",
+        "src/LibTmux/Transport/TmuxCommandResult.cs",
+        "src/LibTmux/Transport/TmuxProcessTransport.cs",
+        "src/LibTmux/Transport/TmuxCommandDispatcher.cs",
+        "src/LibTmux/Transport/TmuxCommandFailure.cs",
+        "src/LibTmux/Transport/TmuxTransportLimits.cs",
+        "src/LibTmux/Transport/Utf8BackslashDecoder.cs",
+        "src/LibTmux/Server.cs",
+        "src/LibTmux/Session.cs",
+        "src/LibTmux/Window.cs",
+        "src/LibTmux/Pane.cs",
+        "src/LibTmux/Client.cs",
+        "src/LibTmux/Server.Command.cs",
+        "src/LibTmux/Session.Command.cs",
+        "src/LibTmux/Window.Command.cs",
+        "src/LibTmux/Pane.Command.cs",
+        "tests/LibTmux.UnitTests/Entities/EntityShellTests.cs",
+        "tests/LibTmux.UnitTests/Transport/TmuxProcessTransportTests.cs",
+        "tests/LibTmux.IntegrationTests/Transport/ProcessTransportTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component01ParityTests.cs",
+        "src/LibTmux/Exceptions/LibTmuxException.cs",
+        "src/LibTmux/Exceptions/TmuxCommandException.cs",
+        "src/LibTmux/Exceptions/TmuxCommandNotFoundException.cs",
+        "src/LibTmux/Exceptions/TmuxTransportException.cs",
+        "src/LibTmux/Exceptions/TmuxOperationCanceledException.cs",
+        "src/LibTmux/Exceptions/TmuxCleanupException.cs",
+        "src/LibTmux/Exceptions/TmuxWaitTimeoutException.cs",
+        "tests/LibTmux.IntegrationTests/Infrastructure/RawTmuxTestContext.cs",
+        "tests/LibTmux.IntegrationTests/Infrastructure/ControlModeClientScope.cs",
+        "tests/LibTmux.IntegrationTests/Infrastructure/PtyAttachedClientScope.cs",
+        "eng/parity/require_red.py",
+        "eng/parity/tests/test_require_red.py",
+        "tests/LibTmux.TestChild/LibTmux.TestChild.csproj",
+        "tests/LibTmux.TestChild/packages.lock.json",
+        "tests/LibTmux.TestChild/Program.cs",
     ),
     2: (
-        "csharp/src/LibTmux/Connection/TmuxConnection.cs",
-        "csharp/src/LibTmux/Connection/TmuxConnectionOptions.cs",
-        "csharp/src/LibTmux/Connection/ServerGeneration.cs",
-        "csharp/src/LibTmux/Server.Identity.cs",
-        "csharp/src/LibTmux/Session.Identity.cs",
-        "csharp/src/LibTmux/Window.Identity.cs",
-        "csharp/src/LibTmux/Pane.Identity.cs",
-        "csharp/src/LibTmux/Targets/TmuxTarget.cs",
-        "csharp/src/LibTmux/SessionId.cs",
-        "csharp/src/LibTmux/WindowId.cs",
-        "csharp/src/LibTmux/PaneId.cs",
-        "csharp/src/LibTmux/TmuxColorMode.cs",
-        "csharp/tests/LibTmux.UnitTests/Connection/TmuxConnectionTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Connection/ServerGenerationTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component02ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/StaleServerGenerationException.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxObjectNotFoundException.cs",
+        "src/LibTmux/Connection/TmuxConnection.cs",
+        "src/LibTmux/Connection/TmuxConnectionOptions.cs",
+        "src/LibTmux/Connection/ServerGeneration.cs",
+        "src/LibTmux/Server.Identity.cs",
+        "src/LibTmux/Session.Identity.cs",
+        "src/LibTmux/Window.Identity.cs",
+        "src/LibTmux/Pane.Identity.cs",
+        "src/LibTmux/Targets/TmuxTarget.cs",
+        "src/LibTmux/SessionId.cs",
+        "src/LibTmux/WindowId.cs",
+        "src/LibTmux/PaneId.cs",
+        "src/LibTmux/TmuxColorMode.cs",
+        "tests/LibTmux.UnitTests/Connection/TmuxConnectionTests.cs",
+        "tests/LibTmux.IntegrationTests/Connection/ServerGenerationTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component02ParityTests.cs",
+        "src/LibTmux/Exceptions/StaleServerGenerationException.cs",
+        "src/LibTmux/Exceptions/TmuxObjectNotFoundException.cs",
     ),
     3: (
-        "csharp/src/LibTmux/Constants/TmuxConstants.cs",
-        "csharp/src/LibTmux/Constants/TmuxEnums.cs",
-        "csharp/src/LibTmux/Formats/TmuxFormats.cs",
-        "csharp/src/LibTmux/Versioning/TmuxVersion.cs",
-        "csharp/src/LibTmux/Server.Version.cs",
-        "csharp/src/LibTmux/Versioning/TmuxCapabilities.cs",
-        "csharp/src/LibTmux/Internal/CommandFlagCatalog.cs",
-        "csharp/src/LibTmux/Internal/FormatCatalog.cs",
-        "csharp/src/LibTmux/Internal/FormatFieldDescriptor.cs",
-        "csharp/tests/LibTmux.UnitTests/Versioning/TmuxCapabilitiesTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component03ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxVersionTooLowException.cs",
-        "csharp/docs/parity/version-deltas.json",
+        "src/LibTmux/Constants/TmuxConstants.cs",
+        "src/LibTmux/Constants/TmuxEnums.cs",
+        "src/LibTmux/Formats/TmuxFormats.cs",
+        "src/LibTmux/Versioning/TmuxVersion.cs",
+        "src/LibTmux/Server.Version.cs",
+        "src/LibTmux/Versioning/TmuxCapabilities.cs",
+        "src/LibTmux/Internal/CommandFlagCatalog.cs",
+        "src/LibTmux/Internal/FormatCatalog.cs",
+        "src/LibTmux/Internal/FormatFieldDescriptor.cs",
+        "tests/LibTmux.UnitTests/Versioning/TmuxCapabilitiesTests.cs",
+        "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component03ParityTests.cs",
+        "src/LibTmux/Exceptions/TmuxVersionTooLowException.cs",
+        "docs/parity/version-deltas.json",
     ),
     4: (
-        "csharp/src/LibTmux/Materialization/FormatProjection.cs",
-        "csharp/src/LibTmux/Materialization/SeparatedRowFramer.cs",
-        "csharp/src/LibTmux/Materialization/TmuxMaterializer.cs",
-        "csharp/src/LibTmux/Materialization/TmuxMaterializationQuery.cs",
-        "csharp/src/LibTmux/Materialization/MaterializationContext.cs",
-        "csharp/src/LibTmux/Materialization/EntityMaterializationState.cs",
-        "csharp/tests/LibTmux.UnitTests/Materialization/SeparatedRowFramerTests.cs",
-        "csharp/tests/LibTmux.UnitTests/Materialization/FormatProjectionTests.cs",
-        "csharp/tests/LibTmux.UnitTests/Materialization/TmuxMaterializerTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Materialization/MaterializationTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs",
+        "src/LibTmux/Materialization/FormatProjection.cs",
+        "src/LibTmux/Materialization/SeparatedRowFramer.cs",
+        "src/LibTmux/Materialization/TmuxMaterializer.cs",
+        "src/LibTmux/Materialization/TmuxMaterializationQuery.cs",
+        "src/LibTmux/Materialization/MaterializationContext.cs",
+        "src/LibTmux/Materialization/EntityMaterializationState.cs",
+        "tests/LibTmux.UnitTests/Materialization/SeparatedRowFramerTests.cs",
+        "tests/LibTmux.UnitTests/Materialization/FormatProjectionTests.cs",
+        "tests/LibTmux.UnitTests/Materialization/TmuxMaterializerTests.cs",
+        "tests/LibTmux.IntegrationTests/Materialization/MaterializationTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs",
     ),
     5: (
-        "csharp/src/LibTmux/Snapshots/CapturedRelation.cs",
-        "csharp/src/LibTmux/Snapshots/SnapshotDepth.cs",
-        "csharp/src/LibTmux/Snapshots/ServerSnapshot.cs",
-        "csharp/src/LibTmux/Snapshots/WindowEntityKey.cs",
-        "csharp/src/LibTmux/Snapshots/SessionWindowEdge.cs",
-        "csharp/src/LibTmux/Session.Relations.cs",
-        "csharp/src/LibTmux/Window.Relations.cs",
-        "csharp/src/LibTmux/Pane.Relations.cs",
-        "csharp/tests/LibTmux.UnitTests/Snapshots/CapturedRelationTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Snapshots/HierarchySnapshotTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component05ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/IncompleteSnapshotException.cs",
+        "src/LibTmux/Snapshots/CapturedRelation.cs",
+        "src/LibTmux/Snapshots/SnapshotDepth.cs",
+        "src/LibTmux/Snapshots/ServerSnapshot.cs",
+        "src/LibTmux/Snapshots/WindowEntityKey.cs",
+        "src/LibTmux/Snapshots/SessionWindowEdge.cs",
+        "src/LibTmux/Session.Relations.cs",
+        "src/LibTmux/Window.Relations.cs",
+        "src/LibTmux/Pane.Relations.cs",
+        "tests/LibTmux.UnitTests/Snapshots/CapturedRelationTests.cs",
+        "tests/LibTmux.IntegrationTests/Snapshots/HierarchySnapshotTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component05ParityTests.cs",
+        "src/LibTmux/Exceptions/IncompleteSnapshotException.cs",
     ),
     6: (
-        "csharp/src/LibTmux/Environment/TmuxEnvironment.cs",
-        "csharp/src/LibTmux/Environment/ChildProcessEnvironment.cs",
-        "csharp/src/LibTmux/Server.Environment.cs",
-        "csharp/src/LibTmux/Session.Environment.cs",
-        "csharp/src/LibTmux/Window.Environment.cs",
-        "csharp/src/LibTmux/Pane.Environment.cs",
-        "csharp/tests/LibTmux.UnitTests/Environment/TmuxEnvironmentTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Environment/ChildEnvironmentTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component06ParityTests.cs",
+        "src/LibTmux/Environment/TmuxEnvironment.cs",
+        "src/LibTmux/Environment/ChildProcessEnvironment.cs",
+        "src/LibTmux/Server.Environment.cs",
+        "src/LibTmux/Session.Environment.cs",
+        "src/LibTmux/Window.Environment.cs",
+        "src/LibTmux/Pane.Environment.cs",
+        "tests/LibTmux.UnitTests/Environment/TmuxEnvironmentTests.cs",
+        "tests/LibTmux.IntegrationTests/Environment/ChildEnvironmentTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component06ParityTests.cs",
     ),
     7: (
-        "csharp/src/LibTmux/Collections/SnapshotCollectionExtensions.cs",
-        "csharp/src/LibTmux/Collections/SnapshotLookup.cs",
-        "csharp/src/LibTmux/Server.Collections.cs",
-        "csharp/tests/LibTmux.UnitTests/Collections/SnapshotCollectionTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Collections/ScopedCollectionTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component07ParityTests.cs",
+        "src/LibTmux/Collections/SnapshotCollectionExtensions.cs",
+        "src/LibTmux/Collections/SnapshotLookup.cs",
+        "src/LibTmux/Server.Collections.cs",
+        "tests/LibTmux.UnitTests/Collections/SnapshotCollectionTests.cs",
+        "tests/LibTmux.IntegrationTests/Collections/ScopedCollectionTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component07ParityTests.cs",
     ),
     8: (
-        "csharp/src/LibTmux/Query/QueryDocument.cs",
-        "csharp/src/LibTmux/Query/QueryNode.cs",
-        "csharp/src/LibTmux/Query/QueryTranslator.cs",
-        "csharp/src/LibTmux/Query/QueryInterpreter.cs",
-        "csharp/src/LibTmux/Query/QueryPlanner.cs",
-        "csharp/src/LibTmux/Query/QueryExtensions.cs",
-        "csharp/src/LibTmux/Query/NameContainsLookupParser.cs",
-        "csharp/src/LibTmux.Generators/LibTmux.Generators.csproj",
-        "csharp/src/LibTmux.Generators/FieldCatalogGenerator.cs",
-        "csharp/tests/LibTmux.UnitTests/Query/QuerySemanticsTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Query/QueryPlanningTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component08ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/UnsupportedQueryExpressionException.cs",
-        "csharp/src/LibTmux.Generators/packages.lock.json",
+        "src/LibTmux/Query/QueryDocument.cs",
+        "src/LibTmux/Query/QueryNode.cs",
+        "src/LibTmux/Query/QueryTranslator.cs",
+        "src/LibTmux/Query/QueryInterpreter.cs",
+        "src/LibTmux/Query/QueryPlanner.cs",
+        "src/LibTmux/Query/QueryExtensions.cs",
+        "src/LibTmux/Query/NameContainsLookupParser.cs",
+        "src/LibTmux.Generators/LibTmux.Generators.csproj",
+        "src/LibTmux.Generators/FieldCatalogGenerator.cs",
+        "tests/LibTmux.UnitTests/Query/QuerySemanticsTests.cs",
+        "tests/LibTmux.IntegrationTests/Query/QueryPlanningTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component08ParityTests.cs",
+        "src/LibTmux/Exceptions/UnsupportedQueryExpressionException.cs",
+        "src/LibTmux.Generators/packages.lock.json",
     ),
     9: (
-        "csharp/src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
-        "csharp/src/LibTmux.Query.Json/QueryJsonSerializerContext.cs",
-        "csharp/src/LibTmux.Query.Json/QueryDocumentJsonConverter.cs",
-        "csharp/src/LibTmux.Query.Json/libtmux-query-v1.schema.json",
-        "csharp/tests/LibTmux.UnitTests/Query/QueryJsonTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component09ParityTests.cs",
-        "csharp/src/LibTmux.Query.Json/packages.lock.json",
+        "src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
+        "src/LibTmux.Query.Json/QueryJsonSerializerContext.cs",
+        "src/LibTmux.Query.Json/QueryDocumentJsonConverter.cs",
+        "src/LibTmux.Query.Json/libtmux-query-v1.schema.json",
+        "tests/LibTmux.UnitTests/Query/QueryJsonTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component09ParityTests.cs",
+        "src/LibTmux.Query.Json/packages.lock.json",
     ),
     10: (
-        "csharp/src/LibTmux/Server.Lifecycle.cs",
-        "csharp/src/LibTmux/Session.Lifecycle.cs",
-        "csharp/src/LibTmux/Requests/NewSessionRequest.cs",
-        "csharp/src/LibTmux/Requests/AttachSessionRequest.cs",
-        "csharp/src/LibTmux/Testing/TemporaryServerScope.cs",
-        "csharp/src/LibTmux/Testing/TemporarySessionScope.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/ServerSessionLifecycleTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component10ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxSessionExistsException.cs",
-        "csharp/src/LibTmux/Internal/SessionName.cs",
-        "csharp/src/LibTmux/Internal/StartDirectory.cs",
+        "src/LibTmux/Server.Lifecycle.cs",
+        "src/LibTmux/Session.Lifecycle.cs",
+        "src/LibTmux/Requests/NewSessionRequest.cs",
+        "src/LibTmux/Requests/AttachSessionRequest.cs",
+        "src/LibTmux/Testing/TemporaryServerScope.cs",
+        "src/LibTmux/Testing/TemporarySessionScope.cs",
+        "tests/LibTmux.IntegrationTests/Hierarchy/ServerSessionLifecycleTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component10ParityTests.cs",
+        "src/LibTmux/Exceptions/TmuxSessionExistsException.cs",
+        "src/LibTmux/Internal/SessionName.cs",
+        "src/LibTmux/Internal/StartDirectory.cs",
     ),
     11: (
-        "csharp/src/LibTmux/Session.WindowNavigation.cs",
-        "csharp/src/LibTmux/Window.Topology.cs",
-        "csharp/src/LibTmux/Requests/NewWindowRequest.cs",
-        "csharp/src/LibTmux/Requests/MoveWindowRequest.cs",
-        "csharp/src/LibTmux/Requests/LinkWindowRequest.cs",
-        "csharp/src/LibTmux/Requests/ResizeWindowRequest.cs",
-        "csharp/src/LibTmux/Requests/SelectLayoutRequest.cs",
-        "csharp/src/LibTmux/Requests/SplitPaneRequest.cs",
-        "csharp/src/LibTmux/Requests/DisplayMessageRequest.cs",
-        "csharp/src/LibTmux/Requests/NewPaneRequest.cs",
-        "csharp/src/LibTmux/Requests/RespawnRequest.cs",
-        "csharp/src/LibTmux/Testing/TemporaryWindowScope.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/WindowTopologyTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component11ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxWindowException.cs",
+        "src/LibTmux/Session.WindowNavigation.cs",
+        "src/LibTmux/Window.Topology.cs",
+        "src/LibTmux/Requests/NewWindowRequest.cs",
+        "src/LibTmux/Requests/MoveWindowRequest.cs",
+        "src/LibTmux/Requests/LinkWindowRequest.cs",
+        "src/LibTmux/Requests/ResizeWindowRequest.cs",
+        "src/LibTmux/Requests/SelectLayoutRequest.cs",
+        "src/LibTmux/Requests/SplitPaneRequest.cs",
+        "src/LibTmux/Requests/DisplayMessageRequest.cs",
+        "src/LibTmux/Requests/NewPaneRequest.cs",
+        "src/LibTmux/Requests/RespawnRequest.cs",
+        "src/LibTmux/Testing/TemporaryWindowScope.cs",
+        "tests/LibTmux.IntegrationTests/Hierarchy/WindowTopologyTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component11ParityTests.cs",
+        "src/LibTmux/Exceptions/TmuxWindowException.cs",
     ),
     12: (
-        "csharp/src/LibTmux/Window.PaneNavigation.cs",
-        "csharp/src/LibTmux/Pane.Operations.cs",
-        "csharp/src/LibTmux/Requests/CapturePaneRequest.cs",
-        "csharp/src/LibTmux/Requests/DisplayPopupRequest.cs",
-        "csharp/src/LibTmux/Requests/SendKeysRequest.cs",
-        "csharp/src/LibTmux/Requests/ResizePaneRequest.cs",
-        "csharp/src/LibTmux/Requests/MovePaneRequest.cs",
-        "csharp/src/LibTmux/Requests/SwapPaneRequest.cs",
-        "csharp/src/LibTmux/Requests/SelectPaneRequest.cs",
-        "csharp/src/LibTmux/Requests/CopyModeRequest.cs",
-        "csharp/src/LibTmux/Requests/PasteBufferRequest.cs",
-        "csharp/src/LibTmux/Requests/PipePaneRequest.cs",
-        "csharp/src/LibTmux/Requests/ChooseTreeRequest.cs",
-        "csharp/src/LibTmux/Requests/FindWindowRequest.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component12ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxPaneException.cs",
+        "src/LibTmux/Window.PaneNavigation.cs",
+        "src/LibTmux/Pane.Operations.cs",
+        "src/LibTmux/Requests/CapturePaneRequest.cs",
+        "src/LibTmux/Requests/DisplayPopupRequest.cs",
+        "src/LibTmux/Requests/SendKeysRequest.cs",
+        "src/LibTmux/Requests/ResizePaneRequest.cs",
+        "src/LibTmux/Requests/MovePaneRequest.cs",
+        "src/LibTmux/Requests/SwapPaneRequest.cs",
+        "src/LibTmux/Requests/SelectPaneRequest.cs",
+        "src/LibTmux/Requests/CopyModeRequest.cs",
+        "src/LibTmux/Requests/PasteBufferRequest.cs",
+        "src/LibTmux/Requests/PipePaneRequest.cs",
+        "src/LibTmux/Requests/ChooseTreeRequest.cs",
+        "src/LibTmux/Requests/FindWindowRequest.cs",
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component12ParityTests.cs",
+        "src/LibTmux/Exceptions/TmuxPaneException.cs",
     ),
     13: (
-        "csharp/src/LibTmux/Server.Clients.cs",
-        "csharp/src/LibTmux/Client.Administration.cs",
-        "csharp/src/LibTmux/ClientAttachment.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Clients/ClientAdministrationTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component13ParityTests.cs",
+        "src/LibTmux/Server.Clients.cs",
+        "src/LibTmux/Client.Administration.cs",
+        "src/LibTmux/ClientAttachment.cs",
+        "tests/LibTmux.IntegrationTests/Clients/ClientAdministrationTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component13ParityTests.cs",
     ),
     14: (
-        "csharp/src/LibTmux/Options/TmuxOptionValue.cs",
-        "csharp/src/LibTmux/Options/TmuxOptions.cs",
-        "csharp/src/LibTmux/Internal/OptionParser.cs",
-        "csharp/src/LibTmux/Internal/OptionFailure.cs",
-        "csharp/src/LibTmux/Requests/GetOptionRequest.cs",
-        "csharp/src/LibTmux/Requests/GetOptionsRequest.cs",
-        "csharp/src/LibTmux/Requests/SetOptionRequest.cs",
-        "csharp/src/LibTmux/Requests/UnsetOptionRequest.cs",
-        "csharp/src/LibTmux/Server.Options.cs",
-        "csharp/src/LibTmux/Session.Options.cs",
-        "csharp/src/LibTmux/Window.Options.cs",
-        "csharp/src/LibTmux/Pane.Options.cs",
-        "csharp/tests/LibTmux.UnitTests/Options/TmuxOptionValueTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Options/TmuxOptionsTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component14ParityTests.cs",
-        "csharp/src/LibTmux/Exceptions/TmuxOptionException.cs",
+        "src/LibTmux/Options/TmuxOptionValue.cs",
+        "src/LibTmux/Options/TmuxOptions.cs",
+        "src/LibTmux/Internal/OptionParser.cs",
+        "src/LibTmux/Internal/OptionFailure.cs",
+        "src/LibTmux/Requests/GetOptionRequest.cs",
+        "src/LibTmux/Requests/GetOptionsRequest.cs",
+        "src/LibTmux/Requests/SetOptionRequest.cs",
+        "src/LibTmux/Requests/UnsetOptionRequest.cs",
+        "src/LibTmux/Server.Options.cs",
+        "src/LibTmux/Session.Options.cs",
+        "src/LibTmux/Window.Options.cs",
+        "src/LibTmux/Pane.Options.cs",
+        "tests/LibTmux.UnitTests/Options/TmuxOptionValueTests.cs",
+        "tests/LibTmux.IntegrationTests/Options/TmuxOptionsTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component14ParityTests.cs",
+        "src/LibTmux/Exceptions/TmuxOptionException.cs",
     ),
     15: (
-        "csharp/src/LibTmux/Hooks/TmuxHooks.cs",
-        "csharp/src/LibTmux/Environment/TmuxEnvironmentOperations.cs",
-        "csharp/src/LibTmux/Requests/HookRequest.cs",
-        "csharp/src/LibTmux/Requests/ListHooksRequest.cs",
-        "csharp/src/LibTmux/Requests/SetHookRequest.cs",
-        "csharp/src/LibTmux/Requests/SetHooksRequest.cs",
-        "csharp/src/LibTmux/Server.Hooks.cs",
-        "csharp/src/LibTmux/Session.Hooks.cs",
-        "csharp/src/LibTmux/Window.Hooks.cs",
-        "csharp/src/LibTmux/Pane.Hooks.cs",
-        "csharp/src/LibTmux/Server.EnvironmentOperations.cs",
-        "csharp/src/LibTmux/Session.EnvironmentOperations.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Environment/EnvironmentOperationsTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component15ParityTests.cs",
+        "src/LibTmux/Hooks/TmuxHooks.cs",
+        "src/LibTmux/Environment/TmuxEnvironmentOperations.cs",
+        "src/LibTmux/Requests/HookRequest.cs",
+        "src/LibTmux/Requests/ListHooksRequest.cs",
+        "src/LibTmux/Requests/SetHookRequest.cs",
+        "src/LibTmux/Requests/SetHooksRequest.cs",
+        "src/LibTmux/Server.Hooks.cs",
+        "src/LibTmux/Session.Hooks.cs",
+        "src/LibTmux/Window.Hooks.cs",
+        "src/LibTmux/Pane.Hooks.cs",
+        "src/LibTmux/Server.EnvironmentOperations.cs",
+        "src/LibTmux/Session.EnvironmentOperations.cs",
+        "tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs",
+        "tests/LibTmux.IntegrationTests/Environment/EnvironmentOperationsTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component15ParityTests.cs",
     ),
     16: (
-        "csharp/src/LibTmux/Utilities/ServerUtilities.cs",
-        "csharp/src/LibTmux/Server.Utilities.cs",
-        "csharp/src/LibTmux/Utilities/TmuxBuffer.cs",
-        "csharp/src/LibTmux/Utilities/TmuxMenuItem.cs",
-        "csharp/src/LibTmux/Requests/BindKeyRequest.cs",
-        "csharp/src/LibTmux/Requests/CommandPromptRequest.cs",
-        "csharp/src/LibTmux/Requests/ConfirmBeforeRequest.cs",
-        "csharp/src/LibTmux/Requests/DisplayMenuRequest.cs",
-        "csharp/src/LibTmux/Requests/IfShellRequest.cs",
-        "csharp/src/LibTmux/Requests/ListBuffersRequest.cs",
-        "csharp/src/LibTmux/Requests/RunShellRequest.cs",
-        "csharp/src/LibTmux/Requests/ServerAccessRequest.cs",
-        "csharp/src/LibTmux/Requests/UnbindKeyRequest.cs",
-        "csharp/src/LibTmux/Requests/WaitForRequest.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component16ParityTests.cs",
+        "src/LibTmux/Utilities/ServerUtilities.cs",
+        "src/LibTmux/Server.Utilities.cs",
+        "src/LibTmux/Utilities/TmuxBuffer.cs",
+        "src/LibTmux/Utilities/TmuxMenuItem.cs",
+        "src/LibTmux/Requests/BindKeyRequest.cs",
+        "src/LibTmux/Requests/CommandPromptRequest.cs",
+        "src/LibTmux/Requests/ConfirmBeforeRequest.cs",
+        "src/LibTmux/Requests/DisplayMenuRequest.cs",
+        "src/LibTmux/Requests/IfShellRequest.cs",
+        "src/LibTmux/Requests/ListBuffersRequest.cs",
+        "src/LibTmux/Requests/RunShellRequest.cs",
+        "src/LibTmux/Requests/ServerAccessRequest.cs",
+        "src/LibTmux/Requests/UnbindKeyRequest.cs",
+        "src/LibTmux/Requests/WaitForRequest.cs",
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component16ParityTests.cs",
     ),
     17: (
-        "csharp/src/LibTmux/Diagnostics/TmuxLog.cs",
-        "csharp/src/LibTmux/Compatibility/SupportedAliases.cs",
-        "csharp/tests/LibTmux.UnitTests/Diagnostics/ExceptionContractTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Diagnostics/StructuredLoggingTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component17ParityTests.cs",
+        "src/LibTmux/Diagnostics/TmuxLog.cs",
+        "src/LibTmux/Compatibility/SupportedAliases.cs",
+        "tests/LibTmux.UnitTests/Diagnostics/ExceptionContractTests.cs",
+        "tests/LibTmux.IntegrationTests/Diagnostics/StructuredLoggingTests.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component17ParityTests.cs",
     ),
     18: (
-        "csharp/src/LibTmux/Testing/TmuxWait.cs",
-        "csharp/src/LibTmux/Testing/TmuxNameGenerator.cs",
-        "csharp/src/LibTmux/Testing/TestEnvironment.cs",
-        "csharp/src/LibTmux/Testing/TmuxTestOptions.cs",
-        "csharp/src/LibTmux/Testing/TmuxTestFactory.cs",
-        "csharp/src/LibTmux/Testing/TmuxTestContext.cs",
-        "csharp/src/LibTmux/Testing/TemporaryHierarchyScope.cs",
-        "csharp/tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj",
-        "csharp/examples/LibTmux.Examples/LibTmux.Examples.csproj",
-        "csharp/examples/LibTmux.Examples/Program.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component18ParityTests.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Testing/TestingHelpersTests.cs",
+        "src/LibTmux/Testing/TmuxWait.cs",
+        "src/LibTmux/Testing/TmuxNameGenerator.cs",
+        "src/LibTmux/Testing/TestEnvironment.cs",
+        "src/LibTmux/Testing/TmuxTestOptions.cs",
+        "src/LibTmux/Testing/TmuxTestFactory.cs",
+        "src/LibTmux/Testing/TmuxTestContext.cs",
+        "src/LibTmux/Testing/TemporaryHierarchyScope.cs",
+        "tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj",
+        "examples/LibTmux.Examples/LibTmux.Examples.csproj",
+        "examples/LibTmux.Examples/Program.cs",
+        "tests/LibTmux.IntegrationTests/Parity/Component18ParityTests.cs",
+        "tests/LibTmux.IntegrationTests/Testing/TestingHelpersTests.cs",
         ".github/workflows/csharp.yml",
         ".github/workflows/csharp-tmux.yml",
-        "csharp/README.md",
-        "csharp/src/LibTmux/PublicAPI.Shipped.txt",
-        "csharp/src/LibTmux/PublicAPI.Unshipped.txt",
-        "csharp/src/LibTmux.Query.Json/PublicAPI.Shipped.txt",
-        "csharp/src/LibTmux.Query.Json/PublicAPI.Unshipped.txt",
-        "csharp/eng/parity/verify_workflows.py",
-        "csharp/eng/parity/tests/test_workflows.py",
-        "csharp/eng/parity/inspect_packages.py",
-        "csharp/eng/parity/tests/test_packages.py",
-        "csharp/eng/evidence/verify_source_binding.py",
-        "csharp/eng/evidence/tests/test_source_binding.py",
-        "csharp/tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj",
-        "csharp/tests/LibTmux.AotSmoke/packages.lock.json",
-        "csharp/tests/LibTmux.AotSmoke/Program.cs",
-        "csharp/tests/LibTmux.PackageConsumer/packages.lock.json",
-        "csharp/tests/LibTmux.PackageConsumer/Program.cs",
-        "csharp/tests/LibTmux.PackageConsumer/NuGet.config",
-        "csharp/tests/LibTmux.IntegrationTests/Packaging/PackageClosureTests.cs",
-        "csharp/tests/LibTmux.UnitTests/Packaging/PublicApiContractTests.cs",
-        "csharp/tests/LibTmux.UnitTests/Packaging/WorkflowContractTests.cs",
-        "csharp/examples/LibTmux.Examples/packages.lock.json",
-        "csharp/src/LibTmux.Query.Json/packages.packed.lock.json",
+        "README.md",
+        "src/LibTmux/PublicAPI.Shipped.txt",
+        "src/LibTmux/PublicAPI.Unshipped.txt",
+        "src/LibTmux.Query.Json/PublicAPI.Shipped.txt",
+        "src/LibTmux.Query.Json/PublicAPI.Unshipped.txt",
+        "eng/parity/verify_workflows.py",
+        "eng/parity/tests/test_workflows.py",
+        "eng/parity/inspect_packages.py",
+        "eng/parity/tests/test_packages.py",
+        "eng/evidence/verify_source_binding.py",
+        "eng/evidence/tests/test_source_binding.py",
+        "tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj",
+        "tests/LibTmux.AotSmoke/packages.lock.json",
+        "tests/LibTmux.AotSmoke/Program.cs",
+        "tests/LibTmux.PackageConsumer/packages.lock.json",
+        "tests/LibTmux.PackageConsumer/Program.cs",
+        "tests/LibTmux.PackageConsumer/NuGet.config",
+        "tests/LibTmux.IntegrationTests/Packaging/PackageClosureTests.cs",
+        "tests/LibTmux.UnitTests/Packaging/PublicApiContractTests.cs",
+        "tests/LibTmux.UnitTests/Packaging/WorkflowContractTests.cs",
+        "examples/LibTmux.Examples/packages.lock.json",
+        "src/LibTmux.Query.Json/packages.packed.lock.json",
     ),
 }
 COMPONENT_API_TYPES: dict[int, tuple[str, ...]] = {
@@ -621,18 +621,22 @@ COMPONENT_RE = re.compile(r"^## Component ([0-9]+):\s+\S.*$")
 FIELD_RE = re.compile(r"^### (.+?)\s*$")
 LIST_TOKEN_RE = re.compile(r"^- (?P<fence>`{1,2})(?P<token>.+?)(?P=fence)\s*$")
 EXACT_PATH_RE = re.compile(
-    r"^(?:csharp/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+|"
-    r"\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml)$"
+    # A plan names a file by repository-relative path. This anchored on the
+    # directory the project sat in when it lived in a monorepo; the project
+    # is the repository now, so the anchor is its own top-level entries.
+    r"^(?:(?:benchmarks|docs|eng|examples|src|tests|\.github)/"
+    r"(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+"
+    r"|[A-Za-z0-9_.-]+\.(?:slnx|json|props|md|sh))$"
 )
 BUILD_BOOTSTRAP_FILES = frozenset(
     {
-        "csharp/LibTmux.slnx",
-        "csharp/src/LibTmux/LibTmux.csproj",
-        "csharp/src/LibTmux/packages.lock.json",
-        "csharp/tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj",
-        "csharp/tests/LibTmux.UnitTests/packages.lock.json",
-        "csharp/tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj",
-        "csharp/tests/LibTmux.IntegrationTests/packages.lock.json",
+        "LibTmux.slnx",
+        "src/LibTmux/LibTmux.csproj",
+        "src/LibTmux/packages.lock.json",
+        "tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj",
+        "tests/LibTmux.UnitTests/packages.lock.json",
+        "tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj",
+        "tests/LibTmux.IntegrationTests/packages.lock.json",
     }
 )
 COMPONENT_DEPENDENCIES: dict[int, tuple[str, ...]] = {
@@ -664,45 +668,45 @@ COMPONENT_DEPENDENCIES: dict[int, tuple[str, ...]] = {
 }
 COMPONENT_SHARED_FILES: dict[int, tuple[str, ...]] = dict.fromkeys(
     COMPONENT_IDS,
-    ("csharp/docs/parity/parity-ledger.json",),
+    ("docs/parity/parity-ledger.json",),
 )
 COMPONENT_SHARED_FILES[3] += (
-    "csharp/eng/tmux/build-version.sh",
-    "csharp/eng/tmux/run-matrix.sh",
-    "csharp/eng/evidence/assemble_bundle.py",
-    "csharp/eng/evidence/tests/test_transactions.py",
-    "csharp/eng/parity/reconcile_versions.py",
-    "csharp/eng/parity/tests/test_reconcile_versions.py",
-    "csharp/eng/evidence/validate.py",
-    "csharp/eng/evidence/tests/test_validate.py",
-    "csharp/tests/LibTmux.IntegrationTests/Infrastructure/PtyAttachedClientScope.cs",
+    "eng/tmux/build-version.sh",
+    "eng/tmux/run-matrix.sh",
+    "eng/evidence/assemble_bundle.py",
+    "eng/evidence/tests/test_transactions.py",
+    "eng/parity/reconcile_versions.py",
+    "eng/parity/tests/test_reconcile_versions.py",
+    "eng/evidence/validate.py",
+    "eng/evidence/tests/test_validate.py",
+    "tests/LibTmux.IntegrationTests/Infrastructure/PtyAttachedClientScope.cs",
 )
 COMPONENT_SHARED_FILES[4] += (
-    "csharp/src/LibTmux/Server.Identity.cs",
-    "csharp/src/LibTmux/Session.Identity.cs",
-    "csharp/src/LibTmux/Window.Identity.cs",
-    "csharp/src/LibTmux/Pane.Identity.cs",
-    "csharp/src/LibTmux/Transport/TmuxTransportLimits.cs",
-    "csharp/src/LibTmux/Transport/Utf8BackslashDecoder.cs",
-    "csharp/src/LibTmux/Internal/FormatCatalog.cs",
+    "src/LibTmux/Server.Identity.cs",
+    "src/LibTmux/Session.Identity.cs",
+    "src/LibTmux/Window.Identity.cs",
+    "src/LibTmux/Pane.Identity.cs",
+    "src/LibTmux/Transport/TmuxTransportLimits.cs",
+    "src/LibTmux/Transport/Utf8BackslashDecoder.cs",
+    "src/LibTmux/Internal/FormatCatalog.cs",
 )
 COMPONENT_SHARED_FILES[5] += (
-    "csharp/src/LibTmux/Materialization/EntityMaterializationState.cs",
+    "src/LibTmux/Materialization/EntityMaterializationState.cs",
 )
 COMPONENT_SHARED_FILES[8] += (
-    "csharp/LibTmux.slnx",
-    "csharp/src/LibTmux/LibTmux.csproj",
+    "LibTmux.slnx",
+    "src/LibTmux/LibTmux.csproj",
 )
-COMPONENT_SHARED_FILES[9] += ("csharp/LibTmux.slnx",)
+COMPONENT_SHARED_FILES[9] += ("LibTmux.slnx",)
 COMPONENT_SHARED_FILES[9] += (
-    "csharp/tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj",
-    "csharp/tests/LibTmux.UnitTests/packages.lock.json",
+    "tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj",
+    "tests/LibTmux.UnitTests/packages.lock.json",
 )
 VERSION_POLICY_SHARED_FILES = (
-    "csharp/docs/parity/version-deltas.json",
-    "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs",
-    "csharp/eng/parity/reconcile_versions.py",
-    "csharp/eng/parity/tests/test_reconcile_versions.py",
+    "docs/parity/version-deltas.json",
+    "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs",
+    "eng/parity/reconcile_versions.py",
+    "eng/parity/tests/test_reconcile_versions.py",
 )
 VERSION_POLICY_OWNER_COMPONENTS = (10, 11, 12, 13, 15, 16)
 # Policy rows stay pending until cohort closure, so a policy-owning component
@@ -733,85 +737,85 @@ VERSION_POLICY_PROOFS_BY_COMPONENT: dict[int, tuple[str, ...]] = {
     for component_id in VERSION_POLICY_OWNER_COMPONENTS
 }
 ENTITY_SHELL_FILES = (
-    "csharp/src/LibTmux/Server.cs",
-    "csharp/src/LibTmux/Session.cs",
-    "csharp/src/LibTmux/Window.cs",
-    "csharp/src/LibTmux/Pane.cs",
-    "csharp/src/LibTmux/Client.cs",
+    "src/LibTmux/Server.cs",
+    "src/LibTmux/Session.cs",
+    "src/LibTmux/Window.cs",
+    "src/LibTmux/Pane.cs",
+    "src/LibTmux/Client.cs",
 )
 ENTITY_FRAGMENT_FILES: dict[int, tuple[str, ...]] = {
     1: (
-        "csharp/src/LibTmux/Server.Command.cs",
-        "csharp/src/LibTmux/Session.Command.cs",
-        "csharp/src/LibTmux/Window.Command.cs",
-        "csharp/src/LibTmux/Pane.Command.cs",
+        "src/LibTmux/Server.Command.cs",
+        "src/LibTmux/Session.Command.cs",
+        "src/LibTmux/Window.Command.cs",
+        "src/LibTmux/Pane.Command.cs",
     ),
     2: (
-        "csharp/src/LibTmux/Server.Identity.cs",
-        "csharp/src/LibTmux/Session.Identity.cs",
-        "csharp/src/LibTmux/Window.Identity.cs",
-        "csharp/src/LibTmux/Pane.Identity.cs",
+        "src/LibTmux/Server.Identity.cs",
+        "src/LibTmux/Session.Identity.cs",
+        "src/LibTmux/Window.Identity.cs",
+        "src/LibTmux/Pane.Identity.cs",
     ),
-    3: ("csharp/src/LibTmux/Server.Version.cs",),
+    3: ("src/LibTmux/Server.Version.cs",),
     5: (
-        "csharp/src/LibTmux/Session.Relations.cs",
-        "csharp/src/LibTmux/Window.Relations.cs",
-        "csharp/src/LibTmux/Pane.Relations.cs",
+        "src/LibTmux/Session.Relations.cs",
+        "src/LibTmux/Window.Relations.cs",
+        "src/LibTmux/Pane.Relations.cs",
     ),
     6: (
-        "csharp/src/LibTmux/Server.Environment.cs",
-        "csharp/src/LibTmux/Session.Environment.cs",
-        "csharp/src/LibTmux/Window.Environment.cs",
-        "csharp/src/LibTmux/Pane.Environment.cs",
+        "src/LibTmux/Server.Environment.cs",
+        "src/LibTmux/Session.Environment.cs",
+        "src/LibTmux/Window.Environment.cs",
+        "src/LibTmux/Pane.Environment.cs",
     ),
-    7: ("csharp/src/LibTmux/Server.Collections.cs",),
+    7: ("src/LibTmux/Server.Collections.cs",),
     10: (
-        "csharp/src/LibTmux/Server.Lifecycle.cs",
-        "csharp/src/LibTmux/Session.Lifecycle.cs",
+        "src/LibTmux/Server.Lifecycle.cs",
+        "src/LibTmux/Session.Lifecycle.cs",
     ),
     11: (
-        "csharp/src/LibTmux/Session.WindowNavigation.cs",
-        "csharp/src/LibTmux/Window.Topology.cs",
+        "src/LibTmux/Session.WindowNavigation.cs",
+        "src/LibTmux/Window.Topology.cs",
     ),
     12: (
-        "csharp/src/LibTmux/Window.PaneNavigation.cs",
-        "csharp/src/LibTmux/Pane.Operations.cs",
+        "src/LibTmux/Window.PaneNavigation.cs",
+        "src/LibTmux/Pane.Operations.cs",
     ),
     13: (
-        "csharp/src/LibTmux/Server.Clients.cs",
-        "csharp/src/LibTmux/Client.Administration.cs",
+        "src/LibTmux/Server.Clients.cs",
+        "src/LibTmux/Client.Administration.cs",
     ),
     14: (
-        "csharp/src/LibTmux/Server.Options.cs",
-        "csharp/src/LibTmux/Session.Options.cs",
-        "csharp/src/LibTmux/Window.Options.cs",
-        "csharp/src/LibTmux/Pane.Options.cs",
+        "src/LibTmux/Server.Options.cs",
+        "src/LibTmux/Session.Options.cs",
+        "src/LibTmux/Window.Options.cs",
+        "src/LibTmux/Pane.Options.cs",
     ),
     15: (
-        "csharp/src/LibTmux/Server.Hooks.cs",
-        "csharp/src/LibTmux/Session.Hooks.cs",
-        "csharp/src/LibTmux/Window.Hooks.cs",
-        "csharp/src/LibTmux/Pane.Hooks.cs",
+        "src/LibTmux/Server.Hooks.cs",
+        "src/LibTmux/Session.Hooks.cs",
+        "src/LibTmux/Window.Hooks.cs",
+        "src/LibTmux/Pane.Hooks.cs",
     ),
-    16: ("csharp/src/LibTmux/Server.Utilities.cs",),
+    16: ("src/LibTmux/Server.Utilities.cs",),
 }
 EXCEPTION_FILES = (
-    "csharp/src/LibTmux/Exceptions/LibTmuxException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxCommandException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxCommandNotFoundException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxTransportException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxOperationCanceledException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxCleanupException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxWaitTimeoutException.cs",
-    "csharp/src/LibTmux/Exceptions/StaleServerGenerationException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxObjectNotFoundException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxVersionTooLowException.cs",
-    "csharp/src/LibTmux/Exceptions/IncompleteSnapshotException.cs",
-    "csharp/src/LibTmux/Exceptions/UnsupportedQueryExpressionException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxSessionExistsException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxWindowException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxPaneException.cs",
-    "csharp/src/LibTmux/Exceptions/TmuxOptionException.cs",
+    "src/LibTmux/Exceptions/LibTmuxException.cs",
+    "src/LibTmux/Exceptions/TmuxCommandException.cs",
+    "src/LibTmux/Exceptions/TmuxCommandNotFoundException.cs",
+    "src/LibTmux/Exceptions/TmuxTransportException.cs",
+    "src/LibTmux/Exceptions/TmuxOperationCanceledException.cs",
+    "src/LibTmux/Exceptions/TmuxCleanupException.cs",
+    "src/LibTmux/Exceptions/TmuxWaitTimeoutException.cs",
+    "src/LibTmux/Exceptions/StaleServerGenerationException.cs",
+    "src/LibTmux/Exceptions/TmuxObjectNotFoundException.cs",
+    "src/LibTmux/Exceptions/TmuxVersionTooLowException.cs",
+    "src/LibTmux/Exceptions/IncompleteSnapshotException.cs",
+    "src/LibTmux/Exceptions/UnsupportedQueryExpressionException.cs",
+    "src/LibTmux/Exceptions/TmuxSessionExistsException.cs",
+    "src/LibTmux/Exceptions/TmuxWindowException.cs",
+    "src/LibTmux/Exceptions/TmuxPaneException.cs",
+    "src/LibTmux/Exceptions/TmuxOptionException.cs",
 )
 # Every tmux command already passes through one dispatcher, so the diagnostics
 # it records belong there rather than repeated in each entity. Sweeping sixty
@@ -820,55 +824,55 @@ EXCEPTION_FILES = (
 # it records belong there rather than repeated in each entity. Sweeping every
 # file to say the same thing would be churn, not coverage.
 DIAGNOSTIC_SHARED_FILES = (
-    "csharp/src/LibTmux/Transport/TmuxCommandDispatcher.cs",
-    "csharp/src/LibTmux/Connection/TmuxConnection.cs",
+    "src/LibTmux/Transport/TmuxCommandDispatcher.cs",
+    "src/LibTmux/Connection/TmuxConnection.cs",
 )
 COMPONENT_SHARED_FILES[17] += DIAGNOSTIC_SHARED_FILES
 COMPONENT_SHARED_FILES[18] += (
-    "csharp/LibTmux.slnx",
-    "csharp/Directory.Packages.props",
-    "csharp/src/LibTmux/LibTmux.csproj",
-    "csharp/src/LibTmux/packages.lock.json",
-    "csharp/src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
-    "csharp/src/LibTmux.Query.Json/packages.lock.json",
+    "LibTmux.slnx",
+    "Directory.Packages.props",
+    "src/LibTmux/LibTmux.csproj",
+    "src/LibTmux/packages.lock.json",
+    "src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
+    "src/LibTmux.Query.Json/packages.lock.json",
 )
 FOUNDATIONAL_FILES = frozenset(
     {
         *ENTITY_SHELL_FILES,
         *EXCEPTION_FILES[:7],
-        "csharp/src/LibTmux/Transport/TmuxCommandDispatcher.cs",
-        "csharp/src/LibTmux/Transport/TmuxCommandFailure.cs",
-        "csharp/src/LibTmux/Transport/TmuxTransportLimits.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Infrastructure/RawTmuxTestContext.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Infrastructure/ControlModeClientScope.cs",
-        "csharp/tests/LibTmux.IntegrationTests/Infrastructure/PtyAttachedClientScope.cs",
-        "csharp/tests/LibTmux.TestChild/LibTmux.TestChild.csproj",
-        "csharp/tests/LibTmux.TestChild/packages.lock.json",
-        "csharp/tests/LibTmux.TestChild/Program.cs",
+        "src/LibTmux/Transport/TmuxCommandDispatcher.cs",
+        "src/LibTmux/Transport/TmuxCommandFailure.cs",
+        "src/LibTmux/Transport/TmuxTransportLimits.cs",
+        "tests/LibTmux.IntegrationTests/Infrastructure/RawTmuxTestContext.cs",
+        "tests/LibTmux.IntegrationTests/Infrastructure/ControlModeClientScope.cs",
+        "tests/LibTmux.IntegrationTests/Infrastructure/PtyAttachedClientScope.cs",
+        "tests/LibTmux.TestChild/LibTmux.TestChild.csproj",
+        "tests/LibTmux.TestChild/packages.lock.json",
+        "tests/LibTmux.TestChild/Program.cs",
     }
 )
 PROJECT_WIRING: dict[int, tuple[str, ...]] = {
     1: (
-        "cd csharp && mise exec -- dotnet sln LibTmux.slnx add src/LibTmux/LibTmux.csproj tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj tests/LibTmux.TestChild/LibTmux.TestChild.csproj",
-        "cd csharp && mise exec -- dotnet add tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj reference src/LibTmux/LibTmux.csproj",
-        "cd csharp && mise exec -- dotnet add tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj reference src/LibTmux/LibTmux.csproj",
+        "mise exec -- dotnet sln LibTmux.slnx add src/LibTmux/LibTmux.csproj tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj tests/LibTmux.TestChild/LibTmux.TestChild.csproj",
+        "mise exec -- dotnet add tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj reference src/LibTmux/LibTmux.csproj",
+        "mise exec -- dotnet add tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj reference src/LibTmux/LibTmux.csproj",
         "src/LibTmux/LibTmux.csproj declares InternalsVisibleTo for LibTmux.UnitTests and LibTmux.IntegrationTests",
         "tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj references Microsoft.CodeAnalysis.CSharp so EntityShellTests parses source syntax instead of reflecting partial declarations",
         "Server, Session, Window, and Pane shells expose an internal dispatcher plus default-target constructor seam used by their Component 1 command fragments before public Open and typed IDs arrive",
     ),
     8: (
-        "cd csharp && mise exec -- dotnet sln LibTmux.slnx add src/LibTmux.Generators/LibTmux.Generators.csproj",
+        "mise exec -- dotnet sln LibTmux.slnx add src/LibTmux.Generators/LibTmux.Generators.csproj",
         "src/LibTmux/LibTmux.csproj references src/LibTmux.Generators/LibTmux.Generators.csproj with OutputItemType=Analyzer and ReferenceOutputAssembly=false",
     ),
     9: (
-        "cd csharp && mise exec -- dotnet sln LibTmux.slnx add src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
-        "cd csharp && mise exec -- dotnet add src/LibTmux.Query.Json/LibTmux.Query.Json.csproj reference src/LibTmux/LibTmux.csproj",
-        "cd csharp && mise exec -- dotnet add tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj reference src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
+        "mise exec -- dotnet sln LibTmux.slnx add src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
+        "mise exec -- dotnet add src/LibTmux.Query.Json/LibTmux.Query.Json.csproj reference src/LibTmux/LibTmux.csproj",
+        "mise exec -- dotnet add tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj reference src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
     ),
     18: (
-        "cd csharp && mise exec -- dotnet sln LibTmux.slnx add tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj examples/LibTmux.Examples/LibTmux.Examples.csproj",
-        "cd csharp && mise exec -- dotnet add examples/LibTmux.Examples/LibTmux.Examples.csproj reference src/LibTmux/LibTmux.csproj src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
-        "csharp/Directory.Packages.props declares exact central PackageVersion entries for LibTmux and LibTmux.Query.Json at [0.1.0-local]",
+        "mise exec -- dotnet sln LibTmux.slnx add tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj examples/LibTmux.Examples/LibTmux.Examples.csproj",
+        "mise exec -- dotnet add examples/LibTmux.Examples/LibTmux.Examples.csproj reference src/LibTmux/LibTmux.csproj src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
+        "Directory.Packages.props declares exact central PackageVersion entries for LibTmux and LibTmux.Query.Json at [0.1.0-local]",
         "tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj and tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj declare versionless PackageReference entries for LibTmux and LibTmux.Query.Json so Central Package Management supplies [0.1.0-local]",
         "src/LibTmux.Query.Json/LibTmux.Query.Json.csproj declares its LibTmux ProjectReference only when UsePackedLibTmux is not true",
         "src/LibTmux.Query.Json/LibTmux.Query.Json.csproj declares a versionless LibTmux PackageReference only when UsePackedLibTmux is true so Central Package Management supplies exactly [0.1.0-local]",
@@ -905,14 +909,14 @@ C4_MATERIALIZATION_CONTRACT = (
     "Every materialized row carries universal pid and start_time; MaterializationQuery rejects an unmaterialized MaterializationContext.Server.Generation before live acquisition, and both MaterializationQuery and Materializer reject parsed generation unequal to the owner with StaleServerGenerationException; MaterializationTests.Materializer_uses_server_context_and_returns_typed_raw_fields proves this owner and generation validation",
 )
 SOLUTION_RESTORE_PAIR = (
-    "cd csharp && mise exec -- dotnet restore LibTmux.slnx",
-    "cd csharp && mise exec -- dotnet restore LibTmux.slnx --locked-mode",
+    "mise exec -- dotnet restore LibTmux.slnx",
+    "mise exec -- dotnet restore LibTmux.slnx --locked-mode",
 )
 RED_BOOTSTRAP: dict[int, tuple[str, ...]] = {
     1: (
         "Create compile-ready C1 production signature stubs, TestChild modes, the selected behavioral test, require_red.py, and require_red tests before restore; do not implement the behavior and never hand-author lock files",
         *SOLUTION_RESTORE_PAIR,
-        "uv run pytest csharp/eng/parity/tests/test_require_red.py",
+        "uv run pytest eng/parity/tests/test_require_red.py",
     ),
     8: (
         "Create compile-ready generator, core, and test signature stubs plus the selected behavioral test before restore; do not implement the behavior and never hand-author lock files",
@@ -933,7 +937,7 @@ RED_EVIDENCE_FRESHNESS_CONTRACT = (
     "require_red.py removes any pre-existing evidence path before invoking dotnet test and accepts only a newly created TRX from that invocation",
 )
 TMUX_37_TRANSITION_PROOF_CONTRACT = (
-    "Build one transition tmux 3.7 binary with csharp/eng/tmux/build-version.sh and require tmux -V = tmux 3.7.",
+    "Build one transition tmux 3.7 binary with eng/tmux/build-version.sh and require tmux -V = tmux 3.7.",
     "The tmux 3.7 transition proof runs only for the explicit capability cohort 0001; directory names never select behavior, and that cohort rejects the advisory master lane.",
     'The cohort-bound environment records capabilityCohort="0001" and excludes only its exact evidence output root from source-state and source-fingerprint calculations.',
     'run-matrix.sh sets LIBTMUX_TRANSITION_TMUX_3_7 to the verified 3.7 binary and writes its full source commit as transitionTmuxSourceCommits["3.7"] in environment.json.',
@@ -956,164 +960,164 @@ C1_FAILURE_CORPUS_CONTRACT = (
 REQUIRED_PROJECT_FILES: dict[int, frozenset[str]] = {
     1: frozenset(
         {
-            "csharp/tests/LibTmux.UnitTests/Entities/EntityShellTests.cs",
+            "tests/LibTmux.UnitTests/Entities/EntityShellTests.cs",
         }
     ),
     3: frozenset(
         {
-            "csharp/src/LibTmux/Internal/CommandFlagCatalog.cs",
-            "csharp/src/LibTmux/Internal/FormatCatalog.cs",
-            "csharp/src/LibTmux/Internal/FormatFieldDescriptor.cs",
+            "src/LibTmux/Internal/CommandFlagCatalog.cs",
+            "src/LibTmux/Internal/FormatCatalog.cs",
+            "src/LibTmux/Internal/FormatFieldDescriptor.cs",
         }
     ),
     4: frozenset(
         {
-            "csharp/src/LibTmux/Materialization/SeparatedRowFramer.cs",
-            "csharp/src/LibTmux/Materialization/MaterializationContext.cs",
+            "src/LibTmux/Materialization/SeparatedRowFramer.cs",
+            "src/LibTmux/Materialization/MaterializationContext.cs",
         }
     ),
     8: frozenset(
         {
-            "csharp/src/LibTmux.Generators/LibTmux.Generators.csproj",
-            "csharp/src/LibTmux.Generators/FieldCatalogGenerator.cs",
-            "csharp/src/LibTmux.Generators/packages.lock.json",
+            "src/LibTmux.Generators/LibTmux.Generators.csproj",
+            "src/LibTmux.Generators/FieldCatalogGenerator.cs",
+            "src/LibTmux.Generators/packages.lock.json",
         }
     ),
     9: frozenset(
         {
-            "csharp/src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
-            "csharp/src/LibTmux.Query.Json/QueryJsonSerializerContext.cs",
-            "csharp/src/LibTmux.Query.Json/QueryDocumentJsonConverter.cs",
-            "csharp/src/LibTmux.Query.Json/libtmux-query-v1.schema.json",
-            "csharp/src/LibTmux.Query.Json/packages.lock.json",
+            "src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
+            "src/LibTmux.Query.Json/QueryJsonSerializerContext.cs",
+            "src/LibTmux.Query.Json/QueryDocumentJsonConverter.cs",
+            "src/LibTmux.Query.Json/libtmux-query-v1.schema.json",
+            "src/LibTmux.Query.Json/packages.lock.json",
         }
     ),
     10: frozenset(
         {
-            "csharp/src/LibTmux/Requests/AttachSessionRequest.cs",
+            "src/LibTmux/Requests/AttachSessionRequest.cs",
         }
     ),
     11: frozenset(
         {
-            "csharp/src/LibTmux/Requests/DisplayMessageRequest.cs",
+            "src/LibTmux/Requests/DisplayMessageRequest.cs",
         }
     ),
     12: frozenset(
         {
-            "csharp/src/LibTmux/Requests/DisplayPopupRequest.cs",
+            "src/LibTmux/Requests/DisplayPopupRequest.cs",
         }
     ),
     18: frozenset(
         {
             ".github/workflows/csharp.yml",
             ".github/workflows/csharp-tmux.yml",
-            "csharp/README.md",
-            "csharp/src/LibTmux/PublicAPI.Shipped.txt",
-            "csharp/src/LibTmux/PublicAPI.Unshipped.txt",
-            "csharp/src/LibTmux.Query.Json/PublicAPI.Shipped.txt",
-            "csharp/src/LibTmux.Query.Json/PublicAPI.Unshipped.txt",
-            "csharp/eng/parity/verify_workflows.py",
-            "csharp/eng/parity/tests/test_workflows.py",
-            "csharp/eng/parity/inspect_packages.py",
-            "csharp/eng/parity/tests/test_packages.py",
-            "csharp/eng/evidence/verify_source_binding.py",
-            "csharp/eng/evidence/tests/test_source_binding.py",
-            "csharp/src/LibTmux.Query.Json/packages.packed.lock.json",
-            "csharp/tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj",
-            "csharp/tests/LibTmux.AotSmoke/packages.lock.json",
-            "csharp/tests/LibTmux.AotSmoke/Program.cs",
-            "csharp/tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj",
-            "csharp/tests/LibTmux.PackageConsumer/packages.lock.json",
-            "csharp/tests/LibTmux.PackageConsumer/Program.cs",
-            "csharp/tests/LibTmux.PackageConsumer/NuGet.config",
-            "csharp/tests/LibTmux.IntegrationTests/Packaging/PackageClosureTests.cs",
-            "csharp/tests/LibTmux.UnitTests/Packaging/PublicApiContractTests.cs",
-            "csharp/tests/LibTmux.UnitTests/Packaging/WorkflowContractTests.cs",
-            "csharp/tests/LibTmux.IntegrationTests/Testing/TestingHelpersTests.cs",
-            "csharp/examples/LibTmux.Examples/LibTmux.Examples.csproj",
-            "csharp/examples/LibTmux.Examples/packages.lock.json",
-            "csharp/examples/LibTmux.Examples/Program.cs",
+            "README.md",
+            "src/LibTmux/PublicAPI.Shipped.txt",
+            "src/LibTmux/PublicAPI.Unshipped.txt",
+            "src/LibTmux.Query.Json/PublicAPI.Shipped.txt",
+            "src/LibTmux.Query.Json/PublicAPI.Unshipped.txt",
+            "eng/parity/verify_workflows.py",
+            "eng/parity/tests/test_workflows.py",
+            "eng/parity/inspect_packages.py",
+            "eng/parity/tests/test_packages.py",
+            "eng/evidence/verify_source_binding.py",
+            "eng/evidence/tests/test_source_binding.py",
+            "src/LibTmux.Query.Json/packages.packed.lock.json",
+            "tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj",
+            "tests/LibTmux.AotSmoke/packages.lock.json",
+            "tests/LibTmux.AotSmoke/Program.cs",
+            "tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj",
+            "tests/LibTmux.PackageConsumer/packages.lock.json",
+            "tests/LibTmux.PackageConsumer/Program.cs",
+            "tests/LibTmux.PackageConsumer/NuGet.config",
+            "tests/LibTmux.IntegrationTests/Packaging/PackageClosureTests.cs",
+            "tests/LibTmux.UnitTests/Packaging/PublicApiContractTests.cs",
+            "tests/LibTmux.UnitTests/Packaging/WorkflowContractTests.cs",
+            "tests/LibTmux.IntegrationTests/Testing/TestingHelpersTests.cs",
+            "examples/LibTmux.Examples/LibTmux.Examples.csproj",
+            "examples/LibTmux.Examples/packages.lock.json",
+            "examples/LibTmux.Examples/Program.cs",
         }
     ),
 }
 PUBLIC_API_FILE_BINDINGS: dict[str, tuple[int, str]] = {
     "T:LibTmux.Internal.CommandFlagCatalog": (
         3,
-        "csharp/src/LibTmux/Internal/CommandFlagCatalog.cs",
+        "src/LibTmux/Internal/CommandFlagCatalog.cs",
     ),
     "T:LibTmux.Internal.FormatCatalog": (
         3,
-        "csharp/src/LibTmux/Internal/FormatCatalog.cs",
+        "src/LibTmux/Internal/FormatCatalog.cs",
     ),
     "T:LibTmux.Internal.FormatFieldDescriptor": (
         3,
-        "csharp/src/LibTmux/Internal/FormatFieldDescriptor.cs",
+        "src/LibTmux/Internal/FormatFieldDescriptor.cs",
     ),
     "T:LibTmux.OptionScope": (
         3,
-        "csharp/src/LibTmux/Constants/TmuxEnums.cs",
+        "src/LibTmux/Constants/TmuxEnums.cs",
     ),
     "T:LibTmux.PaneDirection": (
         3,
-        "csharp/src/LibTmux/Constants/TmuxEnums.cs",
+        "src/LibTmux/Constants/TmuxEnums.cs",
     ),
     "T:LibTmux.ResizeDirection": (
         3,
-        "csharp/src/LibTmux/Constants/TmuxEnums.cs",
+        "src/LibTmux/Constants/TmuxEnums.cs",
     ),
     "T:LibTmux.WindowDirection": (
         3,
-        "csharp/src/LibTmux/Constants/TmuxEnums.cs",
+        "src/LibTmux/Constants/TmuxEnums.cs",
     ),
     "T:LibTmux.Internal.SeparatedRowFramer": (
         4,
-        "csharp/src/LibTmux/Materialization/SeparatedRowFramer.cs",
+        "src/LibTmux/Materialization/SeparatedRowFramer.cs",
     ),
     "T:LibTmux.Internal.FormatProjection": (
         4,
-        "csharp/src/LibTmux/Materialization/FormatProjection.cs",
+        "src/LibTmux/Materialization/FormatProjection.cs",
     ),
     "T:LibTmux.Internal.MaterializationContext": (
         4,
-        "csharp/src/LibTmux/Materialization/MaterializationContext.cs",
+        "src/LibTmux/Materialization/MaterializationContext.cs",
     ),
     "T:LibTmux.Internal.MaterializationQuery": (
         4,
-        "csharp/src/LibTmux/Materialization/TmuxMaterializationQuery.cs",
+        "src/LibTmux/Materialization/TmuxMaterializationQuery.cs",
     ),
     "T:LibTmux.Internal.Materializer": (
         4,
-        "csharp/src/LibTmux/Materialization/TmuxMaterializer.cs",
+        "src/LibTmux/Materialization/TmuxMaterializer.cs",
     ),
     "T:LibTmux.Internal.ServerProjection": (
         4,
-        "csharp/src/LibTmux/Materialization/FormatProjection.cs",
+        "src/LibTmux/Materialization/FormatProjection.cs",
     ),
     "T:LibTmux.Internal.ServerProjectionDescriptor": (
         4,
-        "csharp/src/LibTmux/Materialization/FormatProjection.cs",
+        "src/LibTmux/Materialization/FormatProjection.cs",
     ),
     "T:LibTmux.TmuxColorMode": (
         2,
-        "csharp/src/LibTmux/TmuxColorMode.cs",
+        "src/LibTmux/TmuxColorMode.cs",
     ),
     "T:LibTmux.AttachSessionRequest": (
         10,
-        "csharp/src/LibTmux/Requests/AttachSessionRequest.cs",
+        "src/LibTmux/Requests/AttachSessionRequest.cs",
     ),
     "T:LibTmux.DisplayMessageRequest": (
         11,
-        "csharp/src/LibTmux/Requests/DisplayMessageRequest.cs",
+        "src/LibTmux/Requests/DisplayMessageRequest.cs",
     ),
     "T:LibTmux.DisplayPopupRequest": (
         12,
-        "csharp/src/LibTmux/Requests/DisplayPopupRequest.cs",
+        "src/LibTmux/Requests/DisplayPopupRequest.cs",
     ),
 }
 PUBLIC_API_MEMBER_FILE_BINDINGS: dict[str, tuple[int, str]] = {
     "P:LibTmux.Server.Version": (
         3,
-        "csharp/src/LibTmux/Server.Version.cs",
+        "src/LibTmux/Server.Version.cs",
     ),
 }
 FORMAT_SEPARATOR_CONTRACT: dict[str, t.Any] = {
@@ -1126,67 +1130,67 @@ FORMAT_SEPARATOR_CONTRACT: dict[str, t.Any] = {
         "in ADR 0001."
     ),
     "testPath": (
-        "csharp/tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
+        "tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
     ),
 }
 FORBIDDEN_PRODUCTION_FILES = frozenset(
     {
-        "csharp/src/LibTmux/Materialization/FieldCatalog.cs",
-        "csharp/src/LibTmux/Requests/AttachClientRequest.cs",
-        "csharp/src/LibTmux/Requests/DisplayOverlayRequest.cs",
-        "csharp/src/LibTmux/Internal/XunitTmuxHarness.cs",
+        "src/LibTmux/Materialization/FieldCatalog.cs",
+        "src/LibTmux/Requests/AttachClientRequest.cs",
+        "src/LibTmux/Requests/DisplayOverlayRequest.cs",
+        "src/LibTmux/Internal/XunitTmuxHarness.cs",
     }
 )
 CORE_RESTORE_PAIR = (
-    "cd csharp && mise exec -- dotnet restore src/LibTmux/LibTmux.csproj",
-    "cd csharp && mise exec -- dotnet restore src/LibTmux/LibTmux.csproj --locked-mode",
+    "mise exec -- dotnet restore src/LibTmux/LibTmux.csproj",
+    "mise exec -- dotnet restore src/LibTmux/LibTmux.csproj --locked-mode",
 )
 JSON_DEFAULT_RESTORE_PAIR = (
-    "cd csharp && mise exec -- dotnet restore src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
-    "cd csharp && mise exec -- dotnet restore src/LibTmux.Query.Json/LibTmux.Query.Json.csproj --locked-mode",
+    "mise exec -- dotnet restore src/LibTmux.Query.Json/LibTmux.Query.Json.csproj",
+    "mise exec -- dotnet restore src/LibTmux.Query.Json/LibTmux.Query.Json.csproj --locked-mode",
 )
 JSON_PACKED_RESTORE_PAIR = (
-    "cd csharp && mise exec -- dotnet restore src/LibTmux.Query.Json/LibTmux.Query.Json.csproj --source artifacts/packages --source https://api.nuget.org/v3/index.json -p:UsePackedLibTmux=true",
-    "cd csharp && mise exec -- dotnet restore src/LibTmux.Query.Json/LibTmux.Query.Json.csproj --locked-mode --source artifacts/packages --source https://api.nuget.org/v3/index.json -p:UsePackedLibTmux=true",
+    "mise exec -- dotnet restore src/LibTmux.Query.Json/LibTmux.Query.Json.csproj --source artifacts/packages --source https://api.nuget.org/v3/index.json -p:UsePackedLibTmux=true",
+    "mise exec -- dotnet restore src/LibTmux.Query.Json/LibTmux.Query.Json.csproj --locked-mode --source artifacts/packages --source https://api.nuget.org/v3/index.json -p:UsePackedLibTmux=true",
 )
 LOCAL_FEED_SOLUTION_RESTORE_PAIR = (
-    "cd csharp && mise exec -- dotnet restore LibTmux.slnx --source artifacts/packages --source https://api.nuget.org/v3/index.json",
-    "cd csharp && mise exec -- dotnet restore LibTmux.slnx --locked-mode --source artifacts/packages --source https://api.nuget.org/v3/index.json",
+    "mise exec -- dotnet restore LibTmux.slnx --source artifacts/packages --source https://api.nuget.org/v3/index.json",
+    "mise exec -- dotnet restore LibTmux.slnx --locked-mode --source artifacts/packages --source https://api.nuget.org/v3/index.json",
 )
 PACKAGE_COMMANDS = (
     *CORE_RESTORE_PAIR,
     *JSON_DEFAULT_RESTORE_PAIR,
-    "cd csharp && mise exec -- dotnet pack src/LibTmux/LibTmux.csproj --configuration Release --no-restore --output artifacts/packages -p:PackageVersion=0.1.0-local",
+    "mise exec -- dotnet pack src/LibTmux/LibTmux.csproj --configuration Release --no-restore --output artifacts/packages -p:PackageVersion=0.1.0-local",
     *JSON_PACKED_RESTORE_PAIR,
-    "cd csharp && mise exec -- dotnet pack src/LibTmux.Query.Json/LibTmux.Query.Json.csproj --configuration Release --no-restore --output artifacts/packages -p:PackageVersion=0.1.0-local -p:UsePackedLibTmux=true",
+    "mise exec -- dotnet pack src/LibTmux.Query.Json/LibTmux.Query.Json.csproj --configuration Release --no-restore --output artifacts/packages -p:PackageVersion=0.1.0-local -p:UsePackedLibTmux=true",
     *LOCAL_FEED_SOLUTION_RESTORE_PAIR,
-    "cd csharp && unzip -l artifacts/packages/LibTmux.0.1.0-local.nupkg",
-    "cd csharp && unzip -l artifacts/packages/LibTmux.0.1.0-local.snupkg",
-    "cd csharp && unzip -l artifacts/packages/LibTmux.Query.Json.0.1.0-local.nupkg",
-    "cd csharp && unzip -l artifacts/packages/LibTmux.Query.Json.0.1.0-local.snupkg",
-    "cd csharp && unzip -p artifacts/packages/LibTmux.0.1.0-local.nupkg LibTmux.nuspec",
-    "cd csharp && unzip -p artifacts/packages/LibTmux.Query.Json.0.1.0-local.nupkg LibTmux.Query.Json.nuspec",
-    "uv run python csharp/eng/parity/inspect_packages.py --artifacts csharp/artifacts/packages --repository .",
+    "unzip -l artifacts/packages/LibTmux.0.1.0-local.nupkg",
+    "unzip -l artifacts/packages/LibTmux.0.1.0-local.snupkg",
+    "unzip -l artifacts/packages/LibTmux.Query.Json.0.1.0-local.nupkg",
+    "unzip -l artifacts/packages/LibTmux.Query.Json.0.1.0-local.snupkg",
+    "unzip -p artifacts/packages/LibTmux.0.1.0-local.nupkg LibTmux.nuspec",
+    "unzip -p artifacts/packages/LibTmux.Query.Json.0.1.0-local.nupkg LibTmux.Query.Json.nuspec",
+    "uv run python eng/parity/inspect_packages.py --artifacts artifacts/packages --repository .",
 )
-PUBLIC_API_BUILD_COMMAND = "cd csharp && mise exec -- dotnet build LibTmux.slnx --configuration Release --no-restore --warnaserror"
+PUBLIC_API_BUILD_COMMAND = "mise exec -- dotnet build LibTmux.slnx --configuration Release --no-restore --warnaserror"
 PACKED_CONSUMER_COMMANDS = (
-    "cd csharp && mise exec -- dotnet run --project tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj --configuration Release --framework net8.0 --no-build",
-    "cd csharp && mise exec -- dotnet run --project tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj --configuration Release --framework net10.0 --no-build",
+    "mise exec -- dotnet run --project tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj --configuration Release --framework net8.0 --no-build",
+    "mise exec -- dotnet run --project tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj --configuration Release --framework net10.0 --no-build",
 )
 EXAMPLE_COMMANDS = (
-    "cd csharp && mise exec -- dotnet run --project examples/LibTmux.Examples/LibTmux.Examples.csproj --configuration Release --framework net8.0 --no-build",
-    "cd csharp && mise exec -- dotnet run --project examples/LibTmux.Examples/LibTmux.Examples.csproj --configuration Release --framework net10.0 --no-build",
+    "mise exec -- dotnet run --project examples/LibTmux.Examples/LibTmux.Examples.csproj --configuration Release --framework net8.0 --no-build",
+    "mise exec -- dotnet run --project examples/LibTmux.Examples/LibTmux.Examples.csproj --configuration Release --framework net10.0 --no-build",
 )
 AOT_RID_RESTORE_PAIR = (
-    "cd csharp && mise exec -- dotnet restore tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj --runtime linux-x64 --source artifacts/packages --source https://api.nuget.org/v3/index.json",
-    "cd csharp && mise exec -- dotnet restore tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj --locked-mode --runtime linux-x64 --source artifacts/packages --source https://api.nuget.org/v3/index.json",
+    "mise exec -- dotnet restore tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj --runtime linux-x64 --source artifacts/packages --source https://api.nuget.org/v3/index.json",
+    "mise exec -- dotnet restore tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj --locked-mode --runtime linux-x64 --source artifacts/packages --source https://api.nuget.org/v3/index.json",
 )
 AOT_COMMANDS = (
     *AOT_RID_RESTORE_PAIR,
-    "cd csharp && mise exec -- dotnet publish tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj --configuration Release --framework net8.0 --runtime linux-x64 --self-contained --no-restore -p:PublishAot=true -p:PublishTrimmed=true --output artifacts/aot/net8.0",
-    "cd csharp && mise exec -- dotnet publish tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj --configuration Release --framework net10.0 --runtime linux-x64 --self-contained --no-restore -p:PublishAot=true -p:PublishTrimmed=true --output artifacts/aot/net10.0",
-    "cd csharp && artifacts/aot/net8.0/LibTmux.AotSmoke",
-    "cd csharp && artifacts/aot/net10.0/LibTmux.AotSmoke",
+    "mise exec -- dotnet publish tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj --configuration Release --framework net8.0 --runtime linux-x64 --self-contained --no-restore -p:PublishAot=true -p:PublishTrimmed=true --output artifacts/aot/net8.0",
+    "mise exec -- dotnet publish tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj --configuration Release --framework net10.0 --runtime linux-x64 --self-contained --no-restore -p:PublishAot=true -p:PublishTrimmed=true --output artifacts/aot/net10.0",
+    "artifacts/aot/net8.0/LibTmux.AotSmoke",
+    "artifacts/aot/net10.0/LibTmux.AotSmoke",
 )
 C18_RESTORE_PAIRS = (
     CORE_RESTORE_PAIR,
@@ -1196,21 +1200,21 @@ C18_RESTORE_PAIRS = (
     AOT_RID_RESTORE_PAIR,
 )
 WORKFLOW_CONFIGURATION_COMMANDS = (
-    "uv run python csharp/eng/parity/verify_workflows.py --lane platform .github/workflows/csharp.yml",
-    "uv run python csharp/eng/parity/verify_workflows.py --lane macos-tmux .github/workflows/csharp-tmux.yml",
+    "uv run python eng/parity/verify_workflows.py --lane platform .github/workflows/csharp.yml",
+    "uv run python eng/parity/verify_workflows.py --lane macos-tmux .github/workflows/csharp-tmux.yml",
 )
-FINAL_EVIDENCE_ROOT = "csharp/docs/parity/evidence/final"
-C3_EVIDENCE_ROOT = "csharp/docs/parity/evidence/0001"
-VERSION_DELTA_PATH = "csharp/docs/parity/version-deltas.json"
-NON_RETAINED_MATRIX_COMMAND = "cd csharp && eng/tmux/run-matrix.sh tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj"
-RETAINED_MATRIX_COMMAND = "cd csharp && eng/tmux/run-matrix.sh --capability-cohort closure --evidence-dir docs/parity/evidence/final tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj"
-VALIDATE_FINAL_MATRIX_COMMAND = "uv run python csharp/eng/evidence/validate.py --phase matrix csharp/docs/parity/evidence/final"
-PRECOMMIT_SOURCE_BINDING_COMMAND = "uv run python csharp/eng/evidence/verify_source_binding.py --evidence csharp/docs/parity/evidence/final --repository . --require-evaluated-commit HEAD --allow-dirty-root csharp/docs/parity/evidence/final --fingerprint-mode evaluated-commit-tree"
-POSTCOMMIT_SOURCE_BINDING_COMMAND = "uv run python csharp/eng/evidence/verify_source_binding.py --evidence csharp/docs/parity/evidence/final --repository . --require-evaluated-commit HEAD^ --require-descendant-root csharp/docs/parity/evidence/final --require-descendant-path csharp/docs/parity/version-deltas.json --fingerprint-mode evaluated-commit-tree"
-FINAL_RECONCILE_COMMAND = "uv run python csharp/eng/parity/reconcile_versions.py --evidence csharp/docs/parity/evidence/final/results.ndjson --write"
-PERSISTED_RECONCILE_COMMAND = "uv run python csharp/eng/parity/reconcile_versions.py"
-EVIDENCE_STAGE_COMMAND = "git add -- csharp/docs/parity/evidence/final csharp/docs/parity/version-deltas.json"
-EVIDENCE_SCOPE_COMMAND = "uv run python csharp/eng/parity/verify_production_plan.py --phase closure --verify-final-evidence-staged-scope docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md"
+FINAL_EVIDENCE_ROOT = "docs/parity/evidence/final"
+C3_EVIDENCE_ROOT = "docs/parity/evidence/0001"
+VERSION_DELTA_PATH = "docs/parity/version-deltas.json"
+NON_RETAINED_MATRIX_COMMAND = "eng/tmux/run-matrix.sh tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj"
+RETAINED_MATRIX_COMMAND = "eng/tmux/run-matrix.sh --capability-cohort closure --evidence-dir docs/parity/evidence/final tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj"
+VALIDATE_FINAL_MATRIX_COMMAND = "uv run python eng/evidence/validate.py --phase matrix docs/parity/evidence/final"
+PRECOMMIT_SOURCE_BINDING_COMMAND = "uv run python eng/evidence/verify_source_binding.py --evidence docs/parity/evidence/final --repository . --require-evaluated-commit HEAD --allow-dirty-root docs/parity/evidence/final --fingerprint-mode evaluated-commit-tree"
+POSTCOMMIT_SOURCE_BINDING_COMMAND = "uv run python eng/evidence/verify_source_binding.py --evidence docs/parity/evidence/final --repository . --require-evaluated-commit HEAD^ --require-descendant-root docs/parity/evidence/final --require-descendant-path docs/parity/version-deltas.json --fingerprint-mode evaluated-commit-tree"
+FINAL_RECONCILE_COMMAND = "uv run python eng/parity/reconcile_versions.py --evidence docs/parity/evidence/final/results.ndjson --write"
+PERSISTED_RECONCILE_COMMAND = "uv run python eng/parity/reconcile_versions.py"
+EVIDENCE_STAGE_COMMAND = "git add -- docs/parity/evidence/final docs/parity/version-deltas.json"
+EVIDENCE_SCOPE_COMMAND = "uv run python eng/parity/verify_production_plan.py --phase closure --verify-final-evidence-staged-scope docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md"
 EVIDENCE_COMMIT_COMMAND = "printf '%s\\n' 'Evidence(docs[closure]): Close policy proof' '' 'why: Bind retained compatibility evidence and reconciled policy status to the source commit.' '' what: '- Record the clean source commit and source fingerprint.' '- Retain the required tmux and framework lanes.' '- Reconcile wrapper-policy evidence.' | git commit --file -"
 SOURCE_WORKTREE_CLEAN_COMMAND = 'test -z "$(git status --porcelain)"'
 FINAL_MATRIX_COMMANDS = (
@@ -1226,16 +1230,16 @@ FINAL_MATRIX_COMMANDS = (
     POSTCOMMIT_SOURCE_BINDING_COMMAND,
     SOURCE_WORKTREE_CLEAN_COMMAND,
 )
-C3_RETAINED_MATRIX_COMMAND = "cd csharp && eng/tmux/run-matrix.sh --capability-cohort 0001 --evidence-dir docs/parity/evidence/0001 tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj"
-C3_VALIDATE_MATRIX_COMMAND = "uv run python csharp/eng/evidence/validate.py --phase matrix csharp/docs/parity/evidence/0001"
-C3_PRECOMMIT_SOURCE_BINDING_COMMAND = "uv run python csharp/eng/evidence/verify_source_binding.py --evidence csharp/docs/parity/evidence/0001 --repository . --require-evaluated-commit HEAD --allow-dirty-root csharp/docs/parity/evidence/0001 --fingerprint-mode evaluated-commit-tree"
-C3_RECONCILE_COMMAND = "uv run python csharp/eng/parity/reconcile_versions.py --evidence csharp/docs/parity/evidence/0001/results.ndjson --write"
+C3_RETAINED_MATRIX_COMMAND = "eng/tmux/run-matrix.sh --capability-cohort 0001 --evidence-dir docs/parity/evidence/0001 tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj"
+C3_VALIDATE_MATRIX_COMMAND = "uv run python eng/evidence/validate.py --phase matrix docs/parity/evidence/0001"
+C3_PRECOMMIT_SOURCE_BINDING_COMMAND = "uv run python eng/evidence/verify_source_binding.py --evidence docs/parity/evidence/0001 --repository . --require-evaluated-commit HEAD --allow-dirty-root docs/parity/evidence/0001 --fingerprint-mode evaluated-commit-tree"
+C3_RECONCILE_COMMAND = "uv run python eng/parity/reconcile_versions.py --evidence docs/parity/evidence/0001/results.ndjson --write"
 C3_EVIDENCE_STAGE_COMMAND = (
-    "git add -- csharp/docs/parity/evidence/0001 csharp/docs/parity/version-deltas.json"
+    "git add -- docs/parity/evidence/0001 docs/parity/version-deltas.json"
 )
-C3_EVIDENCE_SCOPE_COMMAND = "uv run python csharp/eng/parity/verify_production_plan.py --phase component --component 3 --verify-retained-evidence-staged-scope docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md"
+C3_EVIDENCE_SCOPE_COMMAND = "uv run python eng/parity/verify_production_plan.py --phase component --component 3 --verify-retained-evidence-staged-scope docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md"
 C3_EVIDENCE_COMMIT_COMMAND = "printf '%s\\n' 'Evidence(docs[versioning]): Retain cohort 0001' '' 'why: Bind protocol evidence and reconciled observations to the Component 3 source commit.' '' what: '- Retain the exact protocol cohort.' '- Reconcile the five protocol observations.' | git commit --file -"
-C3_POSTCOMMIT_SOURCE_BINDING_COMMAND = "uv run python csharp/eng/evidence/verify_source_binding.py --evidence csharp/docs/parity/evidence/0001 --repository . --require-evaluated-commit HEAD^ --require-descendant-root csharp/docs/parity/evidence/0001 --require-descendant-path csharp/docs/parity/version-deltas.json --fingerprint-mode evaluated-commit-tree"
+C3_POSTCOMMIT_SOURCE_BINDING_COMMAND = "uv run python eng/evidence/verify_source_binding.py --evidence docs/parity/evidence/0001 --repository . --require-evaluated-commit HEAD^ --require-descendant-root docs/parity/evidence/0001 --require-descendant-path docs/parity/version-deltas.json --fingerprint-mode evaluated-commit-tree"
 C3_EVIDENCE_COMMANDS = (
     C3_RETAINED_MATRIX_COMMAND,
     C3_VALIDATE_MATRIX_COMMAND,
@@ -1260,8 +1264,8 @@ ROOT_QUALITY_COMMANDS = (
     "uv run ruff format --check .",
     "uv run ruff check .",
     "uv run mypy",
-    "uv run mypy csharp/eng/parity",
-    "uv run mypy csharp/eng/evidence",
+    "uv run mypy eng/parity",
+    "uv run mypy eng/evidence",
     "uv run pytest --doctest-modules",
     "just build-docs",
 )
@@ -1298,7 +1302,7 @@ REQUIRED_CLOSURE_COMMANDS: dict[str, tuple[str, ...]] = {
     "Package": PACKAGE_COMMANDS,
     "Public API": (
         PUBLIC_API_BUILD_COMMAND,
-        "uv run python csharp/eng/parity/verify_production_plan.py --phase closure docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md",
+        "uv run python eng/parity/verify_production_plan.py --phase closure docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md",
     ),
     "Repository quality": ROOT_QUALITY_COMMANDS,
     "Diff integrity": ("git diff --check",),
@@ -1532,7 +1536,7 @@ RED_CASES: dict[int, tuple[str, str]] = {
     ),
 }
 RED_EVIDENCE: dict[int, str] = {
-    component: f"csharp/artifacts/tdd/component-{component:02d}.trx"
+    component: f"artifacts/tdd/component-{component:02d}.trx"
     for component in COMPONENT_IDS
 }
 RED_TEST_NAMESPACES: dict[int, str] = {
@@ -1561,8 +1565,8 @@ RED_TEST_IDENTITIES: dict[int, str] = {
 }
 RED_COMMANDS: dict[int, str] = {
     component: (
-        "uv run python csharp/eng/parity/require_red.py "
-        f"--project csharp/{project} --configuration Release --framework net8.0 "
+        "uv run python eng/parity/require_red.py "
+        f"--project {project} --configuration Release --framework net8.0 "
         f"--no-restore --test {RED_TEST_IDENTITIES[component]} "
         f"--evidence {RED_EVIDENCE[component]}"
     )
@@ -1922,7 +1926,7 @@ def validate_component(
         violations.append(f"component {component_id} has invalid Project wiring")
     if component_id == 18 and (
         files is None
-        or "csharp/src/LibTmux.Query.Json/packages.packed.lock.json" not in files
+        or "src/LibTmux.Query.Json/packages.packed.lock.json" not in files
         or project_wiring is None
         or tuple(project_wiring) != PROJECT_WIRING[18]
     ):
@@ -2226,18 +2230,18 @@ def validate_component(
             f"component {component_id} bypasses phase-aware approval validation"
         )
     phase_command = (
-        "uv run python csharp/eng/parity/verify_production_plan.py "
+        "uv run python eng/parity/verify_production_plan.py "
         f"--phase component --component {component_id} "
         "docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md"
     )
     stage_command = (
-        "uv run python csharp/eng/parity/verify_production_plan.py "
+        "uv run python eng/parity/verify_production_plan.py "
         f"--phase component --component {component_id} --print-stage-paths "
         "docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md "
         "| xargs git add --"
     )
     verify_stage_command = (
-        "uv run python csharp/eng/parity/verify_production_plan.py "
+        "uv run python eng/parity/verify_production_plan.py "
         f"--phase component --component {component_id} --verify-staged-scope "
         "docs/superpowers/plans/2026-08-09-libtmux-csharp-production.md"
     )
@@ -2416,12 +2420,9 @@ def validate_component(
             EVIDENCE_COMMIT_COMMAND,
         }.issubset(gate_tokens):
             violations.append("component 18 has incomplete source-binding closure")
-    if gate_tokens is not None and any(
-        "csharp/" in command.partition("cd csharp &&")[2]
-        for command in gate_tokens
-        if "cd csharp &&" in command
-    ):
-        violations.append(f"component {component_id} repeats csharp/ after cd csharp")
+    # A rule against repeating the project directory after entering it stood
+    # here. The project was one directory into a monorepo then and is the
+    # repository now, so no command enters it and there is nothing to repeat.
 
 
 def approval_ledger(ledger: dict[str, t.Any]) -> dict[str, t.Any]:
@@ -2574,9 +2575,9 @@ def stage_paths(markdown: str, component: int) -> list[str]:
 
     Examples
     --------
-    >>> stage_paths("## Component 1: One\n### Files\n- `csharp/a`\n"
-    ...             "### Shared files\n- `csharp/b`\n", 1)
-    ['csharp/a', 'csharp/b']
+    >>> stage_paths("## Component 1: One\n### Files\n- `a`\n"
+    ...             "### Shared files\n- `b`\n", 1)
+    ['a', 'b']
     """
     components, _ = parse_markdown(markdown)
     matches = [entry for entry in components if entry["id"] == component]
@@ -2658,9 +2659,9 @@ def compare_staged_scope(
 
     Examples
     --------
-    >>> compare_staged_scope(["csharp/a.cs"], ["csharp/a.cs"])
+    >>> compare_staged_scope(["a.cs"], ["a.cs"])
     []
-    >>> compare_staged_scope(["csharp/a.cs"], ["other.cs"])
+    >>> compare_staged_scope(["a.cs"], ["other.cs"])
     ['staged paths do not exactly match component allow-list']
     """
     allowed = set(allowed_paths)
@@ -2864,13 +2865,13 @@ def validate_c4_ledger_ownership(ledger: dict[str, t.Any]) -> list[str]:
         "libtmux.pane:Pane.from_pane_id": {
             "componentId": 4,
             "testPath": (
-                "csharp/tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
+                "tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
             ),
         },
         "libtmux.window:Window.from_window_id": {
             "componentId": 4,
             "testPath": (
-                "csharp/tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
+                "tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
             ),
         },
     }

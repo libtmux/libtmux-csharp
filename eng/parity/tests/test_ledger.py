@@ -438,7 +438,7 @@ def test_version_deltas_target_the_planned_production_suite() -> None:
     assert {row["evidenceStatus"] for row in rows} <= {"pending", "verified"}
     assert all(
         row["namedRealServerTest"].startswith(
-            "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::"
+            "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::"
         )
         for row in rows
     )
@@ -496,7 +496,7 @@ def test_c4_owns_canonical_window_and_pane_lookup_materialization() -> None:
         symbol_id: {
             "componentId": 4,
             "testPath": (
-                "csharp/tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
+                "tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
             ),
         }
         for symbol_id in moved

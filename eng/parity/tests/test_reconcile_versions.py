@@ -11,10 +11,10 @@ import typing as t
 
 import pytest
 
-from csharp.eng.evidence.assemble_bundle import source_state, source_tree_fingerprint
+from eng.evidence.assemble_bundle import source_state, source_tree_fingerprint
 
 VERSION_PARITY_TEST = (
-    "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::"
+    "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::"
 )
 TRANSITION_TMUX_SOURCE_COMMIT = "a" * 40
 EVALUATED_COMMIT_TREE = "e" * 40
@@ -76,7 +76,7 @@ def write_fixture(
     rows: list[dict[str, t.Any]],
 ) -> tuple[pathlib.Path, dict[str, tuple[str, ...]], str]:
     """Write matrix evidence and one checked capability test source."""
-    test_path = root / "csharp" / "spikes" / "EvidenceTests.cs"
+    test_path = root / "spikes" / "EvidenceTests.cs"
     test_path.parent.mkdir(parents=True)
     test_path.write_text(
         "public sealed class EvidenceTests {\n"
@@ -104,7 +104,7 @@ def write_fixture(
         check=True,
     )
     subprocess.run(
-        ["git", "-C", str(root), "add", "csharp/spikes/EvidenceTests.cs"],
+        ["git", "-C", str(root), "add", "spikes/EvidenceTests.cs"],
         check=True,
     )
     subprocess.run(
@@ -119,7 +119,7 @@ def write_fixture(
     ).stdout.strip()
     for row in rows:
         row["evaluatedCommit"] = commit
-    evidence = root / "csharp" / "docs" / "decisions" / "evidence" / "0001"
+    evidence = root / "docs" / "decisions" / "evidence" / "0001"
     evidence.mkdir(parents=True)
     results = evidence / "results.ndjson"
     results.write_text(
@@ -127,7 +127,7 @@ def write_fixture(
         encoding="utf-8",
     )
     write_environment(results, root)
-    test_id = "csharp/spikes/EvidenceTests.cs::Capability_is_exercised"
+    test_id = "spikes/EvidenceTests.cs::Capability_is_exercised"
     mapping: dict[str, tuple[str, ...]] = {
         row["capability"]: (test_id,)
         for row in seed_document()["capabilities"]
@@ -253,7 +253,7 @@ def write_policy_test_source(
             encoding="utf-8",
         )
     subprocess.run(
-        ["git", "-C", str(root), "add", "csharp/tests"],
+        ["git", "-C", str(root), "add", "tests"],
         check=True,
     )
     subprocess.run(
@@ -397,7 +397,6 @@ def test_uncommitted_evidence_uses_fingerprinted_worktree_test(
     results, _mapping, commit = write_fixture(tmp_path, matrix_rows())
     test_path = (
         tmp_path
-        / "csharp"
         / "tests"
         / "LibTmux.IntegrationTests"
         / "Versioning"
@@ -513,7 +512,7 @@ def test_reconciliation_records_only_checked_complete_matrix_evidence(
         assert row["evidence"]["capabilityCohort"] == CAPABILITY_COHORT
         assert row["evidence"]["frameworks"] == ["net10.0", "net8.0"]
         assert row["evidence"]["results"] == (
-            "csharp/docs/decisions/evidence/0001/results.ndjson"
+            "docs/decisions/evidence/0001/results.ndjson"
         )
         assert row["evidence"]["sourceState"] == "clean"
         assert row["evidence"]["sourceTreeFingerprint"] == source_tree_fingerprint(
@@ -553,7 +552,7 @@ def test_reconciliation_retains_raw_break_transition_without_policy_evidence(
         "3.7": TRANSITION_TMUX_SOURCE_COMMIT,
     }
     assert transition["transitionTranscript"] == (
-        "csharp/docs/decisions/evidence/0001/"
+        "docs/decisions/evidence/0001/"
         "protocol-transcripts/break-pane-transition.txt"
     )
 
@@ -575,7 +574,7 @@ def test_component_three_cohort_rejects_command_policy_promotion(
             repository=tmp_path,
             capability_tests={
                 "break_pane_3_7_workaround": (
-                    "csharp/spikes/EvidenceTests.cs::BreakPane37Workaround",
+                    "spikes/EvidenceTests.cs::BreakPane37Workaround",
                 )
             },
         )
@@ -680,7 +679,7 @@ def test_reconciliation_rejects_break_pane_transition_source_drift(
     )
     mapping = {
         "break_pane_3_7_workaround": (
-            "csharp/spikes/EvidenceTests.cs::BreakPane37Workaround",
+            "spikes/EvidenceTests.cs::BreakPane37Workaround",
         )
     }
 
@@ -719,7 +718,7 @@ def test_write_is_atomic_and_deterministic(tmp_path: pathlib.Path) -> None:
     """Write one deterministic document and leave no transaction residue."""
     namespace = load_reconciler()
     results, mapping, _commit = write_fixture(tmp_path, matrix_rows())
-    document = tmp_path / "csharp" / "docs" / "parity" / "version-deltas.json"
+    document = tmp_path / "docs" / "parity" / "version-deltas.json"
     document.parent.mkdir(parents=True)
     document.write_text(
         json.dumps(seed_document(), indent=2, sort_keys=True) + "\n",
@@ -747,7 +746,7 @@ def test_written_evidence_remains_bound_after_reconciliation_and_commit(
     """Keep the tested source content identity stable across metadata and commit."""
     namespace = load_reconciler()
     results, mapping, _commit = write_fixture(tmp_path, matrix_rows())
-    document = tmp_path / "csharp" / "docs" / "parity" / "version-deltas.json"
+    document = tmp_path / "docs" / "parity" / "version-deltas.json"
     document.parent.mkdir(parents=True)
     document.write_text(
         json.dumps(seed_document(), indent=2, sort_keys=True) + "\n",
@@ -776,7 +775,7 @@ def test_written_evidence_remains_bound_after_reconciliation_and_commit(
     )
 
     subprocess.run(
-        ["git", "-C", str(tmp_path), "add", "csharp/docs"],
+        ["git", "-C", str(tmp_path), "add", "docs"],
         check=True,
     )
     subprocess.run(
@@ -798,7 +797,7 @@ def test_persisted_evidence_rejects_missing_results(tmp_path: pathlib.Path) -> N
     """Reject a verified record after its bound matrix results disappear."""
     namespace = load_reconciler()
     results, mapping, _commit = write_fixture(tmp_path, matrix_rows())
-    document = tmp_path / "csharp" / "docs" / "parity" / "version-deltas.json"
+    document = tmp_path / "docs" / "parity" / "version-deltas.json"
     document.parent.mkdir(parents=True)
     document.write_text(
         json.dumps(seed_document(), indent=2, sort_keys=True) + "\n",
@@ -829,7 +828,7 @@ def test_dry_run_validates_without_writing(tmp_path: pathlib.Path) -> None:
     """Validate the proposed reconciliation without mutating the document."""
     namespace = load_reconciler()
     results, mapping, _commit = write_fixture(tmp_path, matrix_rows())
-    document = tmp_path / "csharp" / "docs" / "parity" / "version-deltas.json"
+    document = tmp_path / "docs" / "parity" / "version-deltas.json"
     document.parent.mkdir(parents=True)
     original = json.dumps(seed_document(), indent=2, sort_keys=True) + "\n"
     document.write_text(original, encoding="utf-8")
@@ -850,12 +849,12 @@ def test_source_changes_after_matrix_are_rejected(tmp_path: pathlib.Path) -> Non
     """Reject a mapped test added after the matrix fingerprint was recorded."""
     namespace = load_reconciler()
     results, mapping, _commit = write_fixture(tmp_path, matrix_rows())
-    late_path = tmp_path / "csharp" / "spikes" / "LateTests.cs"
+    late_path = tmp_path / "spikes" / "LateTests.cs"
     late_path.write_text(
         "public sealed class LateTests { public void Too_late() { } }\n",
         encoding="utf-8",
     )
-    mapping["attachment_accounting"] = ("csharp/spikes/LateTests.cs::Too_late",)
+    mapping["attachment_accounting"] = ("spikes/LateTests.cs::Too_late",)
 
     with pytest.raises(
         namespace["VersionReconciliationError"],
@@ -875,7 +874,7 @@ def test_mapping_must_name_a_discoverable_xunit_test(
     """Reject a helper method that the aggregate test run cannot discover."""
     namespace = load_reconciler()
     results, mapping, _commit = write_fixture(tmp_path, matrix_rows())
-    test_path = tmp_path / "csharp" / "spikes" / "EvidenceTests.cs"
+    test_path = tmp_path / "spikes" / "EvidenceTests.cs"
     test_path.write_text(
         "public sealed class EvidenceTests {\n"
         "    public void Capability_is_exercised() { }\n"
@@ -883,7 +882,7 @@ def test_mapping_must_name_a_discoverable_xunit_test(
         encoding="utf-8",
     )
     subprocess.run(
-        ["git", "-C", str(tmp_path), "add", "csharp/spikes/EvidenceTests.cs"],
+        ["git", "-C", str(tmp_path), "add", "spikes/EvidenceTests.cs"],
         check=True,
     )
     subprocess.run(
@@ -988,13 +987,13 @@ def test_same_cohort_rerun_refreshes_verified_evidence(
         repository=tmp_path,
         capability_tests=mapping,
     )
-    test_source = tmp_path / "csharp" / "spikes" / "EvidenceTests.cs"
+    test_source = tmp_path / "spikes" / "EvidenceTests.cs"
     test_source.write_text(
         test_source.read_text(encoding="utf-8") + "\n",
         encoding="utf-8",
     )
     subprocess.run(
-        ["git", "-C", str(tmp_path), "add", "csharp/spikes/EvidenceTests.cs"],
+        ["git", "-C", str(tmp_path), "add", "spikes/EvidenceTests.cs"],
         check=True,
     )
     subprocess.run(
@@ -1067,14 +1066,14 @@ def test_later_cohort_preserves_prior_commit_tree_evidence(
         repository=tmp_path,
         capability_tests=mapping,
     )
-    (tmp_path / "csharp" / "spikes" / "EvidenceTests.cs").unlink()
+    (tmp_path / "spikes" / "EvidenceTests.cs").unlink()
     subprocess.run(
         [
             "git",
             "-C",
             str(tmp_path),
             "add",
-            "csharp/spikes/EvidenceTests.cs",
+            "spikes/EvidenceTests.cs",
         ],
         check=True,
     )
@@ -1514,7 +1513,7 @@ def test_command_flag_capabilities_freeze_version_and_fallback_behavior() -> Non
     assert all("evidence" not in row for row in rows.values())
     assert all(
         row["namedRealServerTest"].startswith(
-            "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::"
+            "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::"
         )
         for row in rows.values()
     )

@@ -103,7 +103,7 @@ def _fake_matrix_environment(
     tmp_path: pathlib.Path,
 ) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path, dict[str, str]]:
     """Create source-bound tmux caches and a recording fake toolchain."""
-    repository = pathlib.Path(__file__).parents[4]
+    repository = pathlib.Path(__file__).parents[3]
     artifact_root = tmp_path / "tmux-cache"
     for version in [*REQUIRED_TMUX_VERSIONS, "3.7"]:
         _seed_tmux_build_cache(artifact_root, version)
@@ -189,7 +189,7 @@ def test_matrix_runner_skips_transition_outside_component_three_cohort(
 
     subprocess.run(
         [
-            str(repository / "csharp" / "eng" / "tmux" / "run-matrix.sh"),
+            str(repository / "eng" / "tmux" / "run-matrix.sh"),
             "tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj",
         ],
         check=True,
@@ -215,7 +215,7 @@ def test_matrix_runner_runs_exact_source_bound_tmux_3_7_transition(
 
     subprocess.run(
         [
-            str(repository / "csharp" / "eng" / "tmux" / "run-matrix.sh"),
+            str(repository / "eng" / "tmux" / "run-matrix.sh"),
             "--evidence-dir",
             str(evidence),
             "--capability-cohort",
@@ -269,7 +269,7 @@ def test_matrix_runner_does_not_infer_cohort_from_evidence_basename(
 
     subprocess.run(
         [
-            str(repository / "csharp" / "eng" / "tmux" / "run-matrix.sh"),
+            str(repository / "eng" / "tmux" / "run-matrix.sh"),
             "--evidence-dir",
             str(evidence),
             "tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj",
@@ -300,7 +300,7 @@ def test_matrix_runner_records_wrapper_policy_closure_without_transition(
 
     subprocess.run(
         [
-            str(repository / "csharp" / "eng" / "tmux" / "run-matrix.sh"),
+            str(repository / "eng" / "tmux" / "run-matrix.sh"),
             "--evidence-dir",
             str(evidence),
             "--capability-cohort",
@@ -362,7 +362,7 @@ def test_matrix_runner_rejects_invalid_capability_cohort_combinations(
 
     completed = subprocess.run(
         [
-            str(repository / "csharp" / "eng" / "tmux" / "run-matrix.sh"),
+            str(repository / "eng" / "tmux" / "run-matrix.sh"),
             *arguments,
             "tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj",
         ],

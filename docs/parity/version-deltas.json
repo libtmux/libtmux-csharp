@@ -9,13 +9,13 @@
           "net10.0",
           "net8.0"
         ],
-        "results": "csharp/docs/parity/evidence/0001/results.ndjson",
+        "results": "docs/parity/evidence/0001/results.ndjson",
         "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
         "sourceState": "clean",
         "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
         "testCount": 134,
         "tests": [
-          "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::AttachmentAccounting"
+          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::AttachmentAccounting"
         ],
         "tmuxSourceCommits": {
           "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
@@ -38,7 +38,7 @@
       },
       "evidenceStatus": "verified",
       "introducedIn": "unknown",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::AttachmentAccounting",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::AttachmentAccounting",
       "removedIn": "unknown",
       "tmuxSourceEndpoints": {
         "3.2a": "https://github.com/tmux/tmux/tree/3.2a",
@@ -54,13 +54,13 @@
           "net10.0",
           "net8.0"
         ],
-        "results": "csharp/docs/parity/evidence/0001/results.ndjson",
+        "results": "docs/parity/evidence/0001/results.ndjson",
         "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
         "sourceState": "clean",
         "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
         "testCount": 134,
         "tests": [
-          "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ByteLengthFraming"
+          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ByteLengthFraming"
         ],
         "tmuxSourceCommits": {
           "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
@@ -83,7 +83,7 @@
       },
       "evidenceStatus": "verified",
       "introducedIn": "unknown",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ByteLengthFraming",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ByteLengthFraming",
       "removedIn": "unknown",
       "tmuxSourceEndpoints": {
         "3.2a": "https://github.com/tmux/tmux/tree/3.2a",
@@ -99,13 +99,13 @@
           "net10.0",
           "net8.0"
         ],
-        "results": "csharp/docs/parity/evidence/0001/results.ndjson",
+        "results": "docs/parity/evidence/0001/results.ndjson",
         "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
         "sourceState": "clean",
         "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
         "testCount": 134,
         "tests": [
-          "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ControlNotifications"
+          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ControlNotifications"
         ],
         "tmuxSourceCommits": {
           "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
@@ -128,7 +128,7 @@
       },
       "evidenceStatus": "verified",
       "introducedIn": "unknown",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ControlNotifications",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ControlNotifications",
       "removedIn": "unknown",
       "tmuxSourceEndpoints": {
         "3.2a": "https://github.com/tmux/tmux/tree/3.2a",
@@ -144,13 +144,13 @@
           "net10.0",
           "net8.0"
         ],
-        "results": "csharp/docs/parity/evidence/0001/results.ndjson",
+        "results": "docs/parity/evidence/0001/results.ndjson",
         "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
         "sourceState": "clean",
         "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
         "testCount": 134,
         "tests": [
-          "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::FormatFieldsAndOperators"
+          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::FormatFieldsAndOperators"
         ],
         "tmuxSourceCommits": {
           "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
@@ -173,7 +173,7 @@
       },
       "evidenceStatus": "verified",
       "introducedIn": "unknown",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::FormatFieldsAndOperators",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::FormatFieldsAndOperators",
       "removedIn": "unknown",
       "tmuxSourceEndpoints": {
         "3.2a": "https://github.com/tmux/tmux/tree/3.2a",
@@ -184,7 +184,7 @@
       "capability": "option_dollar_double_escape",
       "evidenceStatus": "pending",
       "introducedIn": "3.4",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::OptionDollarDoubleEscape",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::OptionDollarDoubleEscape",
       "removedIn": "3.5",
       "tmuxSourceEndpoints": {
         "3.2a": "https://github.com/tmux/tmux/tree/3.2a",
@@ -200,13 +200,13 @@
           "net10.0",
           "net8.0"
         ],
-        "results": "csharp/docs/parity/evidence/0001/results.ndjson",
+        "results": "docs/parity/evidence/0001/results.ndjson",
         "sourceContentFingerprint": "e02453b796419431e49244857d32294d737adeea1faeaa9588003da009a3a056",
         "sourceState": "clean",
         "sourceTreeFingerprint": "d2525d77ac5300ea93d3792bd6b93087f321670aebf0287d71a3a8f420b2eee3",
         "testCount": 134,
         "tests": [
-          "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SemicolonGrouping"
+          "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SemicolonGrouping"
         ],
         "tmuxSourceCommits": {
           "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
@@ -229,7 +229,7 @@
       },
       "evidenceStatus": "verified",
       "introducedIn": "unknown",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SemicolonGrouping",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SemicolonGrouping",
       "removedIn": "unknown",
       "tmuxSourceEndpoints": {
         "3.2a": "https://github.com/tmux/tmux/tree/3.2a",
@@ -242,7 +242,7 @@
       "featureKind": "workaround",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::BreakPane37Workaround",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::BreakPane37Workaround",
       "policyOwnerComponents": [
         12
       ],
@@ -272,7 +272,7 @@
       },
       "unsupportedBehavior": "apply_only_in_affected_version",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::BreakPane37WorkaroundVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::BreakPane37WorkaroundVersionPolicy"
       ]
     },
     {
@@ -281,7 +281,7 @@
       "featureKind": "flags",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CapturePane37Metadata",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CapturePane37Metadata",
       "policyOwnerComponents": [
         12
       ],
@@ -308,7 +308,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::CapturePane37MetadataVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::CapturePane37MetadataVersionPolicy"
       ]
     },
     {
@@ -317,7 +317,7 @@
       "featureKind": "flag",
       "introducedIn": "3.6",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CapturePaneModeScreen",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CapturePaneModeScreen",
       "policyOwnerComponents": [
         12
       ],
@@ -342,7 +342,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::CapturePaneModeScreenVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::CapturePaneModeScreenVersionPolicy"
       ]
     },
     {
@@ -351,7 +351,7 @@
       "featureKind": "flag",
       "introducedIn": "3.4",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CapturePaneTrimTrailing",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CapturePaneTrimTrailing",
       "policyOwnerComponents": [
         12
       ],
@@ -376,7 +376,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::CapturePaneTrimTrailingVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::CapturePaneTrimTrailingVersionPolicy"
       ]
     },
     {
@@ -385,7 +385,7 @@
       "featureKind": "removed_flag",
       "introducedIn": "unknown",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ChooseTreeSortTime",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ChooseTreeSortTime",
       "policyOwnerComponents": [
         12
       ],
@@ -410,7 +410,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::ChooseTreeSortTimeVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::ChooseTreeSortTimeVersionPolicy"
       ]
     },
     {
@@ -419,7 +419,7 @@
       "featureKind": "flag",
       "introducedIn": "3.4",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ClearHistoryHyperlinks",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ClearHistoryHyperlinks",
       "policyOwnerComponents": [
         12
       ],
@@ -444,7 +444,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::ClearHistoryHyperlinksVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::ClearHistoryHyperlinksVersionPolicy"
       ]
     },
     {
@@ -453,7 +453,7 @@
       "featureKind": "command",
       "introducedIn": "3.3",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ClearPromptHistoryCommand",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ClearPromptHistoryCommand",
       "policyOwnerComponents": [
         16
       ],
@@ -476,7 +476,7 @@
       },
       "unsupportedBehavior": "throw_unsupported_version",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ClearPromptHistoryCommandVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ClearPromptHistoryCommandVersionPolicy"
       ]
     },
     {
@@ -485,7 +485,7 @@
       "featureKind": "flags",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CommandPrompt37Behavior",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CommandPrompt37Behavior",
       "policyOwnerComponents": [
         16
       ],
@@ -511,7 +511,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::CommandPrompt37BehaviorVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::CommandPrompt37BehaviorVersionPolicy"
       ]
     },
     {
@@ -520,7 +520,7 @@
       "featureKind": "flags",
       "introducedIn": "3.3",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CommandPromptBackground",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CommandPromptBackground",
       "policyOwnerComponents": [
         16
       ],
@@ -546,7 +546,7 @@
       },
       "unsupportedBehavior": "throw_unsupported_version",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::CommandPromptBackgroundVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::CommandPromptBackgroundVersionPolicy"
       ]
     },
     {
@@ -555,7 +555,7 @@
       "featureKind": "flag",
       "introducedIn": "3.6",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CommandPromptLiteral",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CommandPromptLiteral",
       "policyOwnerComponents": [
         16
       ],
@@ -580,7 +580,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::CommandPromptLiteralVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::CommandPromptLiteralVersionPolicy"
       ]
     },
     {
@@ -589,7 +589,7 @@
       "featureKind": "flags",
       "introducedIn": "3.4",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ConfirmBeforeAcceptance",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ConfirmBeforeAcceptance",
       "policyOwnerComponents": [
         16
       ],
@@ -615,7 +615,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ConfirmBeforeAcceptanceVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ConfirmBeforeAcceptanceVersionPolicy"
       ]
     },
     {
@@ -624,7 +624,7 @@
       "featureKind": "flag",
       "introducedIn": "3.3",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ConfirmBeforeBackground",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ConfirmBeforeBackground",
       "policyOwnerComponents": [
         16
       ],
@@ -649,7 +649,7 @@
       },
       "unsupportedBehavior": "throw_unsupported_version",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ConfirmBeforeBackgroundVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ConfirmBeforeBackgroundVersionPolicy"
       ]
     },
     {
@@ -658,7 +658,7 @@
       "featureKind": "flag",
       "introducedIn": "3.5",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CopyModePageDown",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::CopyModePageDown",
       "policyOwnerComponents": [
         12
       ],
@@ -683,7 +683,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::CopyModePageDownVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::CopyModePageDownVersionPolicy"
       ]
     },
     {
@@ -692,7 +692,7 @@
       "featureKind": "flag",
       "introducedIn": "3.5",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMenuMouse",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMenuMouse",
       "policyOwnerComponents": [
         16
       ],
@@ -717,7 +717,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::DisplayMenuMouseVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::DisplayMenuMouseVersionPolicy"
       ]
     },
     {
@@ -726,7 +726,7 @@
       "featureKind": "flags",
       "introducedIn": "3.4",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMenuStyles",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMenuStyles",
       "policyOwnerComponents": [
         16
       ],
@@ -755,7 +755,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::DisplayMenuStylesVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::DisplayMenuStylesVersionPolicy"
       ]
     },
     {
@@ -764,7 +764,7 @@
       "featureKind": "flag",
       "introducedIn": "3.3",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMessageClient",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMessageClient",
       "policyOwnerComponents": [
         16
       ],
@@ -789,7 +789,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::DisplayMessageClientVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::DisplayMessageClientVersionPolicy"
       ]
     },
     {
@@ -798,7 +798,7 @@
       "featureKind": "flag",
       "introducedIn": "3.4",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMessageLiteral",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMessageLiteral",
       "policyOwnerComponents": [
         11,
         12,
@@ -827,9 +827,9 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/WindowTopologyTests.cs::DisplayMessageLiteralVersionPolicy",
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::DisplayMessageLiteralVersionPolicy",
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::DisplayMessageLiteralVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/WindowTopologyTests.cs::DisplayMessageLiteralVersionPolicy",
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::DisplayMessageLiteralVersionPolicy",
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::DisplayMessageLiteralVersionPolicy"
       ]
     },
     {
@@ -838,7 +838,7 @@
       "featureKind": "flag",
       "introducedIn": "3.6",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMessageUpdatePane",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayMessageUpdatePane",
       "policyOwnerComponents": [
         12
       ],
@@ -863,7 +863,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::DisplayMessageUpdatePaneVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::DisplayMessageUpdatePaneVersionPolicy"
       ]
     },
     {
@@ -872,7 +872,7 @@
       "featureKind": "flags",
       "introducedIn": "3.3",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayPopup33Options",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayPopup33Options",
       "policyOwnerComponents": [
         12
       ],
@@ -902,7 +902,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::DisplayPopup33OptionsVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::DisplayPopup33OptionsVersionPolicy"
       ]
     },
     {
@@ -911,7 +911,7 @@
       "featureKind": "flags",
       "introducedIn": "3.6",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayPopup36KeyPolicy",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::DisplayPopup36KeyPolicy",
       "policyOwnerComponents": [
         12
       ],
@@ -937,7 +937,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::DisplayPopup36KeyPolicyVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::DisplayPopup36KeyPolicyVersionPolicy"
       ]
     },
     {
@@ -946,7 +946,7 @@
       "featureKind": "flags",
       "introducedIn": "3.2",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::HookScopePaneWindowSet",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::HookScopePaneWindowSet",
       "policyOwnerComponents": [
         15
       ],
@@ -975,7 +975,7 @@
       },
       "unsupportedBehavior": "not_applicable_below_supported_floor",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs::HookScopePaneWindowSetVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs::HookScopePaneWindowSetVersionPolicy"
       ]
     },
     {
@@ -984,7 +984,7 @@
       "featureKind": "flags",
       "introducedIn": "3.2",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::HookScopePaneWindowShow",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::HookScopePaneWindowShow",
       "policyOwnerComponents": [
         15
       ],
@@ -1012,7 +1012,7 @@
       },
       "unsupportedBehavior": "not_applicable_below_supported_floor",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs::HookScopePaneWindowShowVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs::HookScopePaneWindowShowVersionPolicy"
       ]
     },
     {
@@ -1021,7 +1021,7 @@
       "featureKind": "flag",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::KillSessionGroup",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::KillSessionGroup",
       "policyOwnerComponents": [
         10
       ],
@@ -1046,7 +1046,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/ServerSessionLifecycleTests.cs::KillSessionGroupVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/ServerSessionLifecycleTests.cs::KillSessionGroupVersionPolicy"
       ]
     },
     {
@@ -1055,7 +1055,7 @@
       "featureKind": "flag",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ListKeysFormat",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ListKeysFormat",
       "policyOwnerComponents": [
         16
       ],
@@ -1080,7 +1080,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ListKeysFormatVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ListKeysFormatVersionPolicy"
       ]
     },
     {
@@ -1089,7 +1089,7 @@
       "featureKind": "command",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::NewPaneCommand",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::NewPaneCommand",
       "policyOwnerComponents": [
         12
       ],
@@ -1112,7 +1112,7 @@
       },
       "unsupportedBehavior": "throw_unsupported_version",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::NewPaneCommandVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::NewPaneCommandVersionPolicy"
       ]
     },
     {
@@ -1121,7 +1121,7 @@
       "featureKind": "flag",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::PasteBufferNoVis",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::PasteBufferNoVis",
       "policyOwnerComponents": [
         12
       ],
@@ -1146,7 +1146,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::PasteBufferNoVisVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::PasteBufferNoVisVersionPolicy"
       ]
     },
     {
@@ -1155,7 +1155,7 @@
       "featureKind": "semantic_transition",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::RefreshClientClipboardQuery",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::RefreshClientClipboardQuery",
       "policyOwnerComponents": [
         13
       ],
@@ -1188,7 +1188,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Clients/ClientAdministrationTests.cs::RefreshClientClipboardQueryVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Clients/ClientAdministrationTests.cs::RefreshClientClipboardQueryVersionPolicy"
       ]
     },
     {
@@ -1197,7 +1197,7 @@
       "featureKind": "positional_arguments",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::RunShellArguments",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::RunShellArguments",
       "policyOwnerComponents": [
         16
       ],
@@ -1220,7 +1220,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::RunShellArgumentsVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::RunShellArgumentsVersionPolicy"
       ]
     },
     {
@@ -1229,7 +1229,7 @@
       "featureKind": "flag",
       "introducedIn": "3.6",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::RunShellShowStderr",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::RunShellShowStderr",
       "policyOwnerComponents": [
         16
       ],
@@ -1254,7 +1254,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::RunShellShowStderrVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::RunShellShowStderrVersionPolicy"
       ]
     },
     {
@@ -1263,7 +1263,7 @@
       "featureKind": "flag",
       "introducedIn": "3.4",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::RunShellWorkingDirectory",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::RunShellWorkingDirectory",
       "policyOwnerComponents": [
         16
       ],
@@ -1288,7 +1288,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::RunShellWorkingDirectoryVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::RunShellWorkingDirectoryVersionPolicy"
       ]
     },
     {
@@ -1297,7 +1297,7 @@
       "featureKind": "flags",
       "introducedIn": "3.4",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SendKeysClientKeys",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SendKeysClientKeys",
       "policyOwnerComponents": [
         12
       ],
@@ -1323,7 +1323,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::SendKeysClientKeysVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::SendKeysClientKeysVersionPolicy"
       ]
     },
     {
@@ -1332,7 +1332,7 @@
       "featureKind": "command",
       "introducedIn": "3.3",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ServerAccessCommand",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ServerAccessCommand",
       "policyOwnerComponents": [
         16
       ],
@@ -1355,7 +1355,7 @@
       },
       "unsupportedBehavior": "throw_unsupported_version",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ServerAccessCommandVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ServerAccessCommandVersionPolicy"
       ]
     },
     {
@@ -1364,7 +1364,7 @@
       "featureKind": "command",
       "introducedIn": "3.3",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ShowPromptHistoryCommand",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ShowPromptHistoryCommand",
       "policyOwnerComponents": [
         16
       ],
@@ -1387,7 +1387,7 @@
       },
       "unsupportedBehavior": "throw_unsupported_version",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ShowPromptHistoryCommandVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs::ShowPromptHistoryCommandVersionPolicy"
       ]
     },
     {
@@ -1396,7 +1396,7 @@
       "featureKind": "flags",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SplitWindowAppearance",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SplitWindowAppearance",
       "policyOwnerComponents": [
         12
       ],
@@ -1425,7 +1425,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::SplitWindowAppearanceVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::SplitWindowAppearanceVersionPolicy"
       ]
     },
     {
@@ -1434,7 +1434,7 @@
       "featureKind": "flag",
       "introducedIn": "3.7",
       "kind": "command_gate",
-      "namedRealServerTest": "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SplitWindowEmpty",
+      "namedRealServerTest": "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SplitWindowEmpty",
       "policyOwnerComponents": [
         12
       ],
@@ -1459,7 +1459,7 @@
       },
       "unsupportedBehavior": "warn_and_ignore",
       "wrapperPolicyTests": [
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::SplitWindowEmptyVersionPolicy"
+        "tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs::SplitWindowEmptyVersionPolicy"
       ]
     }
   ]

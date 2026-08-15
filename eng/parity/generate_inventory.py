@@ -6,12 +6,17 @@ import argparse
 import ast
 import json
 import pathlib
-import subprocess
 import sys
 import typing as t
 
-SOURCE_REVISION = "c4a980b"
-SOURCE_BASE_URL = "https://github.com/tmux-python/libtmux/blob/c4a980b"
+REPOSITORY_ROOT = pathlib.Path(__file__).parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from eng.parity import python_source  # noqa: E402
+
+SOURCE_REVISION = python_source.REVISION
+SOURCE_BASE_URL = python_source.BLOB_URL_PREFIX.rstrip("/")
 TMUX_SOURCE_BASE_URL = "https://github.com/tmux/tmux/tree"
 TMUX_SOURCE_BLOB_URL = "https://github.com/tmux/tmux/blob"
 MODULE_PATHS = {
@@ -48,12 +53,7 @@ def read_pinned_source(path: str) -> str:
     >>> "typed, pythonic API" in read_pinned_source("src/libtmux/__init__.py")
     True
     """
-    return subprocess.run(
-        ["git", "show", f"{SOURCE_REVISION}:{path}"],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-    ).stdout
+    return python_source.show(path)
 
 
 def symbol_id(module: str, qualified_name: str) -> str:
@@ -650,7 +650,7 @@ C4_LOOKUP_SYMBOL_IDS = frozenset(
     }
 )
 C4_PARITY_TEST_PATH = (
-    "csharp/tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
+    "tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
 )
 
 
@@ -714,7 +714,7 @@ def build_ledger(
                 "module": module,
                 "pythonSymbolId": symbol["id"],
                 "sourceUrl": symbol["sourceUrl"],
-                "testPath": "csharp/tests/RealServer/ParityInventoryTests.cs",
+                "testPath": "tests/RealServer/ParityInventoryTests.cs",
                 "tmuxVersions": "3.2a-3.7b",
             }
         )
@@ -798,7 +798,7 @@ def version_deltas() -> dict[str, t.Any]:
             "evidenceStatus": "pending",
             "introducedIn": capability_bounds.get(name, ("unknown", "unknown"))[0],
             "namedRealServerTest": (
-                "csharp/tests/LibTmux.IntegrationTests/Versioning/"
+                "tests/LibTmux.IntegrationTests/Versioning/"
                 "VersionParityTests.cs::"
                 + "".join(part.title() for part in name.split("_"))
             ),
@@ -849,16 +849,16 @@ def version_deltas() -> dict[str, t.Any]:
     }
     policy_test_files_by_component = {
         10: (
-            "csharp/tests/LibTmux.IntegrationTests/Hierarchy/"
+            "tests/LibTmux.IntegrationTests/Hierarchy/"
             "ServerSessionLifecycleTests.cs"
         ),
-        11: ("csharp/tests/LibTmux.IntegrationTests/Hierarchy/WindowTopologyTests.cs"),
-        12: ("csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs"),
+        11: ("tests/LibTmux.IntegrationTests/Hierarchy/WindowTopologyTests.cs"),
+        12: ("tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs"),
         13: (
-            "csharp/tests/LibTmux.IntegrationTests/Clients/ClientAdministrationTests.cs"
+            "tests/LibTmux.IntegrationTests/Clients/ClientAdministrationTests.cs"
         ),
-        15: "csharp/tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs",
-        16: ("csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs"),
+        15: "tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs",
+        16: ("tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs"),
     }
     unsupported_proof_by_behavior = {
         "apply_only_in_affected_version": "exact_3_7_and_3_7a_transition",
@@ -1237,7 +1237,7 @@ def version_deltas() -> dict[str, t.Any]:
             "introducedIn": introduced_in,
             "kind": "command_gate",
             "namedRealServerTest": (
-                "csharp/tests/LibTmux.IntegrationTests/Versioning/"
+                "tests/LibTmux.IntegrationTests/Versioning/"
                 "VersionParityTests.cs::"
                 + "".join(part.title() for part in name.split("_"))
             ),

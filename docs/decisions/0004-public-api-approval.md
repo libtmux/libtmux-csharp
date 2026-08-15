@@ -16,8 +16,8 @@ The Python public inventory contains 626 source-grounded rows. Decisions 0001,
 generated closed query catalog. A production port still needs one idiomatic
 .NET surface rather than a transliteration of Python implementation details.
 
-The canonical contract is `csharp/docs/public-api.json`.
-`csharp/docs/public-api.md` is a deterministic human review generated from that
+The canonical contract is `docs/public-api.json`.
+`docs/public-api.md` is a deterministic human review generated from that
 file. The parity ledger binds every Python row to an exact contract member, an
 internal implementation member, or an explained exclusion and replacement.
 Member IDs use the versioned project contract grammar recorded in the JSON;

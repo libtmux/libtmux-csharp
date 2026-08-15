@@ -93,7 +93,7 @@ per-entity relations as where that linkage is read.
 ## Consequences
 
 `docs/public-api.json` is amended for the five decisions above, and
-`csharp/docs/public-api.md` is regenerated from it. `verify_public_api.py`
+`docs/public-api.md` is regenerated from it. `verify_public_api.py`
 pins the `SnapshotDepth` sentinel values, so it is amended with the contract.
 
 Members are now compared in one direction on every build: every member the

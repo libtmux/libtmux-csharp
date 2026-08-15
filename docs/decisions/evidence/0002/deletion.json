@@ -1,9 +1,9 @@
 {
   "absentDirectories": [
-    "csharp/eng/aot/run-model-aot.sh"
+    "eng/aot/run-model-aot.sh"
   ],
   "absentGlobs": [
-    "csharp/spikes/LibTmux.ModelBakeoff*"
+    "spikes/LibTmux.ModelBakeoff*"
   ],
   "evaluatedCommit": "6f6b0c6debe90447d42b4c1dd4b1efd571824f43",
   "expectedSolutionProjectCount": 3,
@@ -16,14 +16,14 @@
     "spikes/LibTmux.BakeoffSupport/LibTmux.BakeoffSupport.csproj",
     "spikes/LibTmux.TestChild/LibTmux.TestChild.csproj"
   ],
-  "solution": "csharp/LibTmux.slnx",
+  "solution": "LibTmux.slnx",
   "trackedPrefixes": [
-    "csharp/eng/aot/run-model-aot.sh",
-    "csharp/spikes/LibTmux.ModelBakeoff.AotSmoke",
-    "csharp/spikes/LibTmux.ModelBakeoff.Contracts",
-    "csharp/spikes/LibTmux.ModelBakeoff.HybridHierarchy",
-    "csharp/spikes/LibTmux.ModelBakeoff.ImmutableServices",
-    "csharp/spikes/LibTmux.ModelBakeoff.MutableDirect",
-    "csharp/spikes/LibTmux.ModelBakeoff.Tests"
+    "eng/aot/run-model-aot.sh",
+    "spikes/LibTmux.ModelBakeoff.AotSmoke",
+    "spikes/LibTmux.ModelBakeoff.Contracts",
+    "spikes/LibTmux.ModelBakeoff.HybridHierarchy",
+    "spikes/LibTmux.ModelBakeoff.ImmutableServices",
+    "spikes/LibTmux.ModelBakeoff.MutableDirect",
+    "spikes/LibTmux.ModelBakeoff.Tests"
   ]
 }

@@ -85,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--root",
         type=pathlib.Path,
-        default=pathlib.Path(__file__).resolve().parents[3],
+        default=pathlib.Path(__file__).resolve().parents[2],
         help="the repository root holding .github/workflows",
     )
     arguments = parser.parse_args(argv)

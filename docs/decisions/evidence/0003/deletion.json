@@ -1,8 +1,8 @@
 {
   "absentDirectories": [
-    "csharp/eng/aot",
-    "csharp/spikes",
-    "csharp/artifacts"
+    "eng/aot",
+    "spikes",
+    "artifacts"
   ],
   "absentGlobs": [],
   "evaluatedCommit": "953a1970d91bbe319906a8a2e294799eb4b966ca",
@@ -14,9 +14,9 @@
     "LibTmux.TestChild"
   ],
   "remainingSolutionProjects": [],
-  "solution": "csharp/LibTmux.slnx",
+  "solution": "LibTmux.slnx",
   "trackedPrefixes": [
-    "csharp/eng/aot/run-query-aot.sh",
-    "csharp/spikes"
+    "eng/aot/run-query-aot.sh",
+    "spikes"
   ]
 }

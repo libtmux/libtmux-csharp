@@ -13,11 +13,11 @@ import subprocess
 import sys
 import typing as t
 
-REPOSITORY_ROOT = pathlib.Path(__file__).parents[3]
+REPOSITORY_ROOT = pathlib.Path(__file__).parents[2]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from csharp.eng.evidence.assemble_bundle import (  # noqa: E402
+from eng.evidence.assemble_bundle import (  # noqa: E402
     BundleAssemblyError,
     source_state,
     source_tree_fingerprint,
@@ -73,7 +73,7 @@ COMMAND_GATE_CAPABILITIES = {
 }
 REQUIRED_CAPABILITIES = PROTOCOL_CAPABILITIES | COMMAND_GATE_CAPABILITIES
 VERSION_PARITY_TEST = (
-    "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::"
+    "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::"
 )
 VERSION_PARITY_METHODS = {
     "attachment_accounting": "AttachmentAccounting",
@@ -169,13 +169,13 @@ POLICY_OWNER_COMPONENTS = {
 }
 POLICY_TEST_FILES_BY_COMPONENT = {
     10: (
-        "csharp/tests/LibTmux.IntegrationTests/Hierarchy/ServerSessionLifecycleTests.cs"
+        "tests/LibTmux.IntegrationTests/Hierarchy/ServerSessionLifecycleTests.cs"
     ),
-    11: ("csharp/tests/LibTmux.IntegrationTests/Hierarchy/WindowTopologyTests.cs"),
-    12: ("csharp/tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs"),
-    13: ("csharp/tests/LibTmux.IntegrationTests/Clients/ClientAdministrationTests.cs"),
-    15: "csharp/tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs",
-    16: "csharp/tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs",
+    11: ("tests/LibTmux.IntegrationTests/Hierarchy/WindowTopologyTests.cs"),
+    12: ("tests/LibTmux.IntegrationTests/Hierarchy/PaneOperationsTests.cs"),
+    13: ("tests/LibTmux.IntegrationTests/Clients/ClientAdministrationTests.cs"),
+    15: "tests/LibTmux.IntegrationTests/Hooks/HookOperationsTests.cs",
+    16: "tests/LibTmux.IntegrationTests/Utilities/ServerUtilitiesTests.cs",
 }
 POLICY_WRAPPER_TESTS = {
     capability: tuple(
@@ -294,7 +294,7 @@ COMMIT_PATTERN = re.compile(r"[0-9a-f]{40}")
 FINGERPRINT_PATTERN = re.compile(r"[0-9a-f]{64}")
 TMUX_VERSION_PATTERN = re.compile(r"\d+\.\d+(?:[a-z]+)?(?:-[0-9A-Za-z.]+)?")
 REAL_SERVER_TEST_PATTERN = re.compile(
-    r"csharp/tests/LibTmux\.IntegrationTests/Versioning/"
+    r"tests/LibTmux\.IntegrationTests/Versioning/"
     r"[A-Za-z][A-Za-z0-9]*Tests\.cs::[A-Za-z][A-Za-z0-9]*"
 )
 BREAK_PANE_CAPABILITY = "break_pane_3_7_workaround"
@@ -365,7 +365,7 @@ def is_real_server_test(value: object) -> bool:
     Examples
     --------
     >>> is_real_server_test(
-    ...     "csharp/tests/LibTmux.IntegrationTests/Versioning/"
+    ...     "tests/LibTmux.IntegrationTests/Versioning/"
     ...     "VersionParityTests.cs::CommandFlags"
     ... )
     True
@@ -382,7 +382,7 @@ def _is_relative_path(value: object) -> bool:
 
     Examples
     --------
-    >>> _is_relative_path("csharp/evidence/results.ndjson")
+    >>> _is_relative_path("evidence/results.ndjson")
     True
     >>> _is_relative_path("../results.ndjson")
     False

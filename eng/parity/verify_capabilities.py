@@ -10,7 +10,7 @@ import typing as t
 
 SOURCE_ROOT = pathlib.Path(__file__).parents[2] / "src" / "LibTmux"
 TESTS_ROOT = pathlib.Path(__file__).parents[2] / "tests"
-REPOSITORY_ROOT = pathlib.Path(__file__).parents[3]
+REPOSITORY_ROOT = pathlib.Path(__file__).parents[2]
 PROFILE_PATH = SOURCE_ROOT / "Versioning" / "TmuxCapabilities.cs"
 DELTAS_PATH = (
     pathlib.Path(__file__).parents[2] / "docs" / "parity" / "version-deltas.json"
@@ -97,7 +97,7 @@ def declared_test_members(root: pathlib.Path) -> dict[str, set[str]]:
     --------
     >>> members = declared_test_members(TESTS_ROOT)
     >>> "AttachmentAccounting" in members[
-    ...     "csharp/tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs"
+    ...     "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs"
     ... ]
     True
     """

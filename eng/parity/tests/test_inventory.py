@@ -6,10 +6,14 @@ import ast
 import json
 import pathlib
 import runpy
-import subprocess
+import sys
 import typing as t
 
 import pytest
+
+sys.path.insert(0, str(pathlib.Path(__file__).parents[3]))
+
+from eng.parity import python_source  # noqa: E402
 
 PROPERTY_TOMBSTONE_REPLACEMENTS = {
     "libtmux.server:Server._sessions": (
@@ -80,12 +84,7 @@ def read_pinned_source(path: str) -> str:
     >>> "class Obj" in read_pinned_source("src/libtmux/neo.py")
     True
     """
-    return subprocess.run(
-        ["git", "show", f"c4a980b:{path}"],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-    ).stdout
+    return python_source.show(path)
 
 
 @pytest.fixture()
@@ -285,14 +284,14 @@ def test_ledger_regeneration_preserves_only_source_bound_approval() -> None:
             "componentId": 3,
             "csharpDestination": "M:LibTmux.Sample.CallAsync(CancellationToken)",
             "destinationStatus": "approved",
-            "testPath": "csharp/tests/Component03ParityTests.cs",
+            "testPath": "tests/Component03ParityTests.cs",
         }
     )
 
     preserved = generator["build_ledger"](inventory, approved)["rows"][0]
     assert preserved["destinationStatus"] == "approved"
     assert preserved["componentId"] == 3
-    assert preserved["testPath"] == "csharp/tests/Component03ParityTests.cs"
+    assert preserved["testPath"] == "tests/Component03ParityTests.cs"
 
     approved_row["sourceUrl"] = "https://example.invalid/other"
     reset = generator["build_ledger"](inventory, approved)["rows"][0]
@@ -328,7 +327,7 @@ def test_ledger_regeneration_moves_only_canonical_window_and_pane_lookup() -> No
                 "componentId": 2,
                 "evidenceStatus": "verified",
                 "implementationStatus": "implemented",
-                "testPath": "csharp/tests/Component02ParityTests.cs",
+                "testPath": "tests/Component02ParityTests.cs",
             }
         )
     regenerated = generator["build_ledger"](current_inventory, current_ledger)
@@ -349,7 +348,7 @@ def test_ledger_regeneration_moves_only_canonical_window_and_pane_lookup() -> No
             "evidenceStatus": "none",
             "implementationStatus": "not_started",
             "testPath": (
-                "csharp/tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
+                "tests/LibTmux.IntegrationTests/Parity/Component04ParityTests.cs"
             ),
         }
         for symbol_id in moved

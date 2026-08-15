@@ -66,7 +66,7 @@ def render(members: dict[str, str]) -> str:
         "",
         "Generated from the XML documentation the compiler emits, so every entry",
         "here is the doc comment on the member itself. Regenerate with",
-        "`uv run python csharp/eng/docs/render_api_reference.py`.",
+        "`uv run python eng/docs/render_api_reference.py`.",
         "",
         "See [choosing a mode](../modes/matrix.md) for how the three execution",
         "modes differ.",
