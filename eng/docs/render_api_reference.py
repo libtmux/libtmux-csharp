@@ -85,13 +85,7 @@ def render(members: dict[str, str]) -> str:
 
 
 def main(arguments: t.Sequence[str] | None = None) -> int:
-    """Write the reference, or check the written one is current.
-
-    Examples
-    --------
-    >>> callable(main)
-    True
-    """
+    """Write the reference, or check the written one is current."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     parsed = parser.parse_args(arguments)

@@ -40,7 +40,7 @@ done
 printf '%-38s %s\n' "standard project files missing" "$missing"
 
 # A raw control byte in a source file compiles, is invisible in review, and
-# makes the file binary to git and unreadable to rg. That happened once.
+# makes the file binary to git and unreadable to rg.
 control_bytes=$(python3 - <<'PY'
 import pathlib
 bad = []

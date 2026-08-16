@@ -1488,13 +1488,7 @@ def validator_path() -> pathlib.Path:
 
 
 def validator() -> t.Callable[..., list[str]]:
-    """Load the production-plan validator without importing a package.
-
-    Examples
-    --------
-    >>> callable(validator())
-    True
-    """
+    """Load the production-plan validator without importing a package."""
     namespace = runpy.run_path(str(validator_path()))
     return t.cast(t.Callable[..., list[str]], namespace["validate"])
 
@@ -3349,10 +3343,6 @@ def test_future_operation_components_own_version_policy_evidence() -> None:
     )
     assert namespace["VERSION_POLICY_SHARED_FILES"] == VERSION_POLICY_SHARED_FILES
     for component_id in VERSION_POLICY_OWNER_COMPONENTS:
-        # A policy row stays pending until cohort closure, so an owner has no
-        # cause to edit the policy documents. Declaring them shared would demand
-        # a change the component cannot honestly make, and the exact staged
-        # scope gate would then be unsatisfiable.
         assert not any(
             path in namespace["COMPONENT_SHARED_FILES"][component_id]
             for path in VERSION_POLICY_SHARED_FILES

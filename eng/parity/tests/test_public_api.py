@@ -235,13 +235,7 @@ def load_json(path: pathlib.Path) -> dict[str, t.Any]:
 
 
 def api_validator() -> t.Callable[[dict[str, t.Any], dict[str, t.Any]], list[str]]:
-    """Load the public API validator without importing a package.
-
-    Examples
-    --------
-    >>> callable(api_validator())
-    True
-    """
+    """Load the public API validator without importing a package."""
     namespace = runpy.run_path(
         str(pathlib.Path(__file__).parents[1] / "verify_public_api.py")
     )

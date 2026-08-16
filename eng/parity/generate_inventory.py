@@ -1758,13 +1758,7 @@ def documents() -> dict[str, dict[str, t.Any]]:
 
 
 def write_documents() -> None:
-    """Write every generated parity JSON document.
-
-    Examples
-    --------
-    >>> callable(write_documents)
-    True
-    """
+    """Write every generated parity JSON document."""
     DOCUMENT_ROOT.mkdir(parents=True, exist_ok=True)
     for filename, document in documents().items():
         (DOCUMENT_ROOT / filename).write_text(encode(document), encoding="utf-8")

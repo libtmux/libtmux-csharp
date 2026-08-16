@@ -84,11 +84,6 @@ def repository() -> pathlib.Path:
     ------
     SystemExit
         No candidate checkout has the revision.
-
-    Examples
-    --------
-    >>> callable(repository)
-    True
     """
     tried = candidates()
     for candidate in tried:
