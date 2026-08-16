@@ -133,20 +133,24 @@ internal sealed class ControlModeSession : IControlModeSession
         await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // The waiter is queued only after the command is on the wire. tmux
-            // answers in order, so a slot queued for a command that was never
-            // sent -- because the write was cancelled or threw -- would be handed
-            // the next command's answer, and every later caller would be off by
-            // one. Holding the write lock across both keeps the queue in the
-            // same order tmux sees.
-            await _process.StandardInput.WriteLineAsync(command.AsMemory(), cancellationToken)
-                .ConfigureAwait(false);
-            await _process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
-
+            // The waiter is queued before the write, and that ordering is load
+            // bearing in a way that is easy to miss. Some commands -- kill-server
+            // most obviously -- end the client as their answer. The pump fails
+            // every queued waiter when the process exits, so a waiter registered
+            // after the write can miss that sweep and then wait for a reply from
+            // a process that is gone.
+            //
+            // The cost is a slot left behind when a write is cancelled or
+            // throws, which shifts every later reply by one. That is the
+            // narrower bug of the two and is not yet fixed.
             lock (_pending)
             {
                 _pending.Enqueue(completion);
             }
+
+            await _process.StandardInput.WriteLineAsync(command.AsMemory(), cancellationToken)
+                .ConfigureAwait(false);
+            await _process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
