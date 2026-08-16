@@ -1,0 +1,97 @@
+using System.Reflection;
+using System.Runtime.ExceptionServices;
+using System.Runtime.Versioning;
+
+namespace LibTmux.Examples;
+
+/// <summary>One example: what it shows, where it lives, and how to run it.</summary>
+/// <remarks>
+/// What an example needs is stated as parameters, so the compiler checks it.
+/// A method asking for a <see cref="Pane"/> is handed a real pane on a real
+/// server; a method asking for nothing builds its own, which is what lets the
+/// first line of a published block be the line worth reading.
+/// </remarks>
+[UnsupportedOSPlatform("windows")]
+public sealed class ExampleCase
+{
+    private ExampleCase(MethodInfo method, string title)
+    {
+        Method = method;
+        Title = title;
+    }
+
+    /// <summary>Gets the example's name, which is its method's name.</summary>
+    public string Id => Method.Name;
+
+    /// <summary>Gets the line saying what the example shows.</summary>
+    public string Title { get; }
+
+    /// <summary>Gets the group it belongs to, which is its file's name.</summary>
+    public string Topic => Method.DeclaringType!.Name;
+
+    private MethodInfo Method { get; }
+
+    /// <summary>Finds every example in this assembly, in a stable order.</summary>
+    /// <returns>The examples, ordered by topic and then by name.</returns>
+    public static IReadOnlyList<ExampleCase> Discover() =>
+    [
+        .. typeof(ExampleCase).Assembly
+            .GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Select(method => (Method: method, Example: method.GetCustomAttribute<ExampleAttribute>()))
+            .Where(found => found.Example is not null)
+            .Select(found => Create(found.Method, found.Example!))
+            .OrderBy(example => example.Topic, StringComparer.Ordinal)
+            .ThenBy(example => example.Id, StringComparer.Ordinal),
+    ];
+
+    /// <summary>Runs the example against a tmux server of its own.</summary>
+    /// <param name="cancellationToken">Cancels the example and its tmux commands.</param>
+    public async Task RunAsync(CancellationToken cancellationToken = default)
+    {
+        await using ExampleNamespace world = await ExampleNamespace.EnterAsync(
+            Id,
+            cancellationToken);
+
+        ParameterInfo[] parameters = Method.GetParameters();
+        object?[] arguments = new object?[parameters.Length];
+        for (int index = 0; index < parameters.Length; index++)
+        {
+            Type wanted = parameters[index].ParameterType;
+            arguments[index] = wanted switch
+            {
+                _ when wanted == typeof(Server) => world.Server,
+                _ when wanted == typeof(Session) => world.Session,
+                _ when wanted == typeof(Window) => world.Window,
+                _ when wanted == typeof(Pane) => world.Pane,
+                _ when wanted == typeof(CancellationToken) => cancellationToken,
+                _ => throw new InvalidOperationException(
+                    $"Example {Topic}.{Id} asks for a {wanted.Name}, and an example "
+                    + "may ask for a Server, Session, Window, Pane or CancellationToken."),
+            };
+        }
+
+        try
+        {
+            await (Task)Method.Invoke(null, arguments)!;
+        }
+        catch (TargetInvocationException invocation) when (invocation.InnerException is not null)
+        {
+            // The example's own failure is what a reader needs to see, not the
+            // reflection that reached it.
+            ExceptionDispatchInfo.Capture(invocation.InnerException).Throw();
+            throw;
+        }
+    }
+
+    private static ExampleCase Create(MethodInfo method, ExampleAttribute example)
+    {
+        if (method.ReturnType != typeof(Task))
+        {
+            throw new InvalidOperationException(
+                $"Example {method.DeclaringType!.Name}.{method.Name} must return Task.");
+        }
+
+        return new ExampleCase(method, example.Title);
+    }
+}
