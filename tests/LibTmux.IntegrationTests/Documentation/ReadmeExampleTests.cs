@@ -23,7 +23,18 @@ namespace LibTmux.IntegrationTests.Documentation;
 [UnsupportedOSPlatform("windows")]
 public sealed class ReadmeExampleTests
 {
-    /// <summary>Every document that ships or is the face of the repository.</summary>
+    /// <summary>Every document that ships, is the face of the repository, or teaches the API.</summary>
+    /// <remarks>
+    /// The package READMEs are here because they ship inside the packages and
+    /// render on nuget.org. The mode documents are here because they are where a
+    /// reader goes to learn how to call this library, and an example that does
+    /// not compile teaches a call that does not exist — which has happened, and
+    /// is what this harness exists to stop.
+    ///
+    /// The decision records are deliberately absent. They quote what was run at
+    /// the time, and an example edited later to keep compiling is no longer a
+    /// record of anything.
+    /// </remarks>
     private static readonly string[] Documents =
     [
         "README.md",
@@ -31,6 +42,10 @@ public sealed class ReadmeExampleTests
         "src/LibTmux.Query.Json/README.md",
         "src/LibTmux.Workspace/README.md",
         "src/LibTmux.Mcp/README.md",
+        "docs/modes/one-shot.md",
+        "docs/modes/control-mode.md",
+        "docs/modes/chaining.md",
+        "docs/modes/matrix.md",
     ];
 
     /// <summary>Names the language and whether the block is meant to run.</summary>

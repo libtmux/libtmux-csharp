@@ -49,6 +49,8 @@ and each record has a validator that fails when the code disagrees.
   symbol went
 - [Decisions](decisions/) — why the transport, object model, query
   catalog, and public API are shaped the way they are
+- [Quality bar](quality-bar.md) — what "good" is claimed to mean here, with
+  the evidence for each claim and a script that re-measures it
 
 Decisions 0001 to 0003 quote the commands that produced their evidence, and
 those ran while this project was a directory inside another repository. Their

@@ -1,0 +1,46 @@
+name: Bug report
+description: Something behaves differently than documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This library's job is being right about tmux, and tmux behaviour differs
+        between versions. The version questions below are not boilerplate — they
+        are usually the answer.
+  - type: input
+    id: package-version
+    attributes:
+      label: LibTmux version
+      placeholder: 0.0.0-alpha.3
+    validations:
+      required: true
+  - type: input
+    id: tmux-version
+    attributes:
+      label: tmux version
+      description: The output of `tmux -V`.
+      placeholder: tmux 3.7b
+    validations:
+      required: true
+  - type: dropdown
+    id: framework
+    attributes:
+      label: Target framework
+      options: [net8.0, net10.0, other]
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: The smallest code that shows it
+      description: Runnable if possible. It will be pasted into a test.
+      render: csharp
+    validations:
+      required: true

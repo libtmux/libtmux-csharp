@@ -289,6 +289,8 @@ broke, and `Unknown` is the default for exactly that reason. A
 
 Source, docs and issues: <https://github.com/libtmux/libtmux-dotnet>
 
+What changed between versions: [CHANGELOG](https://github.com/libtmux/libtmux-dotnet/blob/master/CHANGELOG.md)
+
 ## License
 
 [MIT](https://github.com/libtmux/libtmux-dotnet/blob/master/LICENSE)

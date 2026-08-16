@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/libtmux/libtmux-dotnet/security/advisories/new
+    about: Privately, so a fix can exist before the details do.
+  - name: tmux itself
+    url: https://github.com/tmux/tmux
+    about: This is a client. Bugs in tmux belong upstream.
