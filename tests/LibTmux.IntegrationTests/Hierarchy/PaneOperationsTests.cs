@@ -605,7 +605,13 @@ public sealed class PaneOperationsTests
     {
         // Joined: a prompt wide enough leaves typed text split across two
         // stored lines, and tmux stores that wrap as a real line break.
-        DateTimeOffset deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10);
+        //
+        // The budget is generous because what is waited on is a shell
+        // redrawing a prompt, which is the first thing to slow down on a
+        // loaded machine. Running out says so rather than returning what it
+        // last saw: a silent give-up surfaces as an assertion about content
+        // and reads as a bug in the capture rather than as a timeout.
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(45);
         string text = string.Empty;
         while (DateTimeOffset.UtcNow < deadline)
         {
@@ -620,7 +626,8 @@ public sealed class PaneOperationsTests
             await Task.Delay(TimeSpan.FromMilliseconds(25), token);
         }
 
-        return text;
+        throw new TimeoutException(
+            $"The pane never showed '{expected}' within 45s. It last held:\n{text}");
     }
 
     private sealed class RecordingLogger : ILogger
