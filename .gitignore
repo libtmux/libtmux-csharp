@@ -18,3 +18,10 @@ __pycache__/
 .ruff_cache/
 
 .DS_Store
+
+# A matrix run stages each lane in a candidate directory beside the
+# bundle and promotes it at the end. An interrupted run leaves one, and
+# committing it would put a half-recorded lane in the evidence a release
+# claims.
+docs/parity/evidence/.*.candidate-*
+docs/parity/evidence/.*.candidate-*.owner.json
