@@ -104,11 +104,7 @@ internal static class ToolFailureFilter
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {
-            // The backstop. Anything unhandled reaches a client as "An error
-            // occurred invoking 'tmux_run'", which is true and unusable: a
-            // model cannot tell a bug from its own bad argument, so it retries
-            // the same call until the turn is gone. Naming the tool and the
-            // message costs nothing and ends that loop.
+            // The backstop for anything unhandled; see the class remarks.
             return Failure(
                 logger,
                 tool,

@@ -15,12 +15,9 @@ public sealed class FieldCatalogGenerator : IIncrementalGenerator
 {
     /// <summary>The closed catalog, and where each field lives on its entity.</summary>
     /// <remarks>
-    /// A field's wire name is a tmux format name and its property is what C#
-    /// calls the same thing, which is not a transformation of the other:
-    /// <c>client_control</c> reads as <c>IsControlClient</c>, and two fields
-    /// have no property at all. Writing the pair down is what lets a filter be
-    /// expressed over the entities the library hands back rather than over a
-    /// row whose property names happen to match the wire.
+    /// Wire name and property are declared explicitly because the mapping is
+    /// not systematic (<c>client_control</c> → <c>IsControlClient</c>, and two
+    /// fields have no property at all).
     /// </remarks>
     private static readonly (string WireName, string Target, bool Relation, string? Property)[]
         Fields =

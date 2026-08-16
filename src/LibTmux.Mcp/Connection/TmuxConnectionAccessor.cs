@@ -79,11 +79,9 @@ public sealed class TmuxConnectionAccessor : IDisposable
         string? socketName = null,
         CancellationToken cancellationToken = default)
     {
-        // A server handed in wins over anything a name would resolve to: the
-        // caller already decided which server this is. It is materialized on
-        // first use, because a handle can be perfectly valid and not yet have
-        // read its own identity — Server.CreateOwnedAsync answers one of
-        // those, and the tools need the version and generation it carries.
+        // A server handed in wins over a resolved name: the caller decided.
+        // It materializes here because a handle can be valid before reading
+        // its own version and generation, which downstream calls need.
         if (_fixed is Server held && string.IsNullOrWhiteSpace(socketName))
         {
             if (held.IsMaterialized)
@@ -122,11 +120,9 @@ public sealed class TmuxConnectionAccessor : IDisposable
         }
         catch (LibTmuxException error)
         {
-            // Connecting asks a running server to identify itself, so it fails
-            // when there is no server on this socket yet. That is the normal
-            // state before the first session rather than an error: an
-            // unmaterialized handle can still create one, and creating one is
-            // the most likely reason to be here.
+            // Connecting asks a server to identify itself, so this fails when
+            // nothing is listening yet — normal before the first session, and
+            // the handle returned below can still create one.
             _servers.TryRemove(key, out _);
             if (_logger is not null)
             {

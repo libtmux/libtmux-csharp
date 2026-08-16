@@ -5,10 +5,8 @@ namespace LibTmux.Query.Json;
 
 /// <summary>Bounds one JSON document so parsing cannot be weaponised.</summary>
 /// <remarks>
-/// A query document may arrive from somewhere untrusted, so every dimension a
-/// hostile producer could grow is capped. The v1 ceilings are frozen: a caller
-/// may tighten a limit but never widen one, because a document accepted here
-/// must stay acceptable to every other v1 reader.
+/// Every dimension a hostile producer could grow is capped, and the v1
+/// ceilings are frozen: callers may tighten a limit but never widen one.
 /// </remarks>
 /// <param name="MaximumDepth">Deepest nesting accepted.</param>
 /// <param name="MaximumNodes">Most predicate nodes accepted.</param>
@@ -91,10 +89,8 @@ public static class QueryJson
             new JsonDocumentOptions { MaxDepth = bounds.MaximumDepth });
         JsonElement root = parsed.RootElement;
 
-        // The schema and version say how to read everything after them, so
-        // accepting whatever the document claims is accepting instructions from
-        // the document. A reader that only knows v1 has to say so before it
-        // builds anything, or it silently interprets a v2 payload with v1 rules.
+        // Schema and version must be checked before anything else is read, or
+        // a v2 payload gets silently parsed under v1 rules.
         string schema = root.GetProperty("schema").GetString()
             ?? throw new JsonException("Query document names no schema.");
         if (!string.Equals(schema, QueryDocument.CurrentSchema, StringComparison.Ordinal))
