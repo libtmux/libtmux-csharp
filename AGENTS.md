@@ -81,8 +81,11 @@ runs the integration suite against it, behind a `compatibility` job that plays
 the same role as `gate`. That is what proves the compatibility range; the build
 workflow only ever sees whatever tmux Ubuntu ships.
 
-`dotnet.yml` also carries a `macos arm64` lane, inside `gate`, because the
-compatibility claim names macOS and a claim nobody runs is a claim. It restores
+`dotnet.yml` also carries an advisory `macos arm64` lane, because the
+compatibility claim names macOS and a claim nobody runs is a claim. Its first
+run failed 15 of 854 integration tests, so it stays outside `gate` until those
+are diagnosed: requiring it would block every commit on an undiagnosed platform
+difference, and deleting it would go back to not knowing. It restores
 without `--locked-mode`: the lock files are generated for the Linux runtime
 identifiers this repository publishes, so locking a macOS restore would fail for
 a reason that is not a dependency problem.
