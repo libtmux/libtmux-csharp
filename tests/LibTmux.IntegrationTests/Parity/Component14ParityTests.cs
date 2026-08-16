@@ -154,8 +154,6 @@ public sealed class Component14ParityTests
             token);
         Assert.Equal(TmuxOptionState.Off, stored.State);
 
-        // The session's table is a different table, so the window write did not
-        // reach it.
         Assert.Empty(await session.Options.GetAsync(
             new GetOptionRequest("@window-only", quiet: true),
             token));

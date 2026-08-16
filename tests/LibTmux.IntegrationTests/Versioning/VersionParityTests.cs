@@ -8,10 +8,8 @@ using LibTmux.Internal;
 
 namespace LibTmux.IntegrationTests.Versioning;
 
-// These proofs drive tmux the way a person would: a terminal is attached, keys
-// are typed, and the answer is read back off the screen. Timing is part of what
-// they assert, so running thirty of them against each other starves the very
-// waits under test. They take their turn instead.
+// A terminal is attached and keys are typed, so timing is part of what these
+// proofs assert; running them against each other starves the waits under test.
 [CollectionDefinition("Version policy proofs", DisableParallelization = true)]
 public sealed class VersionPolicyProofs;
 
@@ -977,11 +975,8 @@ public sealed class VersionParityTests
         await using PtyAttachedClientScope client = await PtyAttachedClientScope.StartAsync(
             context,
             TestContext.Current.CancellationToken);
-        // A key sent before the popup is there reaches the pane underneath it,
-        // and the popup then waits for one that already came and went. Rather
-        // than time how long a popup takes to appear, the key is sent until it
-        // is the one that closes it: the ones that miss land on a shell prompt
-        // nothing here reads.
+        // A key sent before the popup is drawn lands on the pane underneath it
+        // instead, so the key is retried until it is the one that closes the popup.
         Task<RawTmuxResult> closeAny = ExecuteAsync(
             context,
             ["display-popup", "-k", "-t", TargetPane(context), "true"]);
@@ -990,13 +985,10 @@ public sealed class VersionParityTests
             0,
             (await closeAny.WaitAsync(CommandTimeout, TestContext.Current.CancellationToken)).ExitCode);
 
-        // -N changes an open popup and returns, but with no popup open it opens
-        // one and blocks until that is closed. Retrying it until it succeeds
-        // therefore waits on the popup it just created, which is what made this
-        // time out about once in five full runs. The popup says when it is
-        // there instead: it signals a channel from inside, and -N is a command
-        // rather than a key, so applying it cannot race the command that
-        // signalled.
+        // -N changes an open popup but blocks opening one when none exists, so
+        // retrying it would wait on the popup it just made. The popup signals a
+        // channel from inside instead; since -N and that signal are both
+        // commands, not keys, applying -N after the wait cannot race it.
         Task<RawTmuxResult> reset = ExecuteAsync(
             context,
             [

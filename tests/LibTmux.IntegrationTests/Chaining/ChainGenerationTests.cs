@@ -6,14 +6,9 @@ namespace LibTmux.IntegrationTests.Chaining;
 
 /// <summary>Proves a chain refuses a target from a server that has since restarted.</summary>
 /// <remarks>
-/// tmux reuses IDs. A pane called <c>%0</c> on a restarted server is a different
-/// pane from the <c>%0</c> a handle was read from, so a stale handle aimed at a
-/// live server does not fail -- it succeeds against the wrong object, which is
-/// the failure mode worth preventing.
-///
-/// The one-shot path has always guarded this. These tests exist because chaining
-/// did not: the command carried the target as text and nothing said which server
-/// the text came from.
+/// tmux reuses IDs: a pane called <c>%0</c> on a restarted server is a different
+/// pane from the one a handle was read from, so a stale handle succeeds against
+/// the wrong object instead of failing.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 public sealed class ChainGenerationTests
@@ -39,9 +34,8 @@ public sealed class ChainGenerationTests
         // instant, and how far apart they are depends on the machine.
         Server second = await ConnectWhenReadyAsync(raw, token);
 
-        // The chain is built on the new server from a handle belonging to the
-        // old one. That is the shape a caller reaches by accident: entity
-        // handles outlive the server far more easily than they look like they do.
+        // The chain runs on the new server but from a pane handle read
+        // through the old one -- the shape a stale-handle bug takes.
         TmuxChain chain = second.Chain()
             .Then(new SendKeysRequest("echo stale").ToCommand(pane));
 
@@ -65,9 +59,8 @@ public sealed class ChainGenerationTests
         Pane fromTwo = (await (await (await two.GetSessionsAsync(token))[0]
             .GetWindowsAsync(token))[0].GetPanesAsync(token))[0];
 
-        // At most one of these servers can be the one the chain runs against, so
-        // there is no execution that satisfies both commands. Saying so costs
-        // nothing; discovering it by running half the chain costs a side effect.
+        // At most one server can be the one the chain runs against, so mixing
+        // them is refused before anything executes rather than partially run.
         TmuxChain chain = one.Chain()
             .Then(new SendKeysRequest("echo one").ToCommand(fromOne))
             .Then(new SendKeysRequest("echo two").ToCommand(fromTwo));

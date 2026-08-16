@@ -235,12 +235,9 @@ public sealed class PackageClosureTests
 
     private static string PackagePath()
     {
-        // Packing the solution writes one package per packable project, and
-        // every name starts with "LibTmux". What separates the core package
-        // from LibTmux.Query.Json and the rest is that the segment after the
-        // name is its version, so that is what this matches: taking whichever
-        // file the filesystem listed first would make these tests read a
-        // different package on a different machine.
+        // Every packed name starts with "LibTmux."; matching the version digit
+        // that follows picks the core package deterministically, not by
+        // directory listing order (which varies by machine).
         string[] found = [.. Directory
             .GetFiles(Path.Combine(CSharpRoot(), "artifacts", "packages"), "LibTmux.*.nupkg")
             .Where(path => char.IsAsciiDigit(

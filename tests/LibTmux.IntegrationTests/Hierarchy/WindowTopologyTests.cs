@@ -279,9 +279,8 @@ public sealed class WindowTopologyTests
             Func<TState, Exception?, string> formatter)
         {
             ArgumentNullException.ThrowIfNull(formatter);
-            // The dispatcher records every command failure at error level, and
-            // these proofs are about the warning a dropped flag produces, so
-            // only warnings are counted.
+            // The dispatcher logs command failures at error level; these tests
+            // only care about the warning a dropped flag produces.
             if (logLevel == LogLevel.Warning)
             {
                 _warnings.Add(formatter(state, exception));

@@ -5,25 +5,13 @@ namespace LibTmux.UnitTests.Packaging;
 
 /// <summary>Holds the built assembly to the approved public surface.</summary>
 /// <remarks>
-/// The contract is written down before the code is, and until something reads
-/// both nothing notices when they drift. The first run of this found two names
-/// the contract had reserved for one purpose and the assembly had given to
-/// another.
-///
-/// Types are compared exactly. Members are compared in one direction: every
-/// member the contract names has to exist, while a member the assembly adds
-/// is the analyzer's business, since the compiler writes its own into records
-/// and enums and telling those apart from a member somebody wrote needs more
-/// care than a list of names.
+/// Types are compared exactly; members are compared one way only, since the
+/// compiler adds its own to records and enums that a name list cannot filter.
 /// </remarks>
 public sealed class PublicApiContractTests
 {
-    /// <summary>Types the assembly offers and the approved surface does not name.</summary>
-    /// <remarks>
-    /// The snapshot helpers were built without being written down first. Each
-    /// is tracked, which holds the line: nothing may drift further, and a name
-    /// leaving this list cannot come back unnoticed.
-    /// </remarks>
+    /// <summary>Types the assembly offers that the approved surface
+    /// deliberately omits; entries may shrink but never grow unnoticed.</summary>
     private static readonly HashSet<string> UnapprovedTypes = new(StringComparer.Ordinal)
     {
         "T:LibTmux.CapturedRelation",
@@ -81,10 +69,8 @@ public sealed class PublicApiContractTests
     [Fact]
     public void Every_approved_member_exists_in_the_assembly()
     {
-        // The other direction is the analyzer's job: RS0016 fails the build on a
-        // public member missing from the shipped baseline. What nothing checked
-        // is this one, so a contract row could name a member that was renamed,
-        // removed, or never written, and read as approved surface forever.
+        // RS0016 already catches a shipped member missing from the baseline;
+        // this test catches a baseline entry the assembly no longer declares.
         string[] absent = [.. AbsentApprovedMembers().Order(StringComparer.Ordinal)];
 
         Assert.True(
@@ -133,9 +119,8 @@ public sealed class PublicApiContractTests
             ? parameters.GetArrayLength()
             : 0;
 
-        // A member is matched by name and how many arguments it takes. Matching
-        // types as well would mean re-deriving the contract's spelling of every
-        // type from reflection, which is the contract writing its own exam.
+        // Types aren't matched too: deriving each type's contract spelling
+        // from reflection would let the contract validate itself.
         return kind switch
         {
             "constructor" => declaring.GetConstructors(Flags)

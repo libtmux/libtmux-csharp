@@ -2,15 +2,9 @@ namespace LibTmux.UnitTests.ControlMode;
 
 /// <summary>Proves a command tmux never saw does not take another command's answer.</summary>
 /// <remarks>
-/// The waiter for a command is queued before the command is written, because
-/// some commands -- <c>kill-server</c> most obviously -- end the client as their
-/// answer, and the reader fails whatever is queued when the process exits. A
-/// waiter registered after the write would miss that sweep and wait forever.
-///
-/// That ordering leaves a slot behind when the write itself fails. tmux answers
-/// in order, so the next reply would go to a caller whose command was never
-/// sent, and every caller after that would be one reply behind. This models the
-/// queue and the skip rule that resolves it.
+/// A waiter queues before its command is written; a failed write still leaves
+/// a skipped slot, since tmux replies in order and the next reply must not
+/// answer the wrong caller.
 /// </remarks>
 public sealed class PendingCommandOrderingTests
 {

@@ -2,19 +2,16 @@ namespace LibTmux.UnitTests.Exceptions;
 
 /// <summary>Proves the failure a caller catches says whether retrying is safe.</summary>
 /// <remarks>
-/// Retrying a failed tmux command is the obvious recovery and it is only sound
-/// when the command never ran. These tests pin which failures may claim that,
-/// because the cost of the claim being wrong is a <c>kill-session</c> or a
-/// <c>send-keys</c> happening twice.
+/// Retrying is only sound when the command never ran; a wrong claim means a
+/// command like <c>kill-session</c> or <c>send-keys</c> running twice.
 /// </remarks>
 public sealed class DispatchStateTests
 {
     [Fact]
     public void A_failure_says_nothing_about_dispatch_unless_it_knows()
     {
-        // The parameterless-dispatch constructor is what most failures use, and
-        // defaulting it to NotDispatched would invite exactly the unsafe retry
-        // this type exists to prevent.
+        // Defaulting the parameterless constructor to NotDispatched would
+        // invite the unsafe retry this type exists to prevent.
         LibTmuxException failure = new("something went wrong");
 
         Assert.Equal(TmuxDispatchState.Unknown, failure.Dispatch);

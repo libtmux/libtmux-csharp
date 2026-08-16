@@ -139,10 +139,8 @@ public sealed class TmuxChainTests
 
         NewWindowRequest request = new(name: "typed", startDirectory: "/tmp");
 
-        // The one-shot path and the chained path build their arguments from
-        // the same code, so a window made either way is made the same way.
-        // Comparing the built command against what the wrapper sends is what
-        // keeps the two from drifting into separate descriptions.
+        // The one-shot and chained paths build arguments from the same code,
+        // so this compares the built command against what the wrapper sends.
         TmuxCommand command = request.ToCommand(session.Id.ToString());
 
         Assert.Equal("new-window", command.Name);
@@ -447,9 +445,8 @@ public sealed class TmuxChainTests
 
         try
         {
-            // Piping is only observable through what lands in the sink, which
-            // is the point of it: exit status says nothing about whether the
-            // pane's output was routed.
+            // Piping's effect is only observable in the sink; exit status says
+            // nothing about whether the pane's output was actually routed.
             await new PipePaneRequest(command: $"cat >> {sink}", outputOnly: true)
                 .ExecuteAsync(pane, token);
             await pane.SendTextAsync("echo piped-through", cancellationToken: token);
@@ -507,10 +504,8 @@ public sealed class TmuxChainTests
         CancellationToken token = TestContext.Current.CancellationToken;
         Server server = await ConnectAsync(raw, token);
 
-        // Naming a client is refused outright by 3.2a, and expanding
-        // literally arrived in 3.4. Asking for both must still produce a
-        // message on every supported tmux rather than a command one of them
-        // rejects.
+        // Naming a client is refused by 3.2a; literal expansion arrived in 3.4.
+        // Both must still produce a message on every supported tmux.
         TmuxCommandResult result = await new DisplayMessageRequest(
             "chained-message",
             returnText: true,
@@ -534,10 +529,8 @@ public sealed class TmuxChainTests
             "echo chained-shell",
             showStandardError: true).ExecuteAsync(server, token);
 
-        // tmux 3.3a and 3.4 accept run-shell and report nothing back, where
-        // 3.2a and 3.5 onward return what the command printed. The chain
-        // cannot invent output those two never sent, so what is asserted is
-        // the output where tmux reports any.
+        // tmux 3.3a/3.4 accept run-shell but report nothing; 3.2a and 3.5+
+        // return what it printed, so output is asserted only where sent.
         string reported = server.Version!.Value.ToString();
         if (reported is "3.3a" or "3.4")
         {
@@ -855,10 +848,8 @@ public sealed class TmuxChainTests
         Server server = await ConnectAsync(raw, token);
         Pane pane = (await server.GetPanesAsync(token))[0];
 
-        // tmux 3.7 rejects the activity-time order by name, which fails the
-        // whole invocation rather than sorting badly. Batching must not become
-        // a way around the omission, so the order is dropped there and kept
-        // everywhere else.
+        // tmux 3.7 rejects activity-time order by name and fails the whole
+        // invocation, so the order is dropped there and kept everywhere else.
         TmuxCommand command = new ChooseTreeRequest(sort: ChooseTreeSort.Time).ToCommand(pane);
 
         Assert.Equal("choose-tree", command.Name);

@@ -100,18 +100,14 @@ public sealed class ServerSessionLifecycleTests
             token);
         string[] observed = shape.StandardOutputLines[0].Split(' ');
 
-        // The pane reports where it actually is, which is not always the path
-        // that was asked for: on macOS /tmp is a symlink to /private/tmp and
-        // tmux prints the resolved one. The request is what this asserts, so
-        // both sides are resolved before comparing.
+        // tmux reports the resolved path, not the one requested -- on macOS
+        // /tmp is a symlink to /private/tmp -- so both sides are resolved first.
         Assert.Equal(
             Path.GetFullPath(new DirectoryInfo("/tmp").ResolveLinkTarget(true)?.FullName ?? "/tmp"),
             Path.GetFullPath(new DirectoryInfo(observed[2]).ResolveLinkTarget(true)?.FullName ?? observed[2]));
 
-        // tmux 3.2a sizes a second session from the one already on the server
-        // and ignores -x/-y outright, also taking the status line out of the
-        // height; every later version honours the requested size verbatim. The
-        // size flags are therefore only observable from 3.3a onwards.
+        // tmux 3.2a ignores -x/-y for a second session, sizing it from the
+        // existing session's height minus the status line; 3.3a+ honours -x/-y.
         string[] expectedSize = server.Version!.Value < TmuxVersion.Parse("3.3a")
             ? ["80", "23"]
             : ["132", "40"];
@@ -173,10 +169,8 @@ public sealed class ServerSessionLifecycleTests
         Assert.Equal(second, (await session.SelectNextWindowAsync(token)).Id);
         Assert.Equal(second, (await session.RefreshAsync(token)).ActiveWindow.Id);
 
-        // tmux accepts ':' inside a window name, so a target is anchored to this
-        // session unconditionally; treating "a:b" as already qualified would
-        // send tmux looking for window b in a session named a. tmux 3.7 alone
-        // refuses to set such a name, and 3.7a took that refusal back out.
+        // tmux accepts ':' inside a window name, so the target stays anchored
+        // to this session; tmux 3.7 alone refuses such a name (3.7a restored it).
         if (server.Version!.Value != TmuxVersion.Parse("3.7"))
         {
             await RequireRawSuccessAsync(
@@ -405,9 +399,8 @@ public sealed class ServerSessionLifecycleTests
             Func<TState, Exception?, string> formatter)
         {
             ArgumentNullException.ThrowIfNull(formatter);
-            // The dispatcher records every command failure at error level, and
-            // these proofs are about the warning a dropped flag produces, so
-            // only warnings are counted.
+            // The dispatcher logs command failures at error level; these tests
+            // only care about the warning a dropped flag produces.
             if (logLevel == LogLevel.Warning)
             {
                 _warnings.Add(formatter(state, exception));
