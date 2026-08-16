@@ -233,6 +233,8 @@ LibTmux.IncompleteSnapshotException.Relation.get -> string!
 LibTmux.Internal.TmuxCommandContext
 LibTmux.Internal.TmuxCommandContext.Logger.get -> Microsoft.Extensions.Logging.ILogger!
 LibTmux.LibTmuxException
+LibTmux.LibTmuxException.Dispatch.get -> LibTmux.TmuxDispatchState
+LibTmux.LibTmuxException.LibTmuxException(string! message, LibTmux.TmuxDispatchState dispatch, System.Exception? innerException = null) -> void
 LibTmux.LibTmuxException.LibTmuxException(string! message, System.Exception? innerException = null) -> void
 LibTmux.LibTmuxInfo
 LibTmux.LinkWindowRequest
@@ -1008,6 +1010,10 @@ LibTmux.TmuxCommandResult.StandardErrorLines.get -> System.Collections.Generic.I
 LibTmux.TmuxCommandResult.StandardOutput.get -> System.ReadOnlyMemory<byte>
 LibTmux.TmuxCommandResult.StandardOutputLines.get -> System.Collections.Generic.IReadOnlyList<string!>!
 LibTmux.TmuxCommandResult.TmuxCommandResult(System.Collections.Generic.IReadOnlyList<string!>! arguments, int exitCode, System.ReadOnlyMemory<byte> standardOutput, System.ReadOnlyMemory<byte> standardError, System.Collections.Generic.IReadOnlyList<string!>! standardOutputLines, System.Collections.Generic.IReadOnlyList<string!>! standardErrorLines) -> void
+LibTmux.TmuxDispatchState
+LibTmux.TmuxDispatchState.Dispatched = 2 -> LibTmux.TmuxDispatchState
+LibTmux.TmuxDispatchState.NotDispatched = 1 -> LibTmux.TmuxDispatchState
+LibTmux.TmuxDispatchState.Unknown = 0 -> LibTmux.TmuxDispatchState
 LibTmux.TmuxEnvironment
 LibTmux.TmuxEnvironment.GetAllAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<LibTmux.TmuxEnvironmentEntry!>!>!
 LibTmux.TmuxEnvironment.GetAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<LibTmux.TmuxEnvironmentEntry?>!
@@ -1117,6 +1123,7 @@ LibTmux.TmuxSessionExistsException.SessionName.get -> string!
 LibTmux.TmuxSessionExistsException.TmuxSessionExistsException(string! message, string! sessionName, System.Exception? innerException = null) -> void
 LibTmux.TmuxTransportException
 LibTmux.TmuxTransportException.Arguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+LibTmux.TmuxTransportException.TmuxTransportException(string! message, System.Collections.Generic.IReadOnlyList<string!>! arguments, LibTmux.TmuxDispatchState dispatch, System.Exception? innerException = null) -> void
 LibTmux.TmuxTransportException.TmuxTransportException(string! message, System.Collections.Generic.IReadOnlyList<string!>! arguments, System.Exception? innerException = null) -> void
 LibTmux.TmuxVersion
 LibTmux.TmuxVersion.CompareTo(LibTmux.TmuxVersion other) -> int

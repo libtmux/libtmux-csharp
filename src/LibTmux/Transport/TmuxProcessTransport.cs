@@ -83,7 +83,8 @@ internal sealed class TmuxProcessTransport
         {
             throw new TmuxTransportException(
                 $"The command exceeds the {_limits.MaxArguments} argument limit.",
-                request.LogicalArguments);
+                request.LogicalArguments,
+                TmuxDispatchState.NotDispatched);
         }
 
         ProcessStartInfo startInfo = CreateStartInfo(encodedArguments);
@@ -112,6 +113,7 @@ internal sealed class TmuxProcessTransport
             throw new TmuxTransportException(
                 "The tmux client process could not be started.",
                 request.LogicalArguments,
+                TmuxDispatchState.NotDispatched,
                 error);
         }
 

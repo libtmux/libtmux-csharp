@@ -44,9 +44,11 @@ $ mise exec -- dotnet build LibTmux.slnx --configuration Release --warnaserror
 
 ## What gates this repository
 
-`.github/workflows/dotnet.yml` is the source of truth. Beyond building and
-`dotnet test`, two validators run on documents rather than the build, and are
-easy to forget locally:
+`.github/workflows/dotnet.yml` is the source of truth, and its `gate` job is
+the single name branch protection requires — adding a job means adding it to
+`gate`'s `needs`, not to a protection rule. Beyond building and `dotnet test`,
+two validators run on documents rather than the build, and are easy to forget
+locally:
 
 ```console
 $ uv run python eng/parity/verify_public_api.py
@@ -75,8 +77,16 @@ $ mise exec -- dotnet restore LibTmux.slnx --force-evaluate
 ```
 
 `.github/workflows/dotnet-tmux.yml` builds each supported tmux from source and
-runs the integration suite against it. That is what proves the compatibility
-range; the build workflow only ever sees whatever tmux Ubuntu ships.
+runs the integration suite against it, behind a `compatibility` job that plays
+the same role as `gate`. That is what proves the compatibility range; the build
+workflow only ever sees whatever tmux Ubuntu ships.
+
+Two more workflows run on a schedule rather than on the gate, because what they
+check can change without a commit: `codeql.yml` analyses the build, and
+`scorecard.yml` scores the repository's supply chain. Every action reference in
+this repository is pinned to a commit SHA with the version in a trailing
+comment, which is what stops a moved tag from changing what CI runs. Dependabot
+maintains those pins; a pin nobody updates is just a stale action.
 
 ## The Python original is a separate checkout
 

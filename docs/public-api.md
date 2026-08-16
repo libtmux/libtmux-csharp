@@ -393,6 +393,7 @@ internal static class Program
 | `T:LibTmux.TmuxCommandException` | class | `public, sealed` | None | `LibTmuxException` | value | Reports TmuxCommand failure. State: Result. | `LibTmux` |
 | `T:LibTmux.TmuxCommandNotFoundException` | class | `public, sealed` | None | `LibTmuxException` | value | Reports TmuxCommandNotFound failure. State: TmuxBinaryPath. | `LibTmux` |
 | `T:LibTmux.TmuxCommandResult` | record | `public, sealed` | None | `object` | value | The complete inspectable result of one raw tmux command. | `LibTmux` |
+| `T:LibTmux.TmuxDispatchState` | enum | `public` | None | `Enum` | value | Says whether a failed command reached tmux, which is what decides if retrying is safe. | `LibTmux` |
 | `T:LibTmux.TmuxEnvironment` | class | `public, sealed` | None | `object` | borrowed | Scoped environment operations. | `LibTmux` |
 | `T:LibTmux.TmuxEnvironmentEntry` | record | `public, sealed` | None | `object` | value | One tmux environment entry, including removal markers. | `LibTmux` |
 | `T:LibTmux.TmuxHook` | record | `public, sealed` | None | `object` | value | One tmux hook and its sparse commands. | `LibTmux` |

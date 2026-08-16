@@ -255,6 +255,30 @@ Commands are recorded at `Debug` and failures at `Error`, with stable scalar
 fields (`TmuxSubcommand`, `TmuxExitCode`) to filter on. Anything that can carry
 a payload is truncated, the command line included.
 
+## Knowing when a retry is safe
+
+Retrying a failed command is the obvious recovery and it is only sound when the
+command never reached tmux. Every failure says which it was, so the decision is
+an exception filter rather than a guess:
+
+```csharp run
+try
+{
+    await server.CreateSessionAsync(new NewSessionRequest(name: "build"), ct);
+}
+catch (LibTmuxException error) when (error.Dispatch == TmuxDispatchState.NotDispatched)
+{
+    // tmux was never started, so nothing happened and this can be sent again.
+    Console.WriteLine($"safe to retry: {error.Dispatch}");
+}
+```
+
+`NotDispatched` is claimed only where the library can see that no tmux process
+ran — a missing binary, or a command rejected before launch. A client that
+started and then died is `Unknown`, because tmux may have acted before the pipe
+broke, and `Unknown` is the default for exactly that reason. A
+`TmuxCommandException` is always `Dispatched`: it exists because tmux answered.
+
 ## Related packages
 
 | Package | Adds |

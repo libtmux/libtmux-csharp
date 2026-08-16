@@ -365,6 +365,7 @@ COMPONENT_API_TYPES: dict[int, tuple[str, ...]] = {
         "T:LibTmux.OptionScope",
         "T:LibTmux.PaneDirection",
         "T:LibTmux.ResizeDirection",
+        "T:LibTmux.TmuxDispatchState",
         "T:LibTmux.TmuxVersion",
         "T:LibTmux.TmuxVersionTooLowException",
         "T:LibTmux.WindowDirection",

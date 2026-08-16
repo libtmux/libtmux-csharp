@@ -1,0 +1,60 @@
+# Static analysis for the kinds of defect a test suite does not look for.
+#
+# This library builds command lines for another program and parses what comes
+# back, which is the shape of code where injection and mishandled input live.
+# The suite proves behaviour against a real tmux; this looks for the paths
+# nobody thought to write a test for.
+name: codeql
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # A dependency or a query set can turn today's clean result into next
+    # week's finding without anything here changing.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: analyze
+    runs-on: ubuntu-latest
+    permissions:
+      # Findings are uploaded as SARIF, which is what puts them in the security
+      # tab instead of only in a log nobody reads.
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        with:
+          languages: csharp
+          # The default set is the security queries alone. This adds the
+          # correctness and maintainability ones, which is where a parser that
+          # mishandles an edge case shows up.
+          queries: security-and-quality
+
+      - name: Build
+        # CodeQL observes a real build rather than reading the source, so the
+        # analysis covers exactly what ships. --no-incremental stops a cached
+        # assembly from being skipped and therefore unexamined.
+        run: dotnet build LibTmux.slnx --configuration Release --no-incremental
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4

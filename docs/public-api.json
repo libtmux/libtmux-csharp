@@ -2285,6 +2285,21 @@
       "summary": "The complete inspectable result of one raw tmux command."
     },
     {
+      "id": "T:LibTmux.TmuxDispatchState",
+      "namespace": "LibTmux",
+      "name": "TmuxDispatchState",
+      "kind": "enum",
+      "package": "LibTmux",
+      "modifiers": [
+        "public"
+      ],
+      "baseType": "Enum",
+      "interfaces": [],
+      "ownership": "value",
+      "state": [],
+      "summary": "Says whether a failed command reached tmux, which is what decides if retrying is safe."
+    },
+    {
       "id": "T:LibTmux.TmuxEnvironment",
       "namespace": "LibTmux",
       "name": "TmuxEnvironment",
@@ -3063,6 +3078,45 @@
     }
   ],
   "members": [
+    {
+      "id": "F:LibTmux.TmuxDispatchState.Unknown",
+      "declaringType": "T:LibTmux.TmuxDispatchState",
+      "name": "Unknown",
+      "kind": "enum value",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "TmuxDispatchState.Unknown",
+      "portable": true,
+      "summary": "Whether tmux acted on the command cannot be determined; treat a retry as able to repeat it.",
+      "value": 0,
+      "static": true
+    },
+    {
+      "id": "F:LibTmux.TmuxDispatchState.NotDispatched",
+      "declaringType": "T:LibTmux.TmuxDispatchState",
+      "name": "NotDispatched",
+      "kind": "enum value",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "TmuxDispatchState.NotDispatched",
+      "portable": true,
+      "summary": "The command never reached tmux, so a retry repeats nothing.",
+      "value": 1,
+      "static": true
+    },
+    {
+      "id": "F:LibTmux.TmuxDispatchState.Dispatched",
+      "declaringType": "T:LibTmux.TmuxDispatchState",
+      "name": "Dispatched",
+      "kind": "enum value",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "TmuxDispatchState.Dispatched",
+      "portable": true,
+      "summary": "tmux ran the command and answered, so any side effect has already happened.",
+      "value": 2,
+      "static": true
+    },
     {
       "id": "F:LibTmux.ChooseTreeSort.Index",
       "declaringType": "T:LibTmux.ChooseTreeSort",
@@ -12323,6 +12377,66 @@
       "summary": "Creates TmuxCleanupException."
     },
     {
+      "id": "M:LibTmux.LibTmuxException.#ctor(string,TmuxDispatchState,Exception?)",
+      "declaringType": "T:LibTmux.LibTmuxException",
+      "name": ".ctor",
+      "kind": "constructor",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "LibTmuxException",
+      "parameters": [
+        {
+          "name": "message",
+          "type": "string"
+        },
+        {
+          "name": "dispatch",
+          "type": "TmuxDispatchState"
+        },
+        {
+          "name": "innerException",
+          "type": "Exception?",
+          "default": "null"
+        }
+      ],
+      "signature": "LibTmuxException(string message, TmuxDispatchState dispatch, Exception? innerException = null)",
+      "portable": true,
+      "summary": "Creates LibTmuxException with a known dispatch state."
+    },
+    {
+      "id": "M:LibTmux.TmuxTransportException.#ctor(string,IReadOnlyList<string>,TmuxDispatchState,Exception?)",
+      "declaringType": "T:LibTmux.TmuxTransportException",
+      "name": ".ctor",
+      "kind": "constructor",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "TmuxTransportException",
+      "parameters": [
+        {
+          "name": "message",
+          "type": "string"
+        },
+        {
+          "name": "arguments",
+          "type": "IReadOnlyList<string>"
+        },
+        {
+          "name": "dispatch",
+          "type": "TmuxDispatchState"
+        },
+        {
+          "name": "innerException",
+          "type": "Exception?",
+          "default": "null"
+        }
+      ],
+      "signature": "TmuxTransportException(string message, IReadOnlyList<string> arguments, TmuxDispatchState dispatch, Exception? innerException = null)",
+      "portable": true,
+      "summary": "Creates TmuxTransportException with a known dispatch state."
+    },
+    {
       "id": "M:LibTmux.TmuxCommandException.#ctor(string,TmuxCommandResult,Exception?)",
       "declaringType": "T:LibTmux.TmuxCommandException",
       "name": ".ctor",
@@ -21198,6 +21312,20 @@
       "summary": "Gets OriginalCancellation."
     },
     {
+      "id": "P:LibTmux.LibTmuxException.Dispatch",
+      "declaringType": "T:LibTmux.LibTmuxException",
+      "name": "Dispatch",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "TmuxDispatchState",
+      "parameters": [],
+      "signature": "TmuxDispatchState LibTmux.LibTmuxException.Dispatch { get; }",
+      "portable": true,
+      "summary": "Gets whether the command reached tmux, and so whether a retry is safe."
+    },
+    {
       "id": "P:LibTmux.TmuxCommandException.Result",
       "declaringType": "T:LibTmux.TmuxCommandException",
       "name": "Result",
@@ -22305,6 +22433,16 @@
       "visibility": "public",
       "package": "LibTmux",
       "signature": "record LibTmux.ChooseTreeRequest",
+      "portable": true
+    },
+    {
+      "id": "T:LibTmux.TmuxDispatchState",
+      "declaringType": "T:LibTmux.TmuxDispatchState",
+      "name": "TmuxDispatchState",
+      "kind": "type",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "enum LibTmux.TmuxDispatchState",
       "portable": true
     },
     {
