@@ -8,7 +8,7 @@ Versions follow [Semantic Versioning](https://semver.org). During alpha the
 public API can change in any release with no deprecation period — pin an exact
 version.
 
-## [Unreleased]
+## [0.0.0-alpha.7] — 2026-08-16
 
 ### Changed
 
