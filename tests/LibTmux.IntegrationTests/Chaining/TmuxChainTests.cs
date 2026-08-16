@@ -564,8 +564,12 @@ public sealed class TmuxChainTests
         // buffer's text reaching the pane is what says the paste happened.
         await new PasteBufferRequest(name: "ltbuf", rawBytes: true).ExecuteAsync(pane, token);
 
+        // Joined, because a paste lands at the prompt and a wide enough prompt
+        // leaves it split across two stored lines.
         string seen = await TmuxWait.UntilAsync(
-            async inner => string.Join('\n', await pane.CaptureAsync(cancellationToken: inner)),
+            async inner => string.Join(
+                '\n',
+                await pane.CaptureAsync(new CapturePaneRequest(joinWrappedLines: true), inner)),
             text => text.Contains("chained-paste", StringComparison.Ordinal),
             TimeSpan.FromSeconds(10),
             TimeSpan.FromMilliseconds(20),
