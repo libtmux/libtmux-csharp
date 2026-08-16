@@ -16,11 +16,23 @@ namespace LibTmux;
 internal sealed class ControlModeSession : IControlModeSession
 {
     private readonly Process _process;
+    /// <summary>How many unread events are held before the oldest are dropped.</summary>
+    /// <remarks>
+    /// A pane can produce output faster than anything reads it, and a caller is
+    /// allowed to never read <see cref="Events"/> at all. Unbounded buffering
+    /// turns either of those into memory growth with no ceiling, so the channel
+    /// is bounded and drops the oldest event when full: a consumer that fell
+    /// behind wants recent output, and the alternative is blocking the reader
+    /// that also completes commands.
+    /// </remarks>
+    internal const int EventBufferCapacity = 4096;
+
     private readonly Channel<TmuxEvent> _events =
-        Channel.CreateUnbounded<TmuxEvent>(new UnboundedChannelOptions
+        Channel.CreateBounded<TmuxEvent>(new BoundedChannelOptions(EventBufferCapacity)
         {
             SingleReader = false,
             SingleWriter = true,
+            FullMode = BoundedChannelFullMode.DropOldest,
         });
 
     private readonly Queue<TaskCompletionSource<IReadOnlyList<string>>> _pending = new();
@@ -29,12 +41,39 @@ internal sealed class ControlModeSession : IControlModeSession
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Task _pump;
+    private readonly Task _errorDrain;
     private bool _disposed;
+
+    /// <summary>How long disposal waits for the client to exit before killing it.</summary>
+    /// <remarks>
+    /// Closing stdin asks tmux to leave. A client that does not answer -- wedged,
+    /// stopped, or waiting on something -- would otherwise hang the caller's
+    /// disposal forever, and disposal is the one operation that has to finish.
+    /// </remarks>
+    private static readonly TimeSpan ExitBudget = TimeSpan.FromSeconds(5);
 
     private ControlModeSession(Process process)
     {
         _process = process;
         _pump = Task.Run(PumpAsync);
+
+        // Standard error is redirected, so something has to read it. A pipe
+        // nobody drains fills, and a client blocked writing a diagnostic stops
+        // answering commands -- a deadlock whose cause is nowhere near its
+        // symptom.
+        _errorDrain = Task.Run(async () =>
+        {
+            try
+            {
+                await _process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            }
+            catch (Exception error) when (error is IOException or ObjectDisposedException
+                or InvalidOperationException or OperationCanceledException)
+            {
+                // The stream closing under us is how this ends normally. Draining
+                // is not allowed to be the thing that fails a session.
+            }
+        });
     }
 
     public IAsyncEnumerable<TmuxEvent> Events => _events.Reader.ReadAllAsync();
@@ -102,14 +141,20 @@ internal sealed class ControlModeSession : IControlModeSession
         await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            // The waiter is queued only after the command is on the wire. tmux
+            // answers in order, so a slot queued for a command that was never
+            // sent -- because the write was cancelled or threw -- would be handed
+            // the next command's answer, and every later caller would be off by
+            // one. Holding the write lock across both keeps the queue in the
+            // same order tmux sees.
+            await _process.StandardInput.WriteLineAsync(command.AsMemory(), cancellationToken)
+                .ConfigureAwait(false);
+            await _process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
+
             lock (_pending)
             {
                 _pending.Enqueue(completion);
             }
-
-            await _process.StandardInput.WriteLineAsync(command.AsMemory(), cancellationToken)
-                .ConfigureAwait(false);
-            await _process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -132,7 +177,19 @@ internal sealed class ControlModeSession : IControlModeSession
             if (!_process.HasExited)
             {
                 _process.StandardInput.Close();
-                await _process.WaitForExitAsync().ConfigureAwait(false);
+                using CancellationTokenSource budget = new(ExitBudget);
+                try
+                {
+                    await _process.WaitForExitAsync(budget.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Asking did not work, so stop asking. A disposal that never
+                    // returns is worse than a client that did not shut down
+                    // politely.
+                    _process.Kill(entireProcessTree: true);
+                    await _process.WaitForExitAsync().ConfigureAwait(false);
+                }
             }
         }
         catch (InvalidOperationException)
@@ -142,6 +199,7 @@ internal sealed class ControlModeSession : IControlModeSession
         finally
         {
             await _pump.ConfigureAwait(false);
+            await _errorDrain.ConfigureAwait(false);
             _process.Dispose();
             _writeLock.Dispose();
         }
