@@ -90,11 +90,31 @@ public static class QueryJson
             json,
             new JsonDocumentOptions { MaxDepth = bounds.MaximumDepth });
         JsonElement root = parsed.RootElement;
+
+        // The schema and version say how to read everything after them, so
+        // accepting whatever the document claims is accepting instructions from
+        // the document. A reader that only knows v1 has to say so before it
+        // builds anything, or it silently interprets a v2 payload with v1 rules.
+        string schema = root.GetProperty("schema").GetString()
+            ?? throw new JsonException("Query document names no schema.");
+        if (!string.Equals(schema, QueryDocument.CurrentSchema, StringComparison.Ordinal))
+        {
+            throw new JsonException(
+                $"Query document names schema '{schema}', which this reader does not know.");
+        }
+
+        int version = root.GetProperty("version").GetInt32();
+        if (version != QueryDocument.CurrentVersion)
+        {
+            throw new JsonException(
+                $"Query document is version {version}; this reader understands "
+                + $"{QueryDocument.CurrentVersion}.");
+        }
+
         var reader = new QueryDocumentJsonReader(bounds);
         return new QueryDocument(
-            root.GetProperty("schema").GetString()
-                ?? throw new JsonException("Query document names no schema."),
-            root.GetProperty("version").GetInt32(),
+            schema,
+            version,
             QueryDocumentJsonReader.ReadTarget(root.GetProperty("target")),
             reader.ReadNode(root.GetProperty("predicate"), depth: 1));
     }

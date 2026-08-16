@@ -13,6 +13,16 @@ namespace LibTmux.Query;
 /// </remarks>
 internal static class QueryInterpreter
 {
+    /// <summary>How long one regex may run before it is treated as hostile.</summary>
+    /// <remarks>
+    /// A query document can arrive from somewhere else — that is the point of it
+    /// being a document — and a pattern like <c>(a+)+$</c> against a long subject
+    /// backtracks for longer than anyone will wait. Without a timeout the
+    /// evaluating process is the one that pays, so matching is bounded and a
+    /// pattern that exceeds the budget raises rather than hangs.
+    /// </remarks>
+    private static readonly TimeSpan RegexBudget = TimeSpan.FromSeconds(1);
+
     internal static Func<T, bool> Compile<T>(QueryDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -29,7 +39,8 @@ internal static class QueryInterpreter
         RegexNode regex => Regex.IsMatch(
             ReadText(regex.Input, element) ?? string.Empty,
             regex.Pattern,
-            regex.SemanticOptions),
+            regex.SemanticOptions,
+            RegexBudget),
         QuantifierNode quantifier => Quantify(quantifier, element),
         _ => throw new UnsupportedQueryExpressionException(
             $"Node '{node.GetType().Name}' has no interpretation."),
@@ -131,6 +142,17 @@ internal static class QueryInterpreter
     private static object? ReadMember(FieldNode field, object element)
     {
         Type type = element.GetType();
+
+        // A document can be deserialized from somewhere else, so a FieldNode is
+        // not necessarily one this library minted. Resolving an unknown wire
+        // name by convention would let a forged node read any public property
+        // on the element, which is the closed catalog defeating itself. So the
+        // name is checked against the catalog before anything is resolved.
+        if (!QueryFieldCatalog.TryGetTarget(field.WireName, out _))
+        {
+            throw new UnsupportedQueryExpressionException(
+                $"Field '{field.WireName}' is not in the query catalog.");
+        }
 
         // Reading has to resolve the same pair translating wrote: an entity
         // holds session_attached under Attached, and a row a caller declared

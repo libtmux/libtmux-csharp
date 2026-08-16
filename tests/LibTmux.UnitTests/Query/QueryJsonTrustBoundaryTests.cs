@@ -1,0 +1,117 @@
+using System.Text.Json;
+using LibTmux.Query;
+using LibTmux.Query.Json;
+
+namespace LibTmux.UnitTests.Query;
+
+/// <summary>Proves a query document is treated as input rather than as instructions.</summary>
+/// <remarks>
+/// The point of a portable query document is that it can arrive from somewhere
+/// else, which makes deserialization a trust boundary. These tests pin the
+/// refusals that make the boundary real: the declared limits have to hold on the
+/// way in, not only on the way out, and a document does not get to nominate the
+/// schema it will be read under.
+/// </remarks>
+public sealed class QueryJsonTrustBoundaryTests
+{
+    private static string Document(string predicate, string schema = "libtmux.query", int version = 1) =>
+        $$"""
+        {"schema":"{{schema}}","version":{{version}},"target":"session","predicate":{{predicate}}}
+        """;
+
+    private const string TrivialPredicate =
+        """{"kind":"constant","type":"boolean","value":true}""";
+
+    [Fact]
+    public void A_document_naming_another_schema_is_refused()
+    {
+        // Reading a foreign schema with v1 rules is a silent misinterpretation,
+        // which is worse than a failure.
+        JsonException failure = Assert.Throws<JsonException>(
+            () => QueryJson.Deserialize(Document(TrivialPredicate, schema: "someone.else")));
+
+        Assert.Contains("someone.else", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_document_naming_a_future_version_is_refused()
+    {
+        JsonException failure = Assert.Throws<JsonException>(
+            () => QueryJson.Deserialize(Document(TrivialPredicate, version: 2)));
+
+        Assert.Contains("version 2", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_string_longer_than_the_limit_is_refused_on_the_way_in()
+    {
+        string oversized = new('a', QueryJsonLimits.V1.MaximumStringLength + 1);
+        string json = Document($$"""{"kind":"constant","type":"string","value":"{{oversized}}"}""");
+
+        Assert.Throws<JsonException>(() => QueryJson.Deserialize(json));
+    }
+
+    [Fact]
+    public void A_pattern_longer_than_the_limit_is_refused_on_the_way_in()
+    {
+        string oversized = new('a', QueryJsonLimits.V1.MaximumPatternLength + 1);
+        string json = Document(
+            $$"""
+            {"kind":"regex","input":{"kind":"field","target":"session","name":"session_name"},
+             "dialect":"dotnet","pattern":"{{oversized}}","semanticOptions":0}
+            """);
+
+        Assert.Throws<JsonException>(() => QueryJson.Deserialize(json));
+    }
+
+    [Fact]
+    public void A_regex_dialect_this_library_cannot_evaluate_is_refused()
+    {
+        string json = Document(
+            """
+            {"kind":"regex","input":{"kind":"field","target":"session","name":"session_name"},
+             "dialect":"pcre","pattern":"^a","semanticOptions":0}
+            """);
+
+        Assert.Throws<JsonException>(() => QueryJson.Deserialize(json));
+    }
+
+    [Fact]
+    public void Regex_options_outside_the_supported_set_are_refused()
+    {
+        // The value arrives as an integer, so without a check any bit pattern
+        // becomes a flags enum. 1024 is RegexOptions.NonBacktracking, which
+        // translation never emits.
+        string json = Document(
+            """
+            {"kind":"regex","input":{"kind":"field","target":"session","name":"session_name"},
+             "dialect":"dotnet","pattern":"^a","semanticOptions":1024}
+            """);
+
+        Assert.Throws<JsonException>(() => QueryJson.Deserialize(json));
+    }
+
+    [Fact]
+    public void A_field_outside_the_catalog_cannot_be_read_from_an_element()
+    {
+        // A FieldNode is forgeable, so the interpreter cannot assume one it is
+        // handed came from translation. Resolving an unknown name by convention
+        // would read any public property on the element.
+        QueryDocument forged = new(
+            QueryDocument.CurrentSchema,
+            QueryDocument.CurrentVersion,
+            QueryTarget.Session,
+            new StringNode(
+                QueryStringOperation.EqualsOrdinal,
+                new FieldNode(QueryTarget.Session, "connection"),
+                new ConstantNode(new StringConstant("anything"))));
+
+        UnsupportedQueryExpressionException failure =
+            Assert.Throws<UnsupportedQueryExpressionException>(
+                () => forged.Compile<SessionRow>()(new SessionRow("build", true)));
+
+        Assert.Contains("connection", failure.Message, StringComparison.Ordinal);
+    }
+
+    private sealed record SessionRow(string SessionName, bool SessionAttached);
+}

@@ -276,11 +276,9 @@ internal sealed class QueryDocumentJsonReader
                 ReadNode(element.GetProperty("right"), depth + 1)),
             "regex" => new RegexNode(
                 ReadNode(element.GetProperty("input"), depth + 1),
-                element.GetProperty("dialect").GetString() ?? "dotnet",
-                element.GetProperty("pattern").GetString() ?? string.Empty,
-                (System.Text.RegularExpressions.RegexOptions)element
-                    .GetProperty("semanticOptions")
-                    .GetInt32()),
+                ReadDialect(element.GetProperty("dialect")),
+                ReadPattern(element.GetProperty("pattern")),
+                ReadRegexOptions(element.GetProperty("semanticOptions"))),
             "quantifier" => new QuantifierNode(
                 element.GetProperty("quantifier").GetString() == "any"
                     ? QueryQuantifier.Any
@@ -294,6 +292,67 @@ internal sealed class QueryDocumentJsonReader
             "constant" => new ConstantNode(ReadConstant(element)),
             _ => throw new JsonException("Query document names an unknown node kind."),
         };
+    }
+
+    /// <summary>Reads a regex dialect, refusing one this library cannot evaluate.</summary>
+    /// <remarks>
+    /// The wire form names a dialect so a future reader can tell .NET patterns
+    /// from someone else's. Accepting an unknown name would mean evaluating a
+    /// pattern under rules it was not written for.
+    /// </remarks>
+    private static string ReadDialect(JsonElement element)
+    {
+        string dialect = element.GetString() ?? "dotnet";
+        return string.Equals(dialect, "dotnet", StringComparison.Ordinal)
+            ? dialect
+            : throw new JsonException($"Regex dialect '{dialect}' is not supported.");
+    }
+
+    /// <summary>Reads a pattern, bounded by the declared limit.</summary>
+    private string ReadPattern(JsonElement element)
+    {
+        string pattern = element.GetString()
+            ?? throw new JsonException("Regex names no pattern.");
+        return pattern.Length <= _limits.MaximumPatternLength
+            ? pattern
+            : throw new JsonException("Regex pattern exceeds the maximum length.");
+    }
+
+    /// <summary>Reads regex options, refusing bits this library does not define.</summary>
+    /// <remarks>
+    /// The value arrives as an integer, so an arbitrary one would otherwise be
+    /// cast straight into a flags enum. Only the options translation can produce
+    /// are accepted; anything else is a document describing behaviour this
+    /// library never writes.
+    /// </remarks>
+    private static System.Text.RegularExpressions.RegexOptions ReadRegexOptions(
+        JsonElement element)
+    {
+        const System.Text.RegularExpressions.RegexOptions Allowed =
+            System.Text.RegularExpressions.RegexOptions.None
+            | System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            | System.Text.RegularExpressions.RegexOptions.Multiline
+            | System.Text.RegularExpressions.RegexOptions.Singleline
+            | System.Text.RegularExpressions.RegexOptions.CultureInvariant;
+
+        var options = (System.Text.RegularExpressions.RegexOptions)element.GetInt32();
+        return (options & ~Allowed) == 0
+            ? options
+            : throw new JsonException("Regex names options this reader does not support.");
+    }
+
+    /// <summary>Reads a string constant, bounded by the declared limit.</summary>
+    /// <remarks>
+    /// The writer already refuses to emit a longer one. Without the same check
+    /// here the limit only constrains documents this library produced, which is
+    /// the opposite of where a limit is needed.
+    /// </remarks>
+    private string ReadBoundedString(JsonElement element)
+    {
+        string value = element.GetString() ?? string.Empty;
+        return value.Length <= _limits.MaximumStringLength
+            ? value
+            : throw new JsonException("String value exceeds the maximum length.");
     }
 
     private static QueryComparison ReadComparison(JsonElement element) =>
@@ -319,14 +378,13 @@ internal sealed class QueryDocumentJsonReader
             _ => throw new JsonException("Query document names an unknown string operation."),
         };
 
-    private static QueryConstant ReadConstant(JsonElement element) =>
+    private QueryConstant ReadConstant(JsonElement element) =>
         element.GetProperty("type").GetString() switch
         {
             "null" => new NullConstant(),
             "boolean" => new BooleanConstant(element.GetProperty("value").GetBoolean()),
             "int64" => new Int64Constant(element.GetProperty("value").GetInt64()),
-            "string" => new StringConstant(
-                element.GetProperty("value").GetString() ?? string.Empty),
+            "string" => new StringConstant(ReadBoundedString(element.GetProperty("value"))),
             "instant" => new InstantConstant(element.GetProperty("value").GetInt64()),
             "enum" => new EnumConstant(
                 element.GetProperty("enumType").GetString() ?? string.Empty,
