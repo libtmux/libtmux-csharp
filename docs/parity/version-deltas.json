@@ -4,16 +4,16 @@
       "capability": "attachment_accounting",
       "evidence": {
         "capabilityCohort": "0001",
-        "evaluatedCommit": "7833e6f9582042310fd76d22b50d0190af00ba1e",
+        "evaluatedCommit": "1a6775b516a8644a6b528f4f96c39fee9378d248",
         "frameworks": [
           "net10.0",
           "net8.0"
         ],
-        "results": "docs/parity/evidence/0002/results.ndjson",
-        "sourceContentFingerprint": "0921a4052635ee006b0f6e4ed3454318afeb87026c0d998855a5ac5c18408509",
+        "results": "docs/parity/evidence/0003/results.ndjson",
+        "sourceContentFingerprint": "12ee6e267dd560368b9ff30c9b9d501a36b90542769839de920a7ecfc77d1883",
         "sourceState": "clean",
-        "sourceTreeFingerprint": "392c6b0c0fb0aa00f852e5ca7c8cd9bee46c3c4597ea4d60497ca6fd9963efaa",
-        "testCount": 854,
+        "sourceTreeFingerprint": "448cc65c15ec901b4f47c0aa24276a7a5da3c121a7435ab3efb081594cf66a36",
+        "testCount": 855,
         "tests": [
           "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::AttachmentAccounting"
         ],
@@ -49,16 +49,16 @@
       "capability": "byte_length_framing",
       "evidence": {
         "capabilityCohort": "0001",
-        "evaluatedCommit": "7833e6f9582042310fd76d22b50d0190af00ba1e",
+        "evaluatedCommit": "1a6775b516a8644a6b528f4f96c39fee9378d248",
         "frameworks": [
           "net10.0",
           "net8.0"
         ],
-        "results": "docs/parity/evidence/0002/results.ndjson",
-        "sourceContentFingerprint": "0921a4052635ee006b0f6e4ed3454318afeb87026c0d998855a5ac5c18408509",
+        "results": "docs/parity/evidence/0003/results.ndjson",
+        "sourceContentFingerprint": "12ee6e267dd560368b9ff30c9b9d501a36b90542769839de920a7ecfc77d1883",
         "sourceState": "clean",
-        "sourceTreeFingerprint": "392c6b0c0fb0aa00f852e5ca7c8cd9bee46c3c4597ea4d60497ca6fd9963efaa",
-        "testCount": 854,
+        "sourceTreeFingerprint": "448cc65c15ec901b4f47c0aa24276a7a5da3c121a7435ab3efb081594cf66a36",
+        "testCount": 855,
         "tests": [
           "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ByteLengthFraming"
         ],
@@ -94,16 +94,16 @@
       "capability": "control_notifications",
       "evidence": {
         "capabilityCohort": "0001",
-        "evaluatedCommit": "7833e6f9582042310fd76d22b50d0190af00ba1e",
+        "evaluatedCommit": "1a6775b516a8644a6b528f4f96c39fee9378d248",
         "frameworks": [
           "net10.0",
           "net8.0"
         ],
-        "results": "docs/parity/evidence/0002/results.ndjson",
-        "sourceContentFingerprint": "0921a4052635ee006b0f6e4ed3454318afeb87026c0d998855a5ac5c18408509",
+        "results": "docs/parity/evidence/0003/results.ndjson",
+        "sourceContentFingerprint": "12ee6e267dd560368b9ff30c9b9d501a36b90542769839de920a7ecfc77d1883",
         "sourceState": "clean",
-        "sourceTreeFingerprint": "392c6b0c0fb0aa00f852e5ca7c8cd9bee46c3c4597ea4d60497ca6fd9963efaa",
-        "testCount": 854,
+        "sourceTreeFingerprint": "448cc65c15ec901b4f47c0aa24276a7a5da3c121a7435ab3efb081594cf66a36",
+        "testCount": 855,
         "tests": [
           "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::ControlNotifications"
         ],
@@ -139,16 +139,16 @@
       "capability": "format_fields_and_operators",
       "evidence": {
         "capabilityCohort": "0001",
-        "evaluatedCommit": "7833e6f9582042310fd76d22b50d0190af00ba1e",
+        "evaluatedCommit": "1a6775b516a8644a6b528f4f96c39fee9378d248",
         "frameworks": [
           "net10.0",
           "net8.0"
         ],
-        "results": "docs/parity/evidence/0002/results.ndjson",
-        "sourceContentFingerprint": "0921a4052635ee006b0f6e4ed3454318afeb87026c0d998855a5ac5c18408509",
+        "results": "docs/parity/evidence/0003/results.ndjson",
+        "sourceContentFingerprint": "12ee6e267dd560368b9ff30c9b9d501a36b90542769839de920a7ecfc77d1883",
         "sourceState": "clean",
-        "sourceTreeFingerprint": "392c6b0c0fb0aa00f852e5ca7c8cd9bee46c3c4597ea4d60497ca6fd9963efaa",
-        "testCount": 854,
+        "sourceTreeFingerprint": "448cc65c15ec901b4f47c0aa24276a7a5da3c121a7435ab3efb081594cf66a36",
+        "testCount": 855,
         "tests": [
           "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::FormatFieldsAndOperators"
         ],
@@ -184,16 +184,16 @@
       "capability": "option_dollar_double_escape",
       "evidence": {
         "capabilityCohort": "0001",
-        "evaluatedCommit": "7833e6f9582042310fd76d22b50d0190af00ba1e",
+        "evaluatedCommit": "1a6775b516a8644a6b528f4f96c39fee9378d248",
         "frameworks": [
           "net10.0",
           "net8.0"
         ],
-        "results": "docs/parity/evidence/0002/results.ndjson",
-        "sourceContentFingerprint": "0921a4052635ee006b0f6e4ed3454318afeb87026c0d998855a5ac5c18408509",
+        "results": "docs/parity/evidence/0003/results.ndjson",
+        "sourceContentFingerprint": "12ee6e267dd560368b9ff30c9b9d501a36b90542769839de920a7ecfc77d1883",
         "sourceState": "clean",
-        "sourceTreeFingerprint": "392c6b0c0fb0aa00f852e5ca7c8cd9bee46c3c4597ea4d60497ca6fd9963efaa",
-        "testCount": 854,
+        "sourceTreeFingerprint": "448cc65c15ec901b4f47c0aa24276a7a5da3c121a7435ab3efb081594cf66a36",
+        "testCount": 855,
         "tests": [
           "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::OptionDollarDoubleEscape"
         ],
@@ -229,16 +229,16 @@
       "capability": "semicolon_grouping",
       "evidence": {
         "capabilityCohort": "0001",
-        "evaluatedCommit": "7833e6f9582042310fd76d22b50d0190af00ba1e",
+        "evaluatedCommit": "1a6775b516a8644a6b528f4f96c39fee9378d248",
         "frameworks": [
           "net10.0",
           "net8.0"
         ],
-        "results": "docs/parity/evidence/0002/results.ndjson",
-        "sourceContentFingerprint": "0921a4052635ee006b0f6e4ed3454318afeb87026c0d998855a5ac5c18408509",
+        "results": "docs/parity/evidence/0003/results.ndjson",
+        "sourceContentFingerprint": "12ee6e267dd560368b9ff30c9b9d501a36b90542769839de920a7ecfc77d1883",
         "sourceState": "clean",
-        "sourceTreeFingerprint": "392c6b0c0fb0aa00f852e5ca7c8cd9bee46c3c4597ea4d60497ca6fd9963efaa",
-        "testCount": 854,
+        "sourceTreeFingerprint": "448cc65c15ec901b4f47c0aa24276a7a5da3c121a7435ab3efb081594cf66a36",
+        "testCount": 855,
         "tests": [
           "tests/LibTmux.IntegrationTests/Versioning/VersionParityTests.cs::SemicolonGrouping"
         ],
