@@ -18,6 +18,7 @@ public sealed partial class ReadTools
     /// <param name="timeoutSeconds">How long to wait, before the server's ceiling.</param>
     /// <param name="ignoreCase">Whether case is ignored.</param>
     /// <param name="socketName">The tmux socket, or null for the default.</param>
+    /// <param name="progress">Reports that the wait is still running.</param>
     /// <param name="cancellationToken">Stops waiting.</param>
     /// <returns>How the wait ended and what the pane showed.</returns>
     /// <remarks>
@@ -52,6 +53,7 @@ public sealed partial class ReadTools
         [Description("Ignore case when matching.")] bool ignoreCase = true,
         [Description("The tmux socket to read. Omit for the default server.")]
         string? socketName = null,
+        IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
         Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
@@ -171,6 +173,15 @@ public sealed partial class ReadTools
                     .ConfigureAwait(false);
             }
 
+            // Told, rather than left silent. A client showing a wait needs to
+            // know it is still running; without this a thirty second wait is
+            // indistinguishable from a hung one.
+            Report(
+                progress,
+                elapsed.Elapsed,
+                budget,
+                read.Lines.Count > 0 ? read.Lines[^1] : $"waiting on {id}");
+
             await _activity.WaitForActivityAsync(
                     id,
                     signal,
@@ -228,6 +239,25 @@ public sealed partial class ReadTools
                 $"Channel '{channel}' was not signalled within "
                 + $"{budget.TotalSeconds:0.#}s. Nothing was changed; call again to keep waiting.");
         }
+    }
+
+    /// <summary>Tells the client a wait is still running.</summary>
+    /// <param name="progress">Where to report, or null when the client asked for none.</param>
+    /// <param name="elapsed">How long the wait has run.</param>
+    /// <param name="budget">How long it may run.</param>
+    /// <param name="message">What the pane last showed.</param>
+    internal static void Report(
+        IProgress<ProgressNotificationValue>? progress,
+        TimeSpan elapsed,
+        TimeSpan budget,
+        string message)
+    {
+        progress?.Report(new ProgressNotificationValue
+        {
+            Progress = (float)elapsed.TotalSeconds,
+            Total = (float)budget.TotalSeconds,
+            Message = message.Length <= 120 ? message : message[..120],
+        });
     }
 
     private static Regex[] Compile(IReadOnlyList<string>? patterns, bool ignoreCase) =>

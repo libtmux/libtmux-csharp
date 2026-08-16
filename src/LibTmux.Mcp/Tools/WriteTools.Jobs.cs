@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.Versioning;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
 namespace LibTmux.Mcp;
@@ -44,6 +45,7 @@ public sealed partial class WriteTools
     /// <param name="waitSeconds">How long to wait for it to finish, if it has not.</param>
     /// <param name="maxLines">The most output lines to answer.</param>
     /// <param name="socketName">The tmux socket, or null for the default.</param>
+    /// <param name="progress">Reports that the job is still running.</param>
     /// <param name="cancellationToken">Stops waiting.</param>
     /// <returns>The job and whatever is new in its pane.</returns>
     /// <remarks>
@@ -67,6 +69,7 @@ public sealed partial class WriteTools
         int? maxLines = null,
         [Description("The tmux socket to use. Omit for the default server.")]
         string? socketName = null,
+        IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
         JobInfo job = _jobs.Get(jobId);
@@ -80,7 +83,12 @@ public sealed partial class WriteTools
             await using IAsyncDisposable lease = await _activity
                 .WatchAsync(pane, cancellationToken)
                 .ConfigureAwait(false);
-            await WaitForFinishAsync(jobId, pane.Id.ToString(), budget, cancellationToken)
+            await WaitForFinishAsync(
+                    jobId,
+                    pane.Id.ToString(),
+                    budget,
+                    progress,
+                    cancellationToken)
                 .ConfigureAwait(false);
             job = _jobs.Get(jobId);
         }
@@ -137,11 +145,18 @@ public sealed partial class WriteTools
         string jobId,
         string paneId,
         TimeSpan budget,
+        IProgress<ProgressNotificationValue>? progress,
         CancellationToken cancellationToken)
     {
-        DateTimeOffset deadline = DateTimeOffset.UtcNow + budget;
+        DateTimeOffset started = DateTimeOffset.UtcNow;
+        DateTimeOffset deadline = started + budget;
         while (DateTimeOffset.UtcNow < deadline)
         {
+            ReadTools.Report(
+                progress,
+                DateTimeOffset.UtcNow - started,
+                budget,
+                $"job {jobId} still running in {paneId}");
             if (_jobs.Get(jobId).State != JobState.Running)
             {
                 return;

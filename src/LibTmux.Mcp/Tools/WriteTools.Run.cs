@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.Versioning;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
 namespace LibTmux.Mcp;
@@ -17,6 +18,7 @@ public sealed partial class WriteTools
     /// <param name="maxLines">The most output lines to answer.</param>
     /// <param name="suppressHistory">Whether to keep the command out of shell history.</param>
     /// <param name="socketName">The tmux socket, or null for the default.</param>
+    /// <param name="progress">Reports that the command is still running.</param>
     /// <param name="cancellationToken">Stops waiting.</param>
     /// <returns>The exit status and what the command printed.</returns>
     /// <remarks>
@@ -50,6 +52,7 @@ public sealed partial class WriteTools
         bool suppressHistory = true,
         [Description("The tmux socket to use. Omit for the default server.")]
         string? socketName = null,
+        IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
@@ -64,7 +67,13 @@ public sealed partial class WriteTools
         await SendRunPayloadAsync(server, pane, command, token, suppressHistory, cancellationToken)
             .ConfigureAwait(false);
 
-        bool timedOut = !await AwaitChannelAsync(server, token.Channel, budget, cancellationToken)
+        bool timedOut = !await TickWhileAsync(
+                AwaitChannelAsync(server, token.Channel, budget, cancellationToken),
+                progress,
+                elapsed,
+                budget,
+                $"running in {pane.Id}",
+                cancellationToken)
             .ConfigureAwait(false);
         elapsed.Stop();
 
@@ -144,6 +153,47 @@ public sealed partial class WriteTools
                 cancellationToken)
             .ConfigureAwait(false);
     }
+
+    /// <summary>Reports progress on a beat while one wait runs.</summary>
+    /// <param name="waiting">The wait to watch.</param>
+    /// <param name="progress">Where to report, or null when the client asked for none.</param>
+    /// <param name="elapsed">How long the wait has run.</param>
+    /// <param name="budget">How long it may run.</param>
+    /// <param name="message">What to say it is doing.</param>
+    /// <param name="cancellationToken">Stops the beat.</param>
+    /// <returns>Whatever the wait answered.</returns>
+    /// <remarks>
+    /// The wait itself is one call with nothing to iterate, so the beat comes
+    /// from a timer rather than from the work. It costs nothing when the
+    /// client asked for no progress, which is the common case.
+    /// </remarks>
+    internal static async Task<bool> TickWhileAsync(
+        Task<bool> waiting,
+        IProgress<ProgressNotificationValue>? progress,
+        Stopwatch elapsed,
+        TimeSpan budget,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        if (progress is null)
+        {
+            return await waiting.ConfigureAwait(false);
+        }
+
+        while (true)
+        {
+            Task beat = Task.Delay(ProgressInterval, cancellationToken);
+            if (await Task.WhenAny(waiting, beat).ConfigureAwait(false) == waiting)
+            {
+                return await waiting.ConfigureAwait(false);
+            }
+
+            ReadTools.Report(progress, elapsed.Elapsed, budget, message);
+        }
+    }
+
+    /// <summary>How often a caller is told a wait is still running.</summary>
+    private static readonly TimeSpan ProgressInterval = TimeSpan.FromSeconds(1);
 
     internal static async Task<bool> AwaitChannelAsync(
         Server server,

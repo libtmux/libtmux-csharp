@@ -2,6 +2,7 @@ using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 
 namespace LibTmux.Mcp;
 
@@ -39,6 +40,8 @@ public static class McpServerComposition
             provider.GetService<ILoggerFactory>()?.CreateLogger<PaneActivityHub>()));
         services.AddSingleton(provider => new JobStore(
             provider.GetService<ILoggerFactory>()?.CreateLogger<JobStore>()));
+        services.AddSingleton(provider => new HierarchyWatcher(
+            provider.GetService<ILoggerFactory>()?.CreateLogger<HierarchyWatcher>()));
         services.AddSingleton<ReadTools>();
         services.AddSingleton<WriteTools>();
         services.AddSingleton<DestructiveTools>();
@@ -57,7 +60,52 @@ public static class McpServerComposition
             .WithTools<ReadTools>()
             .WithResources<HierarchyResources>()
             .WithPrompts<RecipePrompts>()
-            .WithRequestFilters(filters => filters.AddCallToolFilter(ToolFailureFilter.Create()));
+            .WithRequestFilters(filters => filters.AddCallToolFilter(ToolFailureFilter.Create()))
+
+            // A subscription is what turns the hierarchy from something a
+            // client re-reads on a timer into something that tells it when to.
+            .WithSubscribeToResourcesHandler(async (context, cancellationToken) =>
+            {
+                string? uri = context.Params?.Uri;
+                if (uri is not null
+                    && HierarchyWatcher.Watchable.Contains(uri)
+                    && context.Services is IServiceProvider scope)
+                {
+                    McpServer notify = context.Server;
+                    await scope.GetRequiredService<HierarchyWatcher>()
+                        .SubscribeAsync(
+                            uri,
+                            async changed =>
+                            {
+                                foreach (string each in changed)
+                                {
+                                    await notify.SendNotificationAsync(
+                                            "notifications/resources/updated",
+                                            new { uri = each })
+                                        .ConfigureAwait(false);
+                                }
+                            },
+                            await scope.GetRequiredService<TmuxConnectionAccessor>()
+                                .GetAsync(cancellationToken: cancellationToken)
+                                .ConfigureAwait(false),
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                return new EmptyResult();
+            })
+            .WithUnsubscribeFromResourcesHandler(async (context, _) =>
+            {
+                if (context.Params?.Uri is string uri
+                    && context.Services is IServiceProvider scope)
+                {
+                    await scope.GetRequiredService<HierarchyWatcher>()
+                        .UnsubscribeAsync(uri)
+                        .ConfigureAwait(false);
+                }
+
+                return new EmptyResult();
+            });
 
         // Registration, not filtering. A tool the operator's tier does not
         // allow never reaches the model's list, so it cannot be called by name,
