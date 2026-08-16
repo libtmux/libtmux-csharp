@@ -5,14 +5,6 @@ using LibTmux.Testing;
 
 namespace LibTmux.IntegrationTests;
 
-/// <summary>Telling a subscriber that the hierarchy is not what it was.</summary>
-/// <remarks>
-/// Driven directly rather than through a client. How a change reaches a client
-/// is the protocol's business and it moves — the 2026-07-28 revision replaced
-/// <c>resources/subscribe</c> with <c>subscriptions/listen</c>. What must keep
-/// working across that is the part below: tmux says a window appeared, and a
-/// subscriber is told.
-/// </remarks>
 /// <summary>Serializes the tests that hold a tmux control client.</summary>
 /// <remarks>
 /// A control client is a tmux process attached for as long as a test runs, and
@@ -27,7 +19,14 @@ namespace LibTmux.IntegrationTests;
 [CollectionDefinition("tmux control clients", DisableParallelization = true)]
 public sealed class ControlClientCollectionDefinition;
 
-/// <content>Telling a subscriber the hierarchy changed.</content>
+/// <summary>Telling a subscriber that the hierarchy is not what it was.</summary>
+/// <remarks>
+/// Driven directly rather than through a client. How a change reaches a client
+/// is the protocol's business and it moves — the 2026-07-28 revision replaced
+/// <c>resources/subscribe</c> with <c>subscriptions/listen</c>. What must keep
+/// working across that is the part below: tmux says a window appeared, and a
+/// subscriber is told.
+/// </remarks>
 [Collection("tmux control clients")]
 [UnsupportedOSPlatform("windows")]
 public sealed class HierarchyWatcherTests

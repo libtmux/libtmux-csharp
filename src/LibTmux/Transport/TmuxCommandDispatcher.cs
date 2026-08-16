@@ -78,8 +78,6 @@ internal sealed class TmuxCommandDispatcher
         string[] copy = [.. arguments];
         TmuxCommandResult result = await _execute(copy, cancellationToken).ConfigureAwait(false);
 
-        // Every tmux command a caller makes arrives here, so this is the one
-        // place that has to know how a command is recorded.
         TmuxLog.CommandCompleted(_context, copy, result);
 
         if (copy.Contains("has-session", StringComparer.Ordinal)
