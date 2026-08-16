@@ -6,10 +6,10 @@ namespace LibTmux.Examples;
 
 /// <summary>One example: what it shows, where it lives, and how to run it.</summary>
 /// <remarks>
-/// What an example needs is stated as parameters, so the compiler checks it.
-/// A method asking for a <see cref="Pane"/> is handed a real pane on a real
-/// server; a method asking for nothing builds its own, which is what lets the
-/// first line of a published block be the line worth reading.
+/// An example declares what it needs as parameters. A <see cref="Server"/>,
+/// <see cref="Session"/>, <see cref="Window"/>, <see cref="Pane"/> or
+/// <see cref="CancellationToken"/> is supplied from its namespace; anything
+/// else throws.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 public sealed class ExampleCase
@@ -77,8 +77,6 @@ public sealed class ExampleCase
         }
         catch (TargetInvocationException invocation) when (invocation.InnerException is not null)
         {
-            // The example's own failure is what a reader needs to see, not the
-            // reflection that reached it.
             ExceptionDispatchInfo.Capture(invocation.InnerException).Throw();
             throw;
         }

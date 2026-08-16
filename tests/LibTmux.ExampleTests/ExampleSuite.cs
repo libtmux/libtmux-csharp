@@ -3,13 +3,7 @@ using LibTmux.Examples;
 
 namespace LibTmux.ExampleTests;
 
-/// <summary>Examples share one process environment, so they run one at a time.</summary>
-/// <remarks>
-/// What makes a published example readable is that it names no socket: it
-/// connects the way a reader would, and the ambient environment decides where
-/// that lands. An ambient environment is process-wide, so two examples running
-/// at once would be two examples in one world.
-/// </remarks>
+/// <summary>Examples set process-wide variables, so they run one at a time.</summary>
 [CollectionDefinition("Examples", DisableParallelization = true)]
 public sealed class OneExampleAtATime;
 
@@ -31,8 +25,7 @@ public sealed class ExampleSuite
         await example.RunAsync(TestContext.Current.CancellationToken);
     }
 
-    // A suite that discovered nothing passes every test it has, which is the
-    // failure mode this exists to catch.
+    // A suite that discovered nothing would otherwise pass every test it has.
     [Fact]
     public void At_least_one_example_is_published() => Assert.NotEmpty(ExampleCase.Discover());
 

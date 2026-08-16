@@ -1,28 +1,21 @@
-#!/usr/bin/env python3
 """Materialize example regions into the documents that publish them.
 
-A document that carries its own copy of a code block is a copy nobody
-compiles, which is how an example that cannot work survives to be rendered on
-a package page. Here the code is the source: every block a document publishes
-is a ``#region`` inside a method that runs against live tmux in CI, and this
-copies it in.
+Every published block is a ``#region`` inside a method that runs against live
+tmux in CI. This copies the region in; ``--check`` fails on drift instead of
+writing, which is what CI runs.
 
-The copy is materialized rather than transcluded because these documents are
-package READMEs. nuget.org renders the markdown it is given and resolves
-nothing, so a reader there has to see the code itself.
+The copy is materialized rather than transcluded because these are package
+READMEs, and nuget.org renders the markdown it is given without resolving
+anything.
 
-Anchors name the region and nothing else::
+Anchors name the region, and optionally namespaces the document adds above the
+block that the snippet file does not need::
 
     <!-- snippet: ConnectAndBuild usings: LibTmux -->
     ```csharp
     ...
     ```
     <!-- endsnippet -->
-
-``usings:`` is optional and lists namespaces the document adds above the
-block, which the snippet file does not need because of where it lives.
-
-Run with ``--check`` to fail instead of writing, which is what CI does.
 """
 
 from __future__ import annotations

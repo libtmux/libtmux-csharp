@@ -319,11 +319,6 @@ internal sealed class TmuxConnection
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        // A caller who named a socket, in any of the three ways there are to
-        // name one, has already answered the question. The environment is only
-        // consulted for a connection that asked for nothing, which is what
-        // lets a process move every unqualified connection at once without
-        // every call site learning about it.
         bool chosen = options.SocketPath is not null
             || options.SocketName is not null
             || options.SocketNameFactory is not null;
@@ -377,11 +372,7 @@ internal sealed class TmuxConnection
     private const string SocketPathVariable = "LIBTMUX_SOCKET_PATH";
 
     /// <summary>Reads a variable the child would see, falling back to this process.</summary>
-    /// <remarks>
-    /// A connection's child environment is what its tmux clients will run
-    /// with, so it is what a variable means for that connection. Only when it
-    /// says nothing does this process's own environment answer.
-    /// </remarks>
+    /// <remarks>The child environment is what this connection's clients run with.</remarks>
     private static string? ReadVariable(
         IReadOnlyDictionary<string, string?>? childEnvironment,
         string name)

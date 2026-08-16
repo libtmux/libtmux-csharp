@@ -7,12 +7,6 @@ namespace LibTmux.Examples.Snippets;
 public static class OneShot
 {
     /// <summary>Connects, builds a hierarchy, and types into the pane it made.</summary>
-    /// <remarks>
-    /// This is the first code anyone reads about this library, so it asks for
-    /// nothing: no harness object, no options, no socket. That is only true
-    /// because <see cref="ExampleNamespace"/> put a server where a bare
-    /// connect looks, which is what a reader's own machine does too.
-    /// </remarks>
     [Example("Connect, build a session and window, and type into a pane")]
     public static async Task ConnectAndBuild()
     {

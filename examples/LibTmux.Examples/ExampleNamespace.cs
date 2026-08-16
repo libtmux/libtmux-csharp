@@ -3,30 +3,16 @@ using LibTmux.Engineering;
 
 namespace LibTmux.Examples;
 
-/// <summary>A tmux world of one example's own, with a server already in it.</summary>
+/// <summary>An isolated tmux server an example connects to without naming it.</summary>
 /// <remarks>
-/// An example is worth publishing when its first line is the line worth
-/// teaching — <c>Server.ConnectAsync()</c>, not the four lines of harness that
-/// gave it somewhere to connect to. That is only possible if the harness is
-/// ambient, so this is it: a socket named for the example, a server already
-/// listening on it, and the variables that would point tmux at the developer's
-/// own session cleared for the duration.
+/// Disposal kills the server, so the socket must never be the one a bare tmux
+/// uses: a namespace named <c>default</c> would kill the developer's own.
 ///
-/// The socket is namespaced by name and by path, which is what the Python
-/// original does with <c>libtmux_test&lt;n&gt;</c> under <c>TMUX_TMPDIR</c>.
-/// The name matters more than it looks: a server on the socket named
-/// <c>default</c> is the developer's own server, and this kills what it starts.
-/// A name of its own means it cannot be that server, whatever happens to the
-/// environment.
+/// Both routes to a socket are moved. <c>TMUX_TMPDIR</c> places a <c>-L</c>
+/// name; the temporary directory places a <c>-S</c> path, which ignores
+/// <c>TMUX_TMPDIR</c>.
 ///
-/// Both ways tmux finds a socket are moved, because there are two:
-/// <c>TMUX_TMPDIR</c> for a <c>-L</c> name, and the temporary directory for a
-/// <c>-S</c> path, which ignores <c>TMUX_TMPDIR</c> entirely. Both land under
-/// this repository's own root, so an example can never reach the socket
-/// another libtmux port is using.
-///
-/// The environment is process-wide, which is what makes a bare connect work
-/// and what makes examples run one at a time.
+/// The environment it sets is process-wide, so namespaces cannot overlap.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 public sealed class ExampleNamespace : IAsyncDisposable
@@ -39,13 +25,10 @@ public sealed class ExampleNamespace : IAsyncDisposable
         WorkspaceSocketRoot.Root,
         "examples");
 
-    /// <summary>How long a Unix socket path may be, less the room tmux needs.</summary>
+    /// <summary>The shortest sun_path any supported platform allows: macOS.</summary>
     /// <remarks>
-    /// A Unix socket address carries its path in a fixed 108-byte field on
-    /// Linux and 104 on macOS, and tmux builds that path as
-    /// <c>&lt;root&gt;/tmux-&lt;uid&gt;/&lt;name&gt;</c>. Exceeding it fails
-    /// at bind time with a message about the address, which reads like
-    /// anything except a name that grew too long.
+    /// tmux binds <c>&lt;root&gt;/tmux-&lt;uid&gt;/&lt;name&gt;</c>; over the
+    /// limit it fails at bind time complaining about the address.
     /// </remarks>
     private const int SocketPathLimit = 104;
 
@@ -111,17 +94,14 @@ public sealed class ExampleNamespace : IAsyncDisposable
         string directory = Path.Combine(SocketRoot, $"{name}-{nonce}");
         System.IO.Directory.CreateDirectory(directory);
 
-        // Read before writing: a namespace that cannot put back what it found
-        // would leak its socket into whatever runs next in this process.
         List<(string Name, string? Value)> restore =
         [
             .. Variables.Select(
                 variable => (variable, Environment.GetEnvironmentVariable(variable))),
         ];
 
-        // TMUX and TMUX_PANE are cleared rather than moved. Inherited, they
-        // point a new client at the server the developer is sitting in and at
-        // a pane that has nothing to do with the example.
+        // TMUX and TMUX_PANE are cleared, not moved: inherited, they point a
+        // client at the server the developer is sitting in.
         Environment.SetEnvironmentVariable("TMUX_TMPDIR", SocketRoot);
         Environment.SetEnvironmentVariable("TMPDIR", directory);
         Environment.SetEnvironmentVariable("LIBTMUX_SOCKET_NAME", socketName);
@@ -129,9 +109,8 @@ public sealed class ExampleNamespace : IAsyncDisposable
         Environment.SetEnvironmentVariable("TMUX", null);
         Environment.SetEnvironmentVariable("TMUX_PANE", null);
 
-        // A pane inherits the directory the server was started from, and an
-        // example that types a build command should not be typing it into the
-        // source tree. This is the same reason the sockets moved.
+        // Panes inherit the directory the server started in, and examples type
+        // build commands.
         string entered = Environment.CurrentDirectory;
         Environment.CurrentDirectory = directory;
 
@@ -140,10 +119,6 @@ public sealed class ExampleNamespace : IAsyncDisposable
             OwnedServerScope server = await Server.CreateOwnedAsync(
                 cancellationToken: cancellationToken);
 
-            // The environment is what put the server on this socket, and an
-            // environment can be wrong. Nothing is owned -- and owning means
-            // killing -- until the socket has been found where it was asked
-            // for. A server anywhere else is left running.
             if (FindSocket(socketName) is null)
             {
                 throw new InvalidOperationException(
@@ -182,8 +157,7 @@ public sealed class ExampleNamespace : IAsyncDisposable
             Environment.CurrentDirectory = _entered;
             Restore(_restore);
 
-            // The socket file outlives the server that made it, and a stale one
-            // is what makes the next run's listing lie about what is here.
+            // The socket file outlives the server that made it.
             if (FindSocket(SocketName) is string socket)
             {
                 TryDeleteFile(socket);
@@ -193,12 +167,7 @@ public sealed class ExampleNamespace : IAsyncDisposable
         }
     }
 
-    /// <summary>Finds the socket of a given name, wherever tmux put it.</summary>
-    /// <remarks>
-    /// tmux names the directory under the root for the effective user, and
-    /// asking the runtime for that number costs a P/Invoke this does not need:
-    /// there is one such directory and the socket is either in it or nowhere.
-    /// </remarks>
+    /// <summary>Returns the path of the named socket, or null if it is absent.</summary>
     public static string? FindSocket(string socketName)
     {
         if (!System.IO.Directory.Exists(SocketRoot))
@@ -214,9 +183,7 @@ public sealed class ExampleNamespace : IAsyncDisposable
 
     private static string BuildSocketName(string name, string nonce)
     {
-        // The user directory is not known without asking the kernel, so this
-        // budgets for the widest one rather than measuring: a uid is at most
-        // ten digits, and being a few bytes pessimistic costs a shorter name.
+        // Budgets for the widest uid rather than asking the kernel for this one.
         string prefix = Path.Combine(SocketRoot, "tmux-4294967295") + Path.DirectorySeparatorChar;
         int room = SocketPathLimit - prefix.Length - SocketPrefix.Length - nonce.Length - 1;
         if (room < 1)
@@ -227,16 +194,15 @@ public sealed class ExampleNamespace : IAsyncDisposable
                 + $"{prefix.Length}.");
         }
 
-        // The nonce is what keeps two runs apart, so the example's name is
-        // what gives way. A truncated name still says which example this is.
+        // The name gives way, never the nonce: the nonce is what keeps
+        // concurrent runs apart.
         string trimmed = name.Length <= room ? name : name[..room];
         return $"{SocketPrefix}{trimmed}-{nonce}";
     }
 
     private async Task PopulateAsync(CancellationToken cancellationToken)
     {
-        // A server nobody has made a session on is not what a reader's machine
-        // looks like, and control mode has nothing to attach to on one.
+        // Control mode attaches, so it needs a session to attach to.
         Session = await Server.CreateSessionAsync(
             new NewSessionRequest(name: "example"),
             cancellationToken);
@@ -274,8 +240,7 @@ public sealed class ExampleNamespace : IAsyncDisposable
         }
         catch (IOException)
         {
-            // A file the kernel has not finished releasing is not a failed
-            // example, and the root is this repository's own to sweep.
+            // A descriptor the kernel has not released yet is not a failure.
         }
         catch (UnauthorizedAccessException)
         {

@@ -5,14 +5,8 @@ namespace LibTmux.Examples;
 
 /// <summary>Runs every example against a tmux server of its own.</summary>
 /// <remarks>
-/// Every example is written the way a caller would write it, and each runs
-/// here so that an example which stops compiling, or stops working, is a
-/// build failure rather than something a reader discovers.
-///
-/// This is the same list <c>LibTmux.ExampleTests</c> runs, discovered the same
-/// way. Running them here keeps the loop a caller can use — one command, real
-/// output on the console — and running them there gives each one a name in a
-/// test report.
+/// The same list <c>LibTmux.ExampleTests</c> runs, on the console instead of
+/// in a test report.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 internal static class Program

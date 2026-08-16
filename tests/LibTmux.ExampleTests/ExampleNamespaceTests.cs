@@ -5,11 +5,8 @@ namespace LibTmux.ExampleTests;
 
 /// <summary>Holds the isolation every example depends on.</summary>
 /// <remarks>
-/// These assert the property rather than the code that provides it: a socket
-/// this repository owns, named for the example that made it, reachable at a
-/// path under this repository's own root. A regression here does not break an
-/// example — it breaks whatever else on the machine happens to be running
-/// tmux, which is the failure nobody attributes correctly.
+/// A regression here breaks other tmux servers on the machine rather than
+/// these tests, so it is asserted directly.
 /// </remarks>
 [Collection("Examples")]
 [UnsupportedOSPlatform("windows")]
@@ -29,8 +26,7 @@ public sealed class ExampleNamespaceTests
         Assert.NotNull(socket);
         Assert.StartsWith(ExampleNamespace.SocketRoot, socket, StringComparison.Ordinal);
 
-        // The property every published example rests on: a connect that names
-        // nothing lands on this namespace's socket, not on the developer's.
+        // What every published example opens with.
         Server bare = await Server.ConnectAsync(
             cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(bare.IsMaterialized);
@@ -40,8 +36,6 @@ public sealed class ExampleNamespaceTests
     [Fact]
     public async Task A_namespace_can_never_be_the_developers_own_server()
     {
-        // "default" is the socket a bare tmux uses, so an example that could
-        // land on it could kill the session its author is sitting in.
         await using ExampleNamespace world = await ExampleNamespace.EnterAsync(
             "NotDefault",
             TestContext.Current.CancellationToken);

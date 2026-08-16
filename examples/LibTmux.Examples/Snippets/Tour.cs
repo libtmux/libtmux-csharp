@@ -4,12 +4,6 @@ using LibTmux.Testing;
 namespace LibTmux.Examples.Snippets;
 
 /// <summary>The tour that ships with the repository, one example per idea.</summary>
-/// <remarks>
-/// These are not published into any document, which is allowed: a
-/// <see cref="ExampleAttribute"/> without a matching <c>#region</c> is an
-/// example that runs and is never quoted. What is not allowed is the other
-/// way round, and a test holds that line.
-/// </remarks>
 [UnsupportedOSPlatform("windows")]
 public static class Tour
 {

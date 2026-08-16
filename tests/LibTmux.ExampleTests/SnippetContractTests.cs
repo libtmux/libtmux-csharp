@@ -5,12 +5,6 @@ using LibTmux.Examples;
 namespace LibTmux.ExampleTests;
 
 /// <summary>Holds the published blocks to the code that actually runs.</summary>
-/// <remarks>
-/// A document quotes a <c>#region</c>, and a region is only worth quoting if
-/// something runs it. The name is the whole contract: a region is named after
-/// the example method it sits in, so renaming one without the other is a
-/// failing test rather than a document quoting code nobody executes.
-/// </remarks>
 [UnsupportedOSPlatform("windows")]
 public sealed class SnippetContractTests
 {
@@ -48,9 +42,7 @@ public sealed class SnippetContractTests
     [Fact]
     public void Every_example_lives_where_the_snippet_reader_looks()
     {
-        // The reader that materializes documents globs one directory. An
-        // example outside it would run and never be publishable, which is a
-        // surprise worth failing on rather than discovering in review.
+        // sync_snippets.py globs this one directory.
         IReadOnlyList<string> files = SnippetFiles();
         Assert.NotEmpty(files);
 
