@@ -77,7 +77,7 @@ public sealed class ParserFuzzTests
         "status-format[0] something",
         new string('a', 4096),
         new string('\\', 64),
-        "\0",
+        "\0\u001b",
         "😀",
         "�",
     ];

@@ -38,4 +38,28 @@ for f in README.md LICENSE SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md CHANGE
   [ -e "$f" ] || { echo "MISSING: $f" >&2; missing=$((missing + 1)); }
 done
 printf '%-38s %s\n' "standard project files missing" "$missing"
+
+# A raw control byte in a source file compiles, is invisible in review, and
+# makes the file binary to git and unreadable to rg. That happened once.
+control_bytes=$(python3 - <<'PY'
+import pathlib
+bad = []
+for path in list(pathlib.Path("src").rglob("*.cs")) + list(pathlib.Path("tests").rglob("*.cs")):
+    if "/obj/" in path.as_posix() or "/bin/" in path.as_posix():
+        continue
+    raw = path.read_bytes()
+    if any(bytes([b]) in raw for b in range(32) if b not in (9, 10, 13)):
+        bad.append(str(path))
+print(len(bad))
+for path in bad:
+    print(path)
+PY
+)
+offenders=$(printf '%s' "$control_bytes" | head -1)
+printf '%-38s %s\n' "source files with control bytes" "$offenders"
+if [ "$offenders" != "0" ]; then
+  printf '%s\n' "$control_bytes" | tail -n +2 >&2
+  missing=$((missing + offenders))
+fi
+
 exit "$missing"
