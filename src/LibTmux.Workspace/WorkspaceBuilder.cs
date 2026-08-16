@@ -13,11 +13,10 @@ public sealed record WorkspaceResult(
 
 /// <summary>Builds a tmux session from a tmuxp workspace file.</summary>
 /// <remarks>
-/// tmuxp is a Python program, and parts of a workspace file only mean anything
-/// inside it: plugins load Python modules, and before-script hooks run
-/// arbitrary commands through tmuxp's own machinery. Those are reported rather
-/// than silently skipped, because a caller who wrote them expects them to
-/// happen and would otherwise get a session that is quietly wrong.
+/// tmuxp plugins and before-script hooks run through Python tooling this
+/// library does not have, so an unsupported key is silently dropped by the
+/// YAML reader (WorkspaceFile.Parse ignores unmatched properties) rather than
+/// surfaced in WorkspaceResult.Unsupported.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 public sealed class WorkspaceBuilder
