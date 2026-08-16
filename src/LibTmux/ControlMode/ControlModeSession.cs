@@ -35,7 +35,7 @@ internal sealed class ControlModeSession : IControlModeSession
             FullMode = BoundedChannelFullMode.DropOldest,
         });
 
-    private readonly Queue<TaskCompletionSource<IReadOnlyList<string>>> _pending = new();
+    private readonly Queue<PendingCommand> _pending = new();
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly TaskCompletionSource _ready =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -124,8 +124,7 @@ internal sealed class ControlModeSession : IControlModeSession
             throw new InvalidOperationException("The tmux control client has exited.");
         }
 
-        TaskCompletionSource<IReadOnlyList<string>> completion =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        PendingCommand pending = new();
 
         // Queueing and writing happen together under one lock. tmux answers in
         // the order it was asked, so a caller that queued second and wrote
@@ -140,24 +139,37 @@ internal sealed class ControlModeSession : IControlModeSession
             // after the write can miss that sweep and then wait for a reply from
             // a process that is gone.
             //
-            // The cost is a slot left behind when a write is cancelled or
-            // throws, which shifts every later reply by one. That is the
-            // narrower bug of the two and is not yet fixed.
+            // A write that then fails would leave a slot for a command tmux
+            // never saw, shifting every later reply by one. The slot is marked
+            // abandoned instead, so it is present for the exit sweep and
+            // skipped when replies are matched.
             lock (_pending)
             {
-                _pending.Enqueue(completion);
+                _pending.Enqueue(pending);
             }
 
-            await _process.StandardInput.WriteLineAsync(command.AsMemory(), cancellationToken)
-                .ConfigureAwait(false);
-            await _process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await _process.StandardInput.WriteLineAsync(command.AsMemory(), cancellationToken)
+                    .ConfigureAwait(false);
+                await _process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // tmux never saw this command, so it will never answer it. The
+                // slot stays in the queue -- removing it from the middle is not
+                // something a queue does -- but it is marked so replies skip it
+                // instead of being handed to the wrong caller.
+                pending.Abandon();
+                throw;
+            }
         }
         finally
         {
             _writeLock.Release();
         }
 
-        return await completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await pending.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
@@ -204,6 +216,17 @@ internal sealed class ControlModeSession : IControlModeSession
             _process.Dispose();
             _writeLock.Dispose();
         }
+    }
+
+    /// <summary>One waiting command, and whether tmux ever heard it.</summary>
+    private sealed class PendingCommand
+    {
+        internal TaskCompletionSource<IReadOnlyList<string>> Completion { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal bool IsAbandoned { get; private set; }
+
+        internal void Abandon() => IsAbandoned = true;
     }
 
     private async Task PumpAsync()
@@ -288,7 +311,19 @@ internal sealed class ControlModeSession : IControlModeSession
         TaskCompletionSource<IReadOnlyList<string>>? completion;
         lock (_pending)
         {
-            completion = _pending.Count == 0 ? null : _pending.Dequeue();
+            // Abandoned slots belong to commands that were never sent, so tmux
+            // is not answering them. Skipping them here is what keeps replies
+            // aligned with the commands that actually reached it.
+            completion = null;
+            while (_pending.Count > 0)
+            {
+                PendingCommand candidate = _pending.Dequeue();
+                if (!candidate.IsAbandoned)
+                {
+                    completion = candidate.Completion;
+                    break;
+                }
+            }
         }
 
         if (completion is null)
@@ -356,7 +391,7 @@ internal sealed class ControlModeSession : IControlModeSession
         {
             while (_pending.Count > 0)
             {
-                _pending.Dequeue().TrySetException(new InvalidOperationException(
+                _pending.Dequeue().Completion.TrySetException(new InvalidOperationException(
                     "The tmux control client exited before answering."));
             }
         }

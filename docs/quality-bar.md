@@ -53,7 +53,7 @@ target, but it is a constraint worth naming.
 | Version differences are modelled | Capability model; every difference has a row in [`version-deltas.json`](parity/version-deltas.json) naming the test that proves it |
 | Hostile output cannot crash a parser | 8,000 [fuzz cases](../tests/LibTmux.UnitTests/Fuzzing/ParserFuzzTests.cs) plus a corpus; refusal required, crash and hang forbidden |
 | A query document is input, not instructions | Schema and version must be v1; string, pattern, dialect and regex-option limits enforced on **read**; matching bounded at 1s; a field resolves only through the catalog ([tests](../tests/LibTmux.UnitTests/Query/QueryJsonTrustBoundaryTests.cs)) |
-| A control session survives its consumer | Bounded event channel, bounded disposal that kills the client and not the server beneath it |
+| A control session survives its consumer | Bounded event channel, bounded disposal that kills the client and not the server beneath it, and a waiter whose command never reached tmux is skipped rather than handed the next reply |
 | A stale handle cannot hit a live server | Generation guard on one-shot **and** chained entity commands; a chain mixing servers is refused before it runs ([tests](../tests/LibTmux.IntegrationTests/Chaining/ChainGenerationTests.cs)) |
 | All three transports | One-shot, control mode, and chaining, each measured and each working on every supported tmux |
 | The macOS claim is measured | A `macos arm64` lane builds, unit-tests and runs the integration suite against real tmux on Apple silicon. **846 of 849 pass; 2 remain.** Advisory until those are diagnosed |
