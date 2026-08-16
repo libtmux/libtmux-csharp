@@ -36,9 +36,8 @@ public sealed class TemporaryServerScope : IAsyncDisposable
         return new TemporaryServerScope(owned);
     }
 
-    // Falling back to the ambient connection would point a throwaway scope at
-    // the developer's own tmux server and then kill it on disposal, so an
-    // unconfigured scope gets a socket nothing else can be using.
+    // An unconfigured scope must not fall back to the ambient connection: it
+    // would point at the developer's own server and kill it on disposal.
     private static ServerConnectionOptions Isolated() =>
         new(socketName: $"libtmux-{Guid.NewGuid():N}");
 

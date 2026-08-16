@@ -5,11 +5,10 @@ namespace LibTmux.Internal;
 
 /// <summary>Reads what <c>show-options</c> printed.</summary>
 /// <remarks>
-/// tmux writes one option per line as a name and an escaped value. The value is
-/// escaped the way tmux's own parser reads it back, which is not how a shell
-/// quotes: a tab comes back as an unquoted <c>\t</c>, so splitting the line on
-/// whitespace loses it. Every line is therefore cut once, at the first space,
-/// and the remainder is unescaped as tmux wrote it.
+/// tmux escapes an option value the way its own parser reads it back, not
+/// the way a shell quotes -- a tab returns as literal <c>\t</c> -- so
+/// splitting on whitespace would lose it. Each line is cut once, at the
+/// first space, and the remainder unescaped.
 /// </remarks>
 internal static class OptionParser
 {
@@ -33,9 +32,8 @@ internal static class OptionParser
             return new TmuxOptionValue(value, TmuxOptionState.Off, false, null);
         }
 
-        // Only digits count as a number. A leading sign or separator would make
-        // "-1" and "1,2" parse differently on different machines, and tmux
-        // itself reads option numbers as plain digits.
+        // Only digits count as a number, matching how tmux itself reads
+        // option integers.
         bool numeric = value.Length > 0;
         foreach (char character in value)
         {
@@ -114,12 +112,10 @@ internal static class OptionParser
     /// <param name="options">The options to group.</param>
     /// <returns>Each option name mapped to its structured value.</returns>
     /// <remarks>
-    /// Three tmux options carry a whole table inside their strings:
-    /// <c>terminal-features</c> lists features per terminal,
-    /// <c>terminal-overrides</c> maps capabilities per terminal, and
-    /// <c>command-alias</c> maps an alias to a command. Everything else is
-    /// returned as tmux gave it: a lone value, or the sparse index map that an
-    /// array option really is.
+    /// Three tmux options carry a table: <c>terminal-features</c> lists
+    /// features per terminal; <c>terminal-overrides</c> maps capabilities
+    /// per terminal; <c>command-alias</c> maps alias to command. Anything
+    /// else is a lone value, or the sparse index map an array option is.
     /// </remarks>
     internal static IReadOnlyDictionary<string, object?> ParseComplex(
         IReadOnlyList<TmuxOption> options)

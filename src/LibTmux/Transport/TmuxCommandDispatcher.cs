@@ -6,10 +6,8 @@ internal sealed class TmuxCommandDispatcher
 {
     private readonly Func<IReadOnlyList<string>, CancellationToken, Task<TmuxCommandResult>> _execute;
 
-    // A grouped run is a different shape, not a longer argument list: tmux
-    // separates the commands itself and a literal semicolon stays data. Only a
-    // real transport can express that, so an injected single-command executor
-    // leaves this null and grouping is refused rather than faked.
+    // Grouping needs a real transport: tmux splits the commands itself, and a
+    // joined semicolon would just be data. A stub executor leaves this null.
     private readonly Func<
         IReadOnlyList<IReadOnlyList<string>>,
         CancellationToken,

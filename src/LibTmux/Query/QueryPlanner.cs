@@ -4,11 +4,10 @@ namespace LibTmux;
 
 /// <summary>Runs tmux-side filters and returns the surviving objects.</summary>
 /// <remarks>
-/// These take a raw tmux filter rather than a translated document. tmux
-/// evaluates the text itself, so the closed field catalog does not apply and a
-/// malformed token yields no rows rather than an error. Unlike the lenient
-/// listings, a failed search throws: a caller who asked a question deserves to
-/// know it was not answered.
+/// These take a raw tmux filter rather than a translated document: tmux
+/// evaluates the text, so the closed field catalog does not apply and a
+/// malformed token yields no rows. Unlike the lenient listings, a failed
+/// search throws rather than returning nothing.
 /// </remarks>
 public sealed partial class Server
 {

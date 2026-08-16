@@ -165,9 +165,8 @@ public sealed class TmuxTestFactory
 
     private static TestEnvironment DescribeEnvironment(TmuxTestOptions options)
     {
-        // A test's tmux must not inherit the developer's: TMUX would point a
-        // new client at the server they are sitting in, and TMUX_PANE would
-        // name a pane that has nothing to do with the test.
+        // TMUX and TMUX_PANE must not carry over: they would point a client at
+        // the developer's own server and pane instead of the test's.
         Dictionary<string, string?> variables = new(StringComparer.Ordinal)
         {
             ["TMUX"] = null,

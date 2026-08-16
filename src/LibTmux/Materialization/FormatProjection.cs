@@ -35,21 +35,14 @@ internal sealed class FormatProjection
 {
     /// <summary>Separates the values of a framed row.</summary>
     /// <remarks>
-    /// tmux values can hold any byte, so the separator has to be something no
-    /// value can contain. It is randomised once per process rather than fixed,
-    /// because window and pane names are caller-controlled and a constant could
-    /// be embedded in one deliberately; it stays fixed within a process so the
-    /// template that was rendered and the payload that is decoded always agree
-    /// without threading it through every call. It carries no <c>#</c>, so tmux
-    /// cannot expand it, and a value that did contain it would fail the decode
-    /// loudly rather than corrupt a field.
+    /// Randomized per process, not fixed: a caller-controlled name (a window
+    /// or pane) could otherwise embed a fixed separator deliberately. It
+    /// carries no <c>#</c>, so tmux cannot expand it, and a value containing
+    /// it fails decode loudly instead of corrupting a field.
     /// <para>
-    /// Its length is a budget decision as much as a collision one. tmux caps a
-    /// whole command at <c>MAX_IMSGSIZE</c>, and the template shares that
-    /// ceiling with the generation guard wrapped around every entity command,
-    /// so a separator repeated once per field cannot be extravagant. Twenty-two
-    /// hexadecimal digits leave enough room and far more entropy than a tmux
-    /// value could collide with by accident.
+    /// Length is bounded by tmux's <c>MAX_IMSGSIZE</c> command cap, shared
+    /// with the generation guard on every entity command: 22 hex digits
+    /// balance collision odds against that budget.
     /// </para>
     /// </remarks>
     internal static string RowSeparator { get; } = $"LT{Guid.NewGuid():N}"[..24];
@@ -127,11 +120,10 @@ internal sealed class FormatProjection
         var template = new StringBuilder();
         foreach (FormatFieldDescriptor field in fields)
         {
-            // Each field is expanded exactly once. Asking tmux for a byte count
-            // as well would expand it a second time, and a field that moved in
-            // between - pane_current_command while a shell settles, say -
-            // reports a count for one value and then renders another, which
-            // desynchronises every field after it in the payload.
+            // Each field is expanded exactly once: asking tmux for a byte
+            // count too would expand it twice, and a field that changes
+            // between the two expansions -- pane_current_command while a
+            // shell settles, say -- desynchronizes every field after it.
             template.Append("#{");
             template.Append(field.WireName);
             template.Append('}');

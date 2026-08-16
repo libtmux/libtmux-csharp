@@ -440,13 +440,8 @@ internal sealed class TmuxConnection
         ExecuteGuardedGroupAsync(expected, [logicalArguments], cancellationToken);
 
     /// <summary>Runs several commands under one generation guard.</summary>
-    /// <remarks>
-    /// A chain built from entity handles needs the same protection a one-shot
-    /// entity command gets, and it needs it once: checking per command would be
-    /// several invocations describing a server that can change between them.
-    /// One probe in the invocation that runs the batch is what makes the answer
-    /// true for the commands it guards.
-    /// </remarks>
+    /// <remarks>Guards the whole batch once, in the same invocation: a
+    /// per-command check could race with a server change between them.</remarks>
     [UnsupportedOSPlatform("windows")]
     internal async Task<TmuxCommandResult> ExecuteGuardedGroupAsync(
         ServerGeneration expected,
@@ -466,9 +461,8 @@ internal sealed class TmuxConnection
             TmuxCommandDispatcher.ValidateArguments(command);
         }
 
-        // The reported arguments describe the run as a whole. A caller reading a
-        // failure wants the commands it asked for, not the probe wrapped around
-        // them.
+        // Exceptions report the caller's own commands, not the guard probe
+        // wrapped around them for the generation check.
         IReadOnlyList<string> logicalArguments = [.. commands.SelectMany(static command => command)];
         string marker = _markerFactory();
         ArgumentException.ThrowIfNullOrWhiteSpace(marker);

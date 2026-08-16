@@ -2,17 +2,9 @@ namespace LibTmux;
 
 /// <summary>Says whether a failed command reached tmux, which is what decides if retrying is safe.</summary>
 /// <remarks>
-/// Retrying is the obvious response to a failure and it is not always sound.
-/// A command that never reached tmux can be sent again and nothing has
-/// happened twice. A command tmux already ran has already done whatever it
-/// does, and <c>kill-session</c> or <c>send-keys</c> run twice is not the same
-/// as run once.
-///
-/// So a caller needs to distinguish the two, and the honest answer is
-/// sometimes neither: a client that died mid-command leaves no way to know
-/// whether tmux acted on it. That third state is <see cref="Unknown"/>, and it
-/// is the default, because assuming a command did not run is the assumption
-/// that repeats side effects.
+/// Retrying is safe only when the command never reached tmux.
+/// <see cref="Unknown"/> is the default because assuming otherwise repeats
+/// a side effect tmux already ran.
 /// </remarks>
 public enum TmuxDispatchState
 {

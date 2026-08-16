@@ -24,9 +24,8 @@ internal static class SupportedAliases
             ["libtmux.window:Window.show_window_options"] =
                 "M:LibTmux.TmuxOptions.GetAllAsync(GetOptionsRequest?,CancellationToken)",
 
-            // Python raised one exception type per tmux wording. Which wording
-            // tmux picks depends on its version rather than on the caller, so
-            // the three are one failure carrying what tmux said.
+            // Which wording tmux uses for this failure depends on its version,
+            // not the caller, so the three map to one exception type.
             ["libtmux.exc:OptionError"] = "T:LibTmux.TmuxOptionException",
             ["libtmux.exc:UnknownOption"] = "T:LibTmux.TmuxOptionException",
             ["libtmux.exc:InvalidOption"] = "T:LibTmux.TmuxOptionException",
@@ -64,8 +63,8 @@ internal static class SupportedAliases
             ["libtmux.exc:NotInsideTmux"] = "T:LibTmux.TmuxObjectNotFoundException",
             ["libtmux.exc:VariableUnpackingError"] = "T:LibTmux.IncompleteSnapshotException",
 
-            // Nothing here was ever released under an older name, so nothing
-            // can be deprecated yet.
+            // This library has never renamed a public member, so there is no
+            // real deprecation target; NotSupportedException stands in for one.
             ["libtmux.exc:DeprecatedError"] = "T:System.NotSupportedException",
         });
 

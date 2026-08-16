@@ -40,8 +40,10 @@ internal static class ServerUtilities
     /// <summary>The capability naming the menu's mouse flag.</summary>
     internal const string DisplayMenuMouseCapability = "display_menu_mouse";
 
-    /// <summary>The capability naming the message's literal flag.</summary>
+    /// <summary>The capability naming the message's target-client flag.</summary>
     internal const string DisplayMessageClientCapability = "display_message_client";
+
+    /// <summary>The capability naming the message's literal flag.</summary>
     internal const string DisplayMessageLiteralCapability = "display_message_literal";
 
     /// <summary>The capability naming the key listing's format flag.</summary>

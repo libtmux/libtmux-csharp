@@ -136,10 +136,8 @@ public sealed class ServerSnapshot
         SessionWindowEdge[] edges = BuildEdges(windowRows);
         Pane[] panes = [.. paneRows.Select(row => RelationReader.ToPane(server, row))];
 
-        // A window names the sessions it is linked into and those sessions name
-        // their windows, which is a cycle no build order resolves. The sessions
-        // are made first and handed their windows once, so both directions end
-        // up holding the same handles instead of two copies of them.
+        // Sessions and windows reference each other, so sessions are built first
+        // with a mutable window list that is filled in once windows exist.
         var windowsBySession = new Dictionary<SessionId, List<Window>>();
         Session[] sessions =
         [

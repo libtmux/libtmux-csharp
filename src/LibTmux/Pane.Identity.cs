@@ -30,7 +30,7 @@ public sealed partial class Pane
         _snapshot = snapshot;
     }
 
-    /// <summary>Gets the tmux fields captured when this handle materialized.</summary>
+    /// <summary>Gets the tmux fields captured when this handle materialized, or null when none were.</summary>
     /// <remarks>
     /// A handle resolved by identifier alone carries no snapshot, so callers
     /// must ask whether one was captured rather than read empty fields.
