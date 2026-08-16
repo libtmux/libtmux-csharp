@@ -6,17 +6,10 @@ namespace LibTmux.Benchmarks;
 
 /// <summary>Measures what each execution mode costs against a live tmux.</summary>
 /// <remarks>
-/// The comparison that matters is not one command against another but one
-/// command against fifty: a one-shot call starts a tmux client every time,
-/// while a chain starts one for the whole sequence and a control session keeps
-/// one for its lifetime. Each mode is measured at both sizes so the crossover
-/// is visible rather than asserted.
-///
-/// Where that crossover falls is a property of the machine, not of the library:
-/// chaining trades fifty process starts for one, control mode trades them for
-/// fifty round trips on an open connection, and which wins depends on what a
-/// process start costs. <see cref="ModeBenchmarkConfig"/> therefore reports a
-/// distribution, and a recorded run names its tmux, its host and its date.
+/// Chaining trades fifty process starts for one; control mode trades them for
+/// fifty round trips on an open connection. Which wins is a property of the
+/// machine, not the library, so <see cref="ModeBenchmarkConfig"/> measures a
+/// distribution at both <see cref="Commands"/> sizes.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 [MemoryDiagnoser]

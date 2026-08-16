@@ -138,9 +138,8 @@ CaptureResult captured = await reading.CapturePaneAsync(
     maxLines: 5,
     cancellationToken: ct);
 
-// A terminal's newest line is the one that says what happened, so the
-// budget keeps the end — and says what it cost, because a reader who
-// cannot see the loss concludes the pane never printed it.
+// The newest line says what happened, so the budget keeps the end and
+// reports what was dropped — silence would look like nothing printed.
 Console.WriteLine(captured.Content.ToDisplayString());
 Console.WriteLine($"dropped {captured.Content.DroppedLines} earlier lines");
 ```

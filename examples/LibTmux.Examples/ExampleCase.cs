@@ -6,10 +6,9 @@ namespace LibTmux.Examples;
 
 /// <summary>One example: what it shows, where it lives, and how to run it.</summary>
 /// <remarks>
-/// An example declares what it needs as parameters. A <see cref="Server"/>,
-/// <see cref="Session"/>, <see cref="Window"/>, <see cref="Pane"/> or
-/// <see cref="CancellationToken"/> is supplied from its namespace; anything
-/// else throws.
+/// A parameter typed <see cref="Server"/>, <see cref="Session"/>,
+/// <see cref="Window"/>, <see cref="Pane"/> or <see cref="CancellationToken"/>
+/// is supplied from the namespace; any other type throws.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 public sealed class ExampleCase
