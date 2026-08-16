@@ -26,8 +26,13 @@ internal static partial class PaneText
     /// <param name="lines">The captured rows, oldest first.</param>
     /// <param name="paneWidth">
     /// The pane's width in columns, used to tell a wrapped continuation from a
-    /// new line. Pass zero when it is unknown; matching then works only on
-    /// lines short enough not to have wrapped.
+    /// new line.
+    ///
+    /// Pass zero when the rows are already joined — a capture asked for
+    /// <c>-J</c> has done this work, and doing it twice reads a long logical
+    /// line as continued and swallows the real output beneath it. That is not
+    /// hypothetical: on a host whose name fills most of the prompt, it removed
+    /// the line the command had printed.
     /// </param>
     /// <returns>The rows worth showing.</returns>
     internal static IReadOnlyList<string> Scrub(IReadOnlyList<string> lines, int paneWidth)
@@ -51,9 +56,14 @@ internal static partial class PaneText
 
             // tmux fills a row to the last column before wrapping, so a row of
             // exactly the pane's width is continued by the one after it.
+            //
+            // Exactly, not at least. A capture that asked tmux to join wrapped
+            // rows answers logical lines longer than the pane, and reading one
+            // of those as "continued" takes the line beneath it — which is the
+            // command's own output.
             while (paneWidth > 0
                 && end + 1 < lines.Count
-                && lines[end].Length >= paneWidth)
+                && lines[end].Length == paneWidth)
             {
                 end++;
                 logical.Append(lines[end]);

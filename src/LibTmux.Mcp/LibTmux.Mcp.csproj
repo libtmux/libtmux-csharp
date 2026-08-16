@@ -47,5 +47,6 @@
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="ModelContextProtocol.Extensions.Tasks" />
     <InternalsVisibleTo Include="LibTmux.IntegrationTests" />
+    <InternalsVisibleTo Include="LibTmux.UnitTests" />
   </ItemGroup>
 </Project>

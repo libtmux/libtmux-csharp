@@ -193,3 +193,65 @@ public sealed class ServerInstructionsTests
         Assert.Contains("editor splits", text, StringComparison.Ordinal);
     }
 }
+
+/// <summary>Removing this server's bookkeeping without removing anything else.</summary>
+public sealed class PaneTextTests
+{
+    private const string Marker = "@lt_s_0123456789";
+
+    [Fact]
+    public void A_bookkeeping_line_is_removed()
+    {
+        IReadOnlyList<string> kept = PaneText.Scrub(
+            ["before", $"; {Marker} \"$__lt\"", "after"],
+            paneWidth: 80);
+
+        Assert.Equal(["before", "after"], kept);
+    }
+
+    [Fact]
+    public void A_marker_split_across_wrapped_rows_is_still_found()
+    {
+        // tmux stores a wrap as a real line break, so the marker arrives in
+        // pieces and matching row by row finds nothing.
+        string first = new string('x', 74) + "@lt_s_012";
+        string second = "3456789 rest";
+
+        IReadOnlyList<string> kept = PaneText.Scrub(
+            [first, second, "after"],
+            paneWidth: 83);
+
+        Assert.Equal(["after"], kept);
+    }
+
+    [Fact]
+    public void Rows_already_joined_do_not_swallow_the_line_beneath_them()
+    {
+        // A capture asked for -J has joined the wrap already. Joining again by
+        // width reads the long logical line as continued and takes the real
+        // output with it — measured on a host whose name filled the prompt,
+        // where the command's own output disappeared.
+        string joined = new string('x', 200) + Marker;
+
+        IReadOnlyList<string> kept = PaneText.Scrub([joined, "mcp-ran"], paneWidth: 80);
+
+        Assert.Equal(["mcp-ran"], kept);
+    }
+
+    [Fact]
+    public void Ordinary_text_mentioning_the_prefix_survives()
+    {
+        // The shape is anchored, so prose about the marker is not the marker.
+        IReadOnlyList<string> lines = ["lt_r_ is a prefix", "lt_s_nothex99"];
+
+        Assert.Equal(lines, PaneText.Scrub(lines, paneWidth: 80));
+    }
+
+    [Fact]
+    public void Text_with_nothing_to_remove_is_returned_unchanged()
+    {
+        IReadOnlyList<string> lines = ["one", "two"];
+
+        Assert.Same(lines, PaneText.Scrub(lines, paneWidth: 80));
+    }
+}

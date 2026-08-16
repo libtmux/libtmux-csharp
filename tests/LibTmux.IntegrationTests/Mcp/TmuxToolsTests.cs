@@ -118,6 +118,40 @@ public sealed class TmuxToolsTests
     }
 
     [UnixFact]
+    public async Task A_wide_prompt_does_not_swallow_what_the_command_printed()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using McpToolFixture mcp = McpToolFixture.Create();
+        TmuxTestFactory factory = new();
+        await using TemporaryHierarchyScope scope = await factory.CreateHierarchyAsync(
+            mcp.Options,
+            token);
+        string pane = scope.Pane.Id.ToString();
+
+        // A prompt this wide leaves the run's own bookkeeping wrapping across
+        // rows, which is the shape that made an earlier scrubber read one long
+        // joined line as continued and take the next line with it. A macOS
+        // runner reaches it without being asked: its hostname is 61 characters.
+        await mcp.Write.SendKeysAsync(
+            "PS1=$(printf 'x%.0s' $(seq 70))",
+            pane,
+            enter: true,
+            cancellationToken: token);
+
+        RunResult ran = await mcp.Write.RunAsync(
+            "echo wide-prompt-marker",
+            pane,
+            timeoutSeconds: 20,
+            cancellationToken: token);
+
+        Assert.Equal(0, ran.ExitStatus);
+        Assert.Contains(
+            ran.Output.Lines,
+            line => line.Contains("wide-prompt-marker", StringComparison.Ordinal));
+        Assert.DoesNotContain(ran.Output.Lines, line => line.Contains("lt_r_", StringComparison.Ordinal));
+    }
+
+    [UnixFact]
     public async Task Tailing_answers_only_what_is_new()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
