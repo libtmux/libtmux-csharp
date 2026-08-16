@@ -8,7 +8,7 @@ Versions follow [Semantic Versioning](https://semver.org). During alpha the
 public API can change in any release with no deprecation period — pin an exact
 version.
 
-## Unreleased
+## [0.0.0-alpha.4] — 2026-08-16
 
 ### Added
 
@@ -43,6 +43,10 @@ version.
   Dependabot.
 - Example coverage extended to `docs/modes/`, so the documents that teach the
   API are compiled and run rather than only the ones that ship.
+- Dependencies updated across the board, including four major bumps:
+  `ModelContextProtocol` 0.4.0-preview.1 to 2.2.0, `YamlDotNet` 16 to 18, and
+  both xunit packages to 4.0.0. No consumer-visible behaviour changed; the core
+  library's single dependency is unaffected.
 
 ## [0.0.0-alpha.3] — 2026-08-16
 
@@ -80,6 +84,7 @@ it is: a published version can never be deleted from nuget.org, only unlisted.
 - `LibTmux.Workspace` — sessions from tmuxp workspace files.
 - `LibTmux.Mcp` — a Model Context Protocol server, installed as a .NET tool.
 
+[0.0.0-alpha.4]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.4
 [0.0.0-alpha.3]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.3
 [0.0.0-alpha.2]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.2
 [0.0.0-alpha.1]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.1
