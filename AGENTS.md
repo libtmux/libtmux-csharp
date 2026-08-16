@@ -133,3 +133,21 @@ Then commit the bundle and the rewritten `version-deltas.json` together, because
 the fingerprint is of the tree that commit produces. A tmux build takes about
 forty seconds here and the matrix runs the suite fourteen times, so budget half
 an hour.
+
+## Comments earn their maintenance cost
+
+Keep an implementation comment only when losing it would force a future
+maintainer to rediscover a consequential, non-obvious fact that the code,
+types, assertions, and tests do not already communicate. It states a durable
+truth about the shipped system rather than the author's reasoning, and it does
+not restate a value or a fact that can change without it — a comment that
+duplicates either goes stale silently. Write it as tersely as a mature,
+long-lived library would.
+
+Delete comments that narrate, restate, speculate, excuse, or preserve
+development history, and prefer deletion in the borderline case. What survives
+is what a reader could not recover from the code.
+
+XML documentation on the public surface — summaries, `<param>` descriptions,
+and examples — is judged on the other axis: what it is worth to a caller, not
+whether it is non-obvious. It stays precise, succinct, and maintainable.
