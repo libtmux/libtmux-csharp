@@ -404,22 +404,55 @@ internal sealed class TmuxConnection
         return (ParseGeneration(fields[0]), fields[1]);
     }
 
+    /// <summary>Runs one command under a generation guard.</summary>
     [UnsupportedOSPlatform("windows")]
-    private async Task<TmuxCommandResult> ExecuteGuardedAsync(
+    private Task<TmuxCommandResult> ExecuteGuardedAsync(
         ServerGeneration expected,
         IReadOnlyList<string> logicalArguments,
+        CancellationToken cancellationToken) =>
+        ExecuteGuardedGroupAsync(expected, [logicalArguments], cancellationToken);
+
+    /// <summary>Runs several commands under one generation guard.</summary>
+    /// <remarks>
+    /// A chain built from entity handles needs the same protection a one-shot
+    /// entity command gets, and it needs it once: checking per command would be
+    /// several invocations describing a server that can change between them.
+    /// One probe in the invocation that runs the batch is what makes the answer
+    /// true for the commands it guards.
+    /// </remarks>
+    [UnsupportedOSPlatform("windows")]
+    internal async Task<TmuxCommandResult> ExecuteGuardedGroupAsync(
+        ServerGeneration expected,
+        IReadOnlyList<IReadOnlyList<string>> commands,
         CancellationToken cancellationToken)
     {
         PlatformGuard.ThrowIfWindows();
         ValidateLiveGeneration(expected);
-        TmuxCommandDispatcher.ValidateArguments(logicalArguments);
+        ArgumentNullException.ThrowIfNull(commands);
+        if (commands.Count == 0)
+        {
+            throw new InvalidOperationException("A guarded run needs at least one command.");
+        }
+
+        foreach (IReadOnlyList<string> command in commands)
+        {
+            TmuxCommandDispatcher.ValidateArguments(command);
+        }
+
+        // The reported arguments describe the run as a whole. A caller reading a
+        // failure wants the commands it asked for, not the probe wrapped around
+        // them.
+        IReadOnlyList<string> logicalArguments = [.. commands.SelectMany(static command => command)];
         string marker = _markerFactory();
         ArgumentException.ThrowIfNullOrWhiteSpace(marker);
         string generationText = $"{expected.ProcessId.ToString(CultureInfo.InvariantCulture)}:{expected.StartTime.ToString(CultureInfo.InvariantCulture)}";
-        TmuxCommandRequest request = TmuxCommandRequest.Group(
+        IReadOnlyList<string>[] guarded =
+        [
             ["display-message", "-p", GenerationFormat],
             ["if-shell", "-F", $"#{{==:{GenerationFormat},{generationText}}}", string.Empty, marker],
-            logicalArguments);
+            .. commands,
+        ];
+        TmuxCommandRequest request = TmuxCommandRequest.Group(guarded);
 
         TmuxCommandResult grouped;
         try

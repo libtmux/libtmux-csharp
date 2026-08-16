@@ -19,6 +19,13 @@ public sealed partial class Server
     {
         TmuxConnection connection = _connection
             ?? throw new InvalidOperationException("The server handle has no connection.");
-        return new TmuxChain(connection.ServerDispatcher, []);
+        // The chain starts ungenerationed, because a chain of raw or
+        // name-targeted commands has nothing to guard. Adding a command built
+        // from an entity is what supplies a generation, and this is how the
+        // chain then reaches a dispatcher that checks it.
+        return new TmuxChain(
+            connection.ServerDispatcher,
+            [],
+            connection.ExecuteGuardedGroupAsync);
     }
 }

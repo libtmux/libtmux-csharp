@@ -24,6 +24,19 @@ public sealed record TmuxCommand(string Name, IReadOnlyList<string> Arguments)
         return new TmuxCommand(name, [.. arguments]);
     }
 
+    /// <summary>Gets the server generation this command's target belongs to.</summary>
+    /// <remarks>
+    /// A tmux ID such as <c>%2</c> is only meaningful on the server that issued
+    /// it; a restarted server reuses those IDs for different objects. A command
+    /// built from an entity therefore records which server the entity was read
+    /// from, and <see cref="TmuxChain.ExecuteAsync" /> refuses to run it against
+    /// a different one.
+    ///
+    /// Null means the command names no entity -- a raw command, or one whose
+    /// target is a name rather than an ID -- and carries no such requirement.
+    /// </remarks>
+    public ServerGeneration? RequiredGeneration { get; init; }
+
     /// <summary>Returns this command the way tmux receives it.</summary>
     /// <returns>The command name followed by its arguments.</returns>
     public IReadOnlyList<string> ToArguments() => [Name, .. Arguments];

@@ -54,15 +54,13 @@ target, but it is a constraint worth naming.
 | Hostile output cannot crash a parser | 8,000 [fuzz cases](../tests/LibTmux.UnitTests/Fuzzing/ParserFuzzTests.cs) plus a corpus; refusal required, crash and hang forbidden |
 | A query document is input, not instructions | Schema and version must be v1; string, pattern, dialect and regex-option limits enforced on **read**; matching bounded at 1s; a field resolves only through the catalog ([tests](../tests/LibTmux.UnitTests/Query/QueryJsonTrustBoundaryTests.cs)) |
 | A control session survives its consumer | Bounded event channel, bounded disposal that kills the client and not the server beneath it |
+| A stale handle cannot hit a live server | Generation guard on one-shot **and** chained entity commands; a chain mixing servers is refused before it runs ([tests](../tests/LibTmux.IntegrationTests/Chaining/ChainGenerationTests.cs)) |
 | All three transports | One-shot, control mode, and chaining, each measured and each working on every supported tmux |
 | Does not disturb other tmux users | Socket root of its own; the rules are in [AGENTS.md](../AGENTS.md) and enforced by a module initializer |
 | Parity with the Python original is tracked | [Parity ledger](parity/parity-ledger.json) maps every Python symbol to where it went |
 
 **The 0.5:** Linux only in CI. macOS is a supported platform and is untested
-here, which libtmux-cxx does test. Typed commands inside a `Chain()` also still
-lose their generation provenance, so a chain built from an entity handle can
-target a recycled ID after a server restart where the one-shot path would
-refuse — tracked as the next correctness fix.
+here, which libtmux-cxx does test.
 
 ## Examples — 9.5
 

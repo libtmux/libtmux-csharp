@@ -992,6 +992,8 @@ LibTmux.TmuxCommand.Deconstruct(out string! Name, out System.Collections.Generic
 LibTmux.TmuxCommand.Equals(LibTmux.TmuxCommand? other) -> bool
 LibTmux.TmuxCommand.Name.get -> string!
 LibTmux.TmuxCommand.Name.init -> void
+LibTmux.TmuxCommand.RequiredGeneration.get -> LibTmux.ServerGeneration?
+LibTmux.TmuxCommand.RequiredGeneration.init -> void
 LibTmux.TmuxCommand.TmuxCommand(string! Name, System.Collections.Generic.IReadOnlyList<string!>! Arguments) -> void
 LibTmux.TmuxCommand.ToArguments() -> System.Collections.Generic.IReadOnlyList<string!>!
 LibTmux.TmuxCommandException

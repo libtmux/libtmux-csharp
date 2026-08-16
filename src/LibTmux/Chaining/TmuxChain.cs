@@ -22,11 +22,18 @@ public sealed class TmuxChain
 {
     private readonly TmuxCommandDispatcher _dispatcher;
     private readonly IReadOnlyList<TmuxCommand> _commands;
+    private readonly Func<ServerGeneration, IReadOnlyList<IReadOnlyList<string>>,
+        CancellationToken, Task<TmuxCommandResult>>? _guarded;
 
-    internal TmuxChain(TmuxCommandDispatcher dispatcher, IReadOnlyList<TmuxCommand> commands)
+    internal TmuxChain(
+        TmuxCommandDispatcher dispatcher,
+        IReadOnlyList<TmuxCommand> commands,
+        Func<ServerGeneration, IReadOnlyList<IReadOnlyList<string>>,
+            CancellationToken, Task<TmuxCommandResult>>? guarded = null)
     {
         _dispatcher = dispatcher;
         _commands = commands;
+        _guarded = guarded;
     }
 
     /// <summary>Gets the commands this chain will run, in order.</summary>
@@ -38,7 +45,7 @@ public sealed class TmuxChain
     public TmuxChain Then(TmuxCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return new TmuxChain(_dispatcher, [.. _commands, command]);
+        return new TmuxChain(_dispatcher, [.. _commands, command], _guarded);
     }
 
     /// <summary>Adds one command by name and returns the longer chain.</summary>
@@ -68,11 +75,31 @@ public sealed class TmuxChain
             throw new InvalidOperationException("A chain needs at least one command.");
         }
 
-        TmuxCommandResult result = await _dispatcher
-            .ExecuteGroupAsync(
-                [.. _commands.Select(static command => command.ToArguments())],
-                cancellationToken)
-            .ConfigureAwait(false);
+        // Every entity-bound command in the chain has to name the same server,
+        // and the whole batch is then guarded once. Checking per command would
+        // be several round trips describing a server that can change between
+        // them; one guard in the same invocation is what makes the answer true
+        // for the commands it protects.
+        ServerGeneration[] required = [.. _commands
+            .Select(static command => command.RequiredGeneration)
+            .Where(static generation => generation.HasValue)
+            .Select(static generation => generation!.Value)
+            .Distinct()];
+
+        if (required.Length > 1)
+        {
+            throw new InvalidOperationException(
+                "A chain mixes commands from different server generations, which "
+                + "cannot all be valid: at most one of those servers is running.");
+        }
+
+        IReadOnlyList<IReadOnlyList<string>> arguments =
+            [.. _commands.Select(static command => command.ToArguments())];
+
+        TmuxCommandResult result = required.Length == 1 && _guarded is not null
+            ? await _guarded(required[0], arguments, cancellationToken).ConfigureAwait(false)
+            : await _dispatcher.ExecuteGroupAsync(arguments, cancellationToken)
+                .ConfigureAwait(false);
         TmuxCommandFailure.ThrowIfFailed(result, "chain");
         return result;
     }
