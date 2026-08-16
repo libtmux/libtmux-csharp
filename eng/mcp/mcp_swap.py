@@ -1673,10 +1673,16 @@ def preflight_spec(spec: McpServerSpec, *, timeout: float = 300.0) -> str | None
             answer = line
             break
 
+    # Closed by hand, so ``communicate`` must not be asked to close it
+    # again: on CPython 3.12 that raises "I/O operation on closed file"
+    # and turns a server that answered correctly into a swap that refuses
+    # to write. The remaining output is drained directly instead.
     try:
         proc.stdin.close()
     except OSError:
         pass
+    proc.stdin = None
+
     try:
         out, err = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
