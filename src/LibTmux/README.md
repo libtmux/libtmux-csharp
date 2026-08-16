@@ -30,13 +30,35 @@ await pane.SendTextAsync("dotnet test");
 await pane.EnterAsync();
 ```
 
-`ConnectAsync` with no arguments finds the tmux a `TMUX` variable names, or the
-default socket. To reach one server in particular:
+To reach one server in particular:
 
 ```csharp
 Server elsewhere = await Server.ConnectAsync(
     new ServerConnectionOptions(socketName: "build-box"));
 ```
+
+### Where a bare connect lands
+
+`ConnectAsync` with no arguments takes the first of these that says anything:
+
+| Source | What it decides |
+|---|---|
+| `ServerConnectionOptions` | an explicit `socketPath`, `socketName`, or `socketNameFactory` |
+| `LIBTMUX_SOCKET_PATH` | the socket, by path |
+| `LIBTMUX_SOCKET_NAME` | the socket, by name, under the root below |
+| `TMUX_TMPDIR` | the root a name resolves under — `/tmp` when unset |
+| — | the socket named `default` |
+
+Options always win. A call that named a socket is never redirected by a
+variable, which is what makes the variables safe to export for a whole process
+— a test harness, a sandbox, a container — without auditing the call sites in
+between. This library's own examples use exactly that: each one exports a
+socket name of its own, so the connect above stays one line and still cannot
+reach the server you are sitting in.
+
+A pane's own server is a different question, and a different call:
+`Server.FromEnvironment()` reads the socket path out of the `TMUX` variable
+tmux exports into every pane. `ConnectAsync` never consults it.
 
 Every call that reaches tmux is asynchronous and takes a `CancellationToken`.
 There are no synchronous twins to choose between.
