@@ -449,13 +449,6 @@ public sealed partial class Window
                 created.ToString());
     }
 
-    /// <summary>Builds the arguments a layout request sends.</summary>
-    /// <remarks>
-    /// This stays on the window rather than becoming a static helper because
-    /// validating a layout name asks the running tmux which names it knows,
-    /// and an unrecognised name takes the whole server down on 3.3a. A chained
-    /// layout has to be checked the same way a direct one is.
-    /// </remarks>
     internal List<string> BuildResizeWindowArguments(ResizeWindowRequest request)
     {
         List<string> arguments = ["resize-window", "-t", Target];
@@ -481,6 +474,13 @@ public sealed partial class Window
         return arguments;
     }
 
+    /// <summary>Builds the arguments a layout request sends.</summary>
+    /// <remarks>
+    /// This stays on the window rather than becoming a static helper because
+    /// validating a layout name asks the running tmux which names it knows,
+    /// and an unrecognised name takes the whole server down on 3.3a. A chained
+    /// layout has to be checked the same way a direct one is.
+    /// </remarks>
     internal List<string> BuildSelectLayoutArguments(SelectLayoutRequest request)
     {
         List<string> arguments = ["select-layout", "-t", Target];

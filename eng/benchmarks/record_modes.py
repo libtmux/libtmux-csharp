@@ -11,6 +11,7 @@ Usage:
     uv run python eng/benchmarks/record_modes.py \\
         --report artifacts/benchmarks/results/LibTmux.Benchmarks.ModeBenchmarks-report-full.json \\
         --tmux-version 3.7b \\
+        --collected 2026-08-16 \\
         --out docs/benchmarks/runs
 """
 

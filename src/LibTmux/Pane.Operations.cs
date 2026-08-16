@@ -263,11 +263,6 @@ public sealed partial class Pane
         return RunAsync(arguments, cancellationToken);
     }
 
-    /// <summary>Builds the arguments a paste request sends.</summary>
-    /// <remarks>
-    /// Pasting raw bytes arrived in tmux 3.7, so this stays on the pane that
-    /// knows which tmux is answering.
-    /// </remarks>
     /// <summary>Builds the arguments a popup request sends.</summary>
     /// <remarks>
     /// Popup options arrived in tmux 3.3 and the key policy in 3.6, so this
@@ -308,11 +303,6 @@ public sealed partial class Pane
         return arguments;
     }
 
-    /// <summary>Builds the arguments a copy-mode request sends.</summary>
-    /// <remarks>
-    /// Paging down on entry arrived in tmux 3.5, so this stays on the pane
-    /// that knows which tmux is answering.
-    /// </remarks>
     internal List<string> BuildRespawnPaneArguments(RespawnRequest request)
     {
         List<string> arguments = ["respawn-pane", "-t", Target];
@@ -331,18 +321,6 @@ public sealed partial class Pane
         return arguments;
     }
 
-    /// <summary>Builds the arguments a chooser request sends.</summary>
-    /// <remarks>
-    /// tmux 3.7 dropped the activity-time sort order and rejects it by name,
-    /// so this stays on the pane that knows which tmux is answering.
-    /// </remarks>
-    /// <summary>Builds the arguments a split request sends.</summary>
-    /// <remarks>
-    /// Splitting into an empty pane arrived in tmux 3.7 and the appearance
-    /// flags in 3.6, so this stays on the pane that knows which tmux is
-    /// answering. It keeps the identifier-printing flags, so a chained split
-    /// can say which pane it made.
-    /// </remarks>
     /// <summary>Builds the arguments a floating-pane request sends.</summary>
     /// <remarks>
     /// The command itself arrived in tmux 3.7, so the refusal belongs here
@@ -408,6 +386,13 @@ public sealed partial class Pane
         return arguments;
     }
 
+    /// <summary>Builds the arguments a split request sends.</summary>
+    /// <remarks>
+    /// Splitting into an empty pane and the appearance flags both arrived in
+    /// tmux 3.7, so this stays on the pane that knows which tmux is
+    /// answering. It keeps the identifier-printing flags, so a chained split
+    /// can say which pane it made.
+    /// </remarks>
     internal List<string> BuildSplitArguments(SplitPaneRequest request)
     {
         List<string> arguments =
@@ -461,6 +446,11 @@ public sealed partial class Pane
         return arguments;
     }
 
+    /// <summary>Builds the arguments a chooser request sends.</summary>
+    /// <remarks>
+    /// tmux 3.7 dropped the activity-time sort order and rejects it by name,
+    /// so this stays on the pane that knows which tmux is answering.
+    /// </remarks>
     internal List<string> BuildChooseTreeArguments(ChooseTreeRequest request)
     {
         List<string> arguments = ["choose-tree", "-t", Target];
@@ -499,6 +489,11 @@ public sealed partial class Pane
         return arguments;
     }
 
+    /// <summary>Builds the arguments a copy-mode request sends.</summary>
+    /// <remarks>
+    /// Paging down on entry arrived in tmux 3.5, so this stays on the pane
+    /// that knows which tmux is answering.
+    /// </remarks>
     internal List<string> BuildCopyModeArguments(CopyModeRequest request)
     {
         List<string> arguments = ["copy-mode", "-t", Target];
@@ -531,6 +526,11 @@ public sealed partial class Pane
         return arguments;
     }
 
+    /// <summary>Builds the arguments a paste request sends.</summary>
+    /// <remarks>
+    /// Pasting raw bytes arrived in tmux 3.7, so this stays on the pane that
+    /// knows which tmux is answering.
+    /// </remarks>
     internal List<string> BuildPasteBufferArguments(PasteBufferRequest request)
     {
         List<string> arguments = ["paste-buffer", "-t", Target];

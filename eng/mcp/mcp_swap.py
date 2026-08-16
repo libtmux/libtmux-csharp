@@ -43,13 +43,13 @@ config as an absolute path. An agent does not inherit this shell.
 Examples
 --------
 ```console
-$ uv run scripts/mcp_swap.py detect
-$ uv run scripts/mcp_swap.py status
-$ uv run scripts/mcp_swap.py use --dry-run
-$ uv run scripts/mcp_swap.py use --source release
-$ uv run scripts/mcp_swap.py use --source run
-$ uv run scripts/mcp_swap.py use --source published --version 0.1.0-alpha.3
-$ uv run scripts/mcp_swap.py revert
+$ uv run eng/mcp/mcp_swap.py detect
+$ uv run eng/mcp/mcp_swap.py status
+$ uv run eng/mcp/mcp_swap.py use --dry-run
+$ uv run eng/mcp/mcp_swap.py use --source release
+$ uv run eng/mcp/mcp_swap.py use --source run
+$ uv run eng/mcp/mcp_swap.py use --source published --version 0.1.0-alpha.3
+$ uv run eng/mcp/mcp_swap.py revert
 ```
 
 Scope
@@ -89,7 +89,7 @@ This script is best-effort and intentionally narrow:
   takes effect only once that package is installed. ``detect`` says as
   much rather than reporting a swap that cannot do anything.
 
-- **Claude scope.** ``use-local`` and ``revert`` accept
+- **Claude scope.** ``use`` and ``revert`` accept
   ``--scope {user,project}``. The default ``project`` writes the
   per-project entry under ``projects[<abs-repo>].mcpServers`` —
   only the current repo's directory sees the swap, matching
