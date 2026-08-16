@@ -72,9 +72,8 @@ internal sealed class ControlModeSession : IControlModeSession
         // it looks obviously correct and is not: a tmux client can hand its
         // stderr to the server it starts, so the write end outlives the client.
         // A task reading the pipe then never ends -- that read does not observe
-        // cancellation on Unix -- and disposal must either wait for the server
-        // or close the handle underneath a read in flight. Both were measured
-        // here and both hang the suite.
+        // cancellation on Unix -- and disposal would have to either wait for the
+        // server or close the handle underneath a read in flight. Both hang.
         //
         // The risk this leaves is a client blocking on a full stderr pipe. A
         // control client writes to stderr only when tmux itself fails to start,

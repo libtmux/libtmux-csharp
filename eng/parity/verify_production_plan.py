@@ -622,9 +622,7 @@ COMPONENT_RE = re.compile(r"^## Component ([0-9]+):\s+\S.*$")
 FIELD_RE = re.compile(r"^### (.+?)\s*$")
 LIST_TOKEN_RE = re.compile(r"^- (?P<fence>`{1,2})(?P<token>.+?)(?P=fence)\s*$")
 EXACT_PATH_RE = re.compile(
-    # A plan names a file by repository-relative path. This anchored on the
-    # directory the project sat in when it lived in a monorepo; the project
-    # is the repository now, so the anchor is its own top-level entries.
+    # A plan names a file by repository-relative path.
     r"^(?:(?:benchmarks|docs|eng|examples|src|tests|\.github)/"
     r"(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+"
     r"|[A-Za-z0-9_.-]+\.(?:slnx|json|props|md|sh))$"
@@ -818,12 +816,8 @@ EXCEPTION_FILES = (
     "src/LibTmux/Exceptions/TmuxPaneException.cs",
     "src/LibTmux/Exceptions/TmuxOptionException.cs",
 )
-# Every tmux command already passes through one dispatcher, so the diagnostics
-# it records belong there rather than repeated in each entity. Sweeping sixty
-# files to say the same thing sixty times would be churn, not coverage.
-# Every tmux command already passes through one dispatcher, so the diagnostics
-# it records belong there rather than repeated in each entity. Sweeping every
-# file to say the same thing would be churn, not coverage.
+# Every tmux command passes through one dispatcher, so the diagnostics it
+# records belong there rather than repeated in each entity.
 DIAGNOSTIC_SHARED_FILES = (
     "src/LibTmux/Transport/TmuxCommandDispatcher.cs",
     "src/LibTmux/Connection/TmuxConnection.cs",
@@ -2421,9 +2415,6 @@ def validate_component(
             EVIDENCE_COMMIT_COMMAND,
         }.issubset(gate_tokens):
             violations.append("component 18 has incomplete source-binding closure")
-    # A rule against repeating the project directory after entering it stood
-    # here. The project was one directory into a monorepo then and is the
-    # repository now, so no command enters it and there is nothing to repeat.
 
 
 def approval_ledger(ledger: dict[str, t.Any]) -> dict[str, t.Any]:

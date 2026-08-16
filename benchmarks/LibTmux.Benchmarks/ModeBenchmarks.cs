@@ -12,13 +12,11 @@ namespace LibTmux.Benchmarks;
 /// one for its lifetime. Each mode is measured at both sizes so the crossover
 /// is visible rather than asserted.
 ///
-/// Where that crossover falls is a property of the machine, not of the library.
-/// Chaining trades fifty process starts for one, and control mode trades them
-/// for fifty round trips on a connection already open, so which of the two wins
-/// at fifty commands depends on what a process start costs here today. Both
-/// orders have been measured on the same machine. That is why
-/// <see cref="ModeBenchmarkConfig"/> reports a distribution, and why a recorded
-/// run names its tmux, its host and its date.
+/// Where that crossover falls is a property of the machine, not of the library:
+/// chaining trades fifty process starts for one, control mode trades them for
+/// fifty round trips on an open connection, and which wins depends on what a
+/// process start costs. <see cref="ModeBenchmarkConfig"/> therefore reports a
+/// distribution, and a recorded run names its tmux, its host and its date.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 [MemoryDiagnoser]

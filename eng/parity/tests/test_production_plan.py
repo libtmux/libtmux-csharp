@@ -769,12 +769,8 @@ EXCEPTION_FILES = (
     "src/LibTmux/Exceptions/TmuxPaneException.cs",
     "src/LibTmux/Exceptions/TmuxOptionException.cs",
 )
-# Every tmux command already passes through one dispatcher, so the diagnostics
-# it records belong there rather than repeated in each entity. Sweeping sixty
-# files to say the same thing sixty times would be churn, not coverage.
-# Every tmux command already passes through one dispatcher, so the diagnostics
-# it records belong there rather than repeated in each entity. Sweeping every
-# file to say the same thing would be churn, not coverage.
+# Every tmux command passes through one dispatcher, so the diagnostics it
+# records belong there rather than repeated in each entity.
 DIAGNOSTIC_SHARED_FILES = (
     "src/LibTmux/Transport/TmuxCommandDispatcher.cs",
     "src/LibTmux/Connection/TmuxConnection.cs",

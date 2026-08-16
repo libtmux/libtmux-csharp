@@ -23,17 +23,10 @@ namespace LibTmux.IntegrationTests.Documentation;
 [UnsupportedOSPlatform("windows")]
 public sealed class ReadmeExampleTests
 {
-    /// <summary>Every document that ships, is the face of the repository, or teaches the API.</summary>
+    /// <summary>Every document that ships or teaches the API.</summary>
     /// <remarks>
-    /// The package READMEs are here because they ship inside the packages and
-    /// render on nuget.org. The mode documents are here because they are where a
-    /// reader goes to learn how to call this library, and an example that does
-    /// not compile teaches a call that does not exist — which has happened, and
-    /// is what this harness exists to stop.
-    ///
-    /// The decision records are deliberately absent. They quote what was run at
-    /// the time, and an example edited later to keep compiling is no longer a
-    /// record of anything.
+    /// Decision records are deliberately absent: they quote what was run at the
+    /// time, and an example edited later to keep compiling records nothing.
     /// </remarks>
     private static readonly string[] Documents =
     [
@@ -162,10 +155,9 @@ public sealed class ReadmeExampleTests
     [UnixFact]
     public void Every_example_in_the_approved_contract_compiles()
     {
-        // The contract's examples are whole programs, and nothing built them:
-        // its own capture-query-and-json example named three members that do
-        // not exist. A reviewed surface that documents calls which cannot
-        // compile is describing a library nobody has.
+        // The contract's examples are whole programs, so nothing else compiles
+        // them: a reviewed surface documenting calls that do not exist is
+        // describing a library nobody has.
         string contract = File.ReadAllText(
             Path.Combine(RepositoryRoot(), "docs", "public-api.json"));
         using JsonDocument document = JsonDocument.Parse(contract);
