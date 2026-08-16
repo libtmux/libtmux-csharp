@@ -1,0 +1,77 @@
+using System.Runtime.Versioning;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
+
+namespace LibTmux.Mcp;
+
+/// <summary>Assembles the server: what it offers, and what it refuses to.</summary>
+/// <remarks>
+/// One description of the wiring, used by the executable and by the tests that
+/// check what a client receives. Two descriptions would drift, and the one
+/// that drifted would be the tested one.
+/// </remarks>
+[UnsupportedOSPlatform("windows")]
+public static class McpServerComposition
+{
+    /// <summary>Registers everything the server needs and everything it offers.</summary>
+    /// <param name="services">The container to register into.</param>
+    /// <param name="policy">What the server will do.</param>
+    /// <param name="connectionOptions">How to reach tmux.</param>
+    /// <param name="callerPaneId">The pane the server runs in, when it runs in one.</param>
+    /// <returns>The builder, for a transport to be chosen on.</returns>
+    public static IMcpServerBuilder Add(
+        IServiceCollection services,
+        ServerPolicy policy,
+        ServerConnectionOptions connectionOptions,
+        string? callerPaneId)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentNullException.ThrowIfNull(connectionOptions);
+
+        services.AddSingleton(policy);
+        services.AddSingleton(provider => new TmuxConnectionAccessor(
+            connectionOptions,
+            connectionOptions.SocketName,
+            provider.GetService<ILoggerFactory>()?.CreateLogger<TmuxConnectionAccessor>()));
+        services.AddSingleton(provider => new PaneActivityHub(
+            provider.GetService<ILoggerFactory>()?.CreateLogger<PaneActivityHub>()));
+        services.AddSingleton(provider => new JobStore(
+            provider.GetService<ILoggerFactory>()?.CreateLogger<JobStore>()));
+        services.AddSingleton<ReadTools>();
+        services.AddSingleton<WriteTools>();
+        services.AddSingleton<DestructiveTools>();
+        services.AddSingleton<HierarchyResources>();
+
+        IMcpServerBuilder builder = services
+            .AddMcpServer(options =>
+            {
+                options.ServerInfo = new Implementation
+                {
+                    Name = "tmux",
+                    Version = LibTmuxMcp.Version,
+                };
+                options.ServerInstructions = ServerInstructions.Compose(policy, callerPaneId);
+            })
+            .WithTools<ReadTools>()
+            .WithResources<HierarchyResources>()
+            .WithPrompts<RecipePrompts>()
+            .WithRequestFilters(filters => filters.AddCallToolFilter(ToolFailureFilter.Create()));
+
+        // Registration, not filtering. A tool the operator's tier does not
+        // allow never reaches the model's list, so it cannot be called by name,
+        // guessed at, or argued for.
+        if (policy.Allows(SafetyTier.Mutating))
+        {
+            builder.WithTools<WriteTools>();
+        }
+
+        if (policy.Allows(SafetyTier.Destructive))
+        {
+            builder.WithTools<DestructiveTools>();
+        }
+
+        return builder;
+    }
+}

@@ -1,0 +1,87 @@
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace LibTmux.Mcp;
+
+/// <summary>Keeps this server's own bookkeeping out of what a caller reads.</summary>
+/// <remarks>
+/// <para>
+/// Running a command deterministically means appending a rendezvous and a
+/// status capture to it, and the shell echoes that like anything else typed.
+/// The echo stays on screen for as long as the pane holds it, so it is not
+/// enough for a run to hide its own: every later read of that pane would show
+/// somebody else's, and a model would reasonably conclude the command printed
+/// tmux commands it never ran.
+/// </para>
+/// <para>
+/// The echo is longer than a pane is wide, and tmux stores a wrap as a real
+/// line break — so the marker arrives split across rows, and matching row by
+/// row finds nothing. Rows are rejoined into the logical line they came from
+/// before matching, which is the only form the marker is whole in.
+/// </para>
+/// </remarks>
+internal static partial class PaneText
+{
+    /// <summary>Removes lines that only exist because this server ran something.</summary>
+    /// <param name="lines">The captured rows, oldest first.</param>
+    /// <param name="paneWidth">
+    /// The pane's width in columns, used to tell a wrapped continuation from a
+    /// new line. Pass zero when it is unknown; matching then works only on
+    /// lines short enough not to have wrapped.
+    /// </param>
+    /// <returns>The rows worth showing.</returns>
+    internal static IReadOnlyList<string> Scrub(IReadOnlyList<string> lines, int paneWidth)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        if (lines.Count == 0)
+        {
+            return lines;
+        }
+
+        Regex marker = MarkerPattern();
+        List<string>? kept = null;
+        StringBuilder logical = new();
+
+        int start = 0;
+        while (start < lines.Count)
+        {
+            int end = start;
+            logical.Clear();
+            logical.Append(lines[start]);
+
+            // tmux fills a row to the last column before wrapping, so a row of
+            // exactly the pane's width is continued by the one after it.
+            while (paneWidth > 0
+                && end + 1 < lines.Count
+                && lines[end].Length >= paneWidth)
+            {
+                end++;
+                logical.Append(lines[end]);
+            }
+
+            if (marker.IsMatch(logical.ToString()))
+            {
+                kept ??= [.. lines.Take(start)];
+            }
+            else if (kept is not null)
+            {
+                for (int row = start; row <= end; row++)
+                {
+                    kept.Add(lines[row]);
+                }
+            }
+
+            start = end + 1;
+        }
+
+        return kept ?? lines;
+    }
+
+    /// <summary>Matches the channel and option names a run leaves behind.</summary>
+    /// <remarks>
+    /// Anchored to the exact shape minted by <see cref="WriteTools.RunToken" />
+    /// so that ordinary text mentioning the prefix survives.
+    /// </remarks>
+    [GeneratedRegex(@"@?lt_[rs]_[0-9a-f]{10}", RegexOptions.CultureInvariant)]
+    private static partial Regex MarkerPattern();
+}
