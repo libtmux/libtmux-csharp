@@ -320,10 +320,8 @@ internal sealed class QueryDocumentJsonReader
 
     /// <summary>Reads regex options, refusing bits this library does not define.</summary>
     /// <remarks>
-    /// The value arrives as an integer, so an arbitrary one would otherwise be
-    /// cast straight into a flags enum. Only the options translation can produce
-    /// are accepted; anything else is a document describing behaviour this
-    /// library never writes.
+    /// Arrives as a raw integer, so only the bit combinations the writer can
+    /// produce are accepted; anything else describes behaviour this library never writes.
     /// </remarks>
     private static System.Text.RegularExpressions.RegexOptions ReadRegexOptions(
         JsonElement element)
@@ -343,9 +341,8 @@ internal sealed class QueryDocumentJsonReader
 
     /// <summary>Reads a string constant, bounded by the declared limit.</summary>
     /// <remarks>
-    /// The writer already refuses to emit a longer one. Without the same check
-    /// here the limit only constrains documents this library produced, which is
-    /// the opposite of where a limit is needed.
+    /// Re-checked here because the writer's own limit does not bound documents
+    /// produced elsewhere, which are exactly the ones this limit exists for.
     /// </remarks>
     private string ReadBoundedString(JsonElement element)
     {
