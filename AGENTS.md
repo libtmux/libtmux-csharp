@@ -83,12 +83,19 @@ workflow only ever sees whatever tmux Ubuntu ships.
 
 `dotnet.yml` also carries an advisory `macos arm64` lane, because the
 compatibility claim names macOS and a claim nobody runs is a claim. Its first
-run failed 15 of 854 integration tests, so it stays outside `gate` until those
-are diagnosed: requiring it would block every commit on an undiagnosed platform
-difference, and deleting it would go back to not knowing. It restores
-without `--locked-mode`: the lock files are generated for the Linux runtime
-identifiers this repository publishes, so locking a macOS restore would fail for
-a reason that is not a dependency problem.
+run failed 15 of 854 integration tests; the last of those is fixed and the lane
+is green, so what keeps it outside `gate` is now a choice rather than an
+outstanding diagnosis. It restores without `--locked-mode`: the lock files are
+generated for the Linux runtime identifiers this repository publishes, so
+locking a macOS restore would fail for a reason that is not a dependency
+problem.
+
+Every one of those failures was a difference in what the platform put on the
+screen rather than in what tmux did. The last two were a runner hostname 61
+characters long: bash's prompt then fills 78 of the pane's 80 columns, and tmux
+stores the wrap as a real line break, so a capture that does not ask for
+`-J` returns typed text split across two lines. Assertions about text a user
+typed capture with `joinWrappedLines`.
 
 Two more workflows run on a schedule rather than on the gate, because what they
 check can change without a commit: `codeql.yml` analyses the build, and
