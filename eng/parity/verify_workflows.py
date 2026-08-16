@@ -25,6 +25,8 @@ REQUIRED_BUILD_STEPS = (
     "LibTmux.AotSmoke",
     "LibTmux.PackageConsumer",
     "LibTmux.Examples",
+    "LibTmux.ExampleTests",
+    "sync_snippets.py --check",
     "fetch-depth: 0",
 )
 

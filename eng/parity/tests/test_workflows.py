@@ -39,6 +39,8 @@ jobs:
       - run: dotnet publish tests/LibTmux.AotSmoke/LibTmux.AotSmoke.csproj
       - run: dotnet run --project tests/LibTmux.PackageConsumer
       - run: dotnet run --project examples/LibTmux.Examples
+      - run: dotnet test --project tests/LibTmux.ExampleTests
+      - run: uv run python eng/docs/sync_snippets.py --check
 """
 
 MATRIX = """
@@ -107,7 +109,14 @@ def test_skipped_integration_tests_are_reported(tmp_path: pathlib.Path) -> None:
 
 @pytest.mark.parametrize(
     "step",
-    ["--locked-mode", "--warnaserror", "dotnet pack", "LibTmux.PackageConsumer"],
+    [
+        "--locked-mode",
+        "--warnaserror",
+        "dotnet pack",
+        "LibTmux.PackageConsumer",
+        "LibTmux.ExampleTests",
+        "sync_snippets.py --check",
+    ],
 )
 def test_a_dropped_build_step_is_reported(tmp_path: pathlib.Path, step: str) -> None:
     """A workflow gating less than the repository does lets changes through."""

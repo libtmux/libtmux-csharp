@@ -118,6 +118,19 @@ jobs:
           --framework net10.0
           --no-build
 
+      - name: Example tests
+        # The same examples again, one test each, so a broken example is named
+        # in a report rather than being an exit code. This reaches them through
+        # the examples project and never through a project reference of its
+        # own, which is what makes it a reading of the surface a caller has.
+        run: >
+          dotnet test
+          --project tests/LibTmux.ExampleTests/LibTmux.ExampleTests.csproj
+          --configuration Release
+          --framework net10.0
+          --no-build
+          --minimum-expected-tests 1
+
       - name: Integration tests
         # These run last because the packaging tests among them read what the
         # steps above produced: the package, the consumer, and the native
@@ -134,12 +147,15 @@ jobs:
           --minimum-expected-tests 1
 
       - name: Documents
-        # Two validators run on checked-in documents rather than the build, so
-        # nothing else would notice them drifting from the source.
+        # These run on checked-in documents rather than the build, so nothing
+        # else would notice them drifting from the source. The snippet check is
+        # the same idea aimed the other way: the documents are downstream of
+        # code that runs, and this is what says so out loud.
         run: |
           uv run python eng/parity/verify_public_api.py
           uv run python eng/parity/verify_capabilities.py
           uv run python eng/parity/verify_workflows.py
+          uv run python eng/docs/sync_snippets.py --check
 
       - name: Check out the pinned Python libtmux
         # The parity records quote one revision of the Python library. It is
