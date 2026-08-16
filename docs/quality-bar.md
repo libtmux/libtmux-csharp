@@ -53,7 +53,7 @@ target, but it is a constraint worth naming.
 | Version differences are modelled | Capability model; every difference has a row in [`version-deltas.json`](parity/version-deltas.json) naming the test that proves it |
 | Hostile output cannot crash a parser | 8,000 [fuzz cases](../tests/LibTmux.UnitTests/Fuzzing/ParserFuzzTests.cs) plus a corpus; refusal required, crash and hang forbidden |
 | A query document is input, not instructions | Schema and version must be v1; string, pattern, dialect and regex-option limits enforced on **read**; matching bounded at 1s; a field resolves only through the catalog ([tests](../tests/LibTmux.UnitTests/Query/QueryJsonTrustBoundaryTests.cs)) |
-| A control session survives its consumer | Bounded event channel, drained stderr, waiter queued only after the write commits, bounded disposal with a kill fallback ([tests](../tests/LibTmux.IntegrationTests/ControlMode/ControlModeLifecycleTests.cs)) |
+| A control session survives its consumer | Bounded event channel, waiter queued only after the write commits, bounded disposal that kills the client and not the server beneath it |
 | All three transports | One-shot, control mode, and chaining, each measured and each working on every supported tmux |
 | Does not disturb other tmux users | Socket root of its own; the rules are in [AGENTS.md](../AGENTS.md) and enforced by a module initializer |
 | Parity with the Python original is tracked | [Parity ledger](parity/parity-ledger.json) maps every Python symbol to where it went |

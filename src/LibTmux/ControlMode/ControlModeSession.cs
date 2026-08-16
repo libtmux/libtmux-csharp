@@ -41,7 +41,6 @@ internal sealed class ControlModeSession : IControlModeSession
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Task _pump;
-    private readonly Task _errorDrain;
     private bool _disposed;
 
     /// <summary>How long disposal waits for the client to exit before killing it.</summary>
@@ -56,24 +55,6 @@ internal sealed class ControlModeSession : IControlModeSession
     {
         _process = process;
         _pump = Task.Run(PumpAsync);
-
-        // Standard error is redirected, so something has to read it. A pipe
-        // nobody drains fills, and a client blocked writing a diagnostic stops
-        // answering commands -- a deadlock whose cause is nowhere near its
-        // symptom.
-        _errorDrain = Task.Run(async () =>
-        {
-            try
-            {
-                await _process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-            }
-            catch (Exception error) when (error is IOException or ObjectDisposedException
-                or InvalidOperationException or OperationCanceledException)
-            {
-                // The stream closing under us is how this ends normally. Draining
-                // is not allowed to be the thing that fails a session.
-            }
-        });
     }
 
     public IAsyncEnumerable<TmuxEvent> Events => _events.Reader.ReadAllAsync();
@@ -87,6 +68,17 @@ internal sealed class ControlModeSession : IControlModeSession
         string? target,
         Action<ProcessStartInfo> configureEnvironment)
     {
+        // Standard error is redirected and deliberately not drained. Draining
+        // it looks obviously correct and is not: a tmux client can hand its
+        // stderr to the server it starts, so the write end outlives the client.
+        // A task reading the pipe then never ends -- that read does not observe
+        // cancellation on Unix -- and disposal must either wait for the server
+        // or close the handle underneath a read in flight. Both were measured
+        // here and both hang the suite.
+        //
+        // The risk this leaves is a client blocking on a full stderr pipe. A
+        // control client writes to stderr only when tmux itself fails to start,
+        // which is kilobytes at most and is followed by the process exiting.
         ProcessStartInfo startInfo = new(tmuxBinaryPath)
         {
             RedirectStandardInput = true,
@@ -187,7 +179,13 @@ internal sealed class ControlModeSession : IControlModeSession
                     // Asking did not work, so stop asking. A disposal that never
                     // returns is worse than a client that did not shut down
                     // politely.
-                    _process.Kill(entireProcessTree: true);
+                    //
+                    // Only the client is killed. The tree below it can contain
+                    // the tmux server, which other clients -- and other tests
+                    // running beside this one -- are still using; taking that
+                    // out to close one session is a much larger action than the
+                    // caller asked for.
+                    _process.Kill(entireProcessTree: false);
                     await _process.WaitForExitAsync().ConfigureAwait(false);
                 }
             }
@@ -199,7 +197,6 @@ internal sealed class ControlModeSession : IControlModeSession
         finally
         {
             await _pump.ConfigureAwait(false);
-            await _errorDrain.ConfigureAwait(false);
             _process.Dispose();
             _writeLock.Dispose();
         }
