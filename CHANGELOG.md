@@ -8,6 +8,23 @@ Versions follow [Semantic Versioning](https://semver.org). During alpha the
 public API can change in any release with no deprecation period — pin an exact
 version.
 
+## [0.0.0-alpha.6] — 2026-08-16
+
+No change to the library. `git diff v0.0.0-alpha.5..v0.0.0-alpha.6 -- src/`
+is empty, so this package is the alpha.5 package.
+
+### Changed
+
+- **macOS arm64 is proven rather than advisory-and-failing.** The lane had
+  failed two integration tests since it was added, recorded as timing. It was
+  pane width: a GitHub macOS runner's hostname is 61 characters, so bash's
+  prompt fills 78 of the pane's 80 columns, and tmux stores the resulting wrap
+  as a real line break. Text typed there arrives split, so a capture joined
+  with newlines cannot contain it. Those assertions now capture with
+  `joinWrappedLines`, which is what `capture-pane -J` is for. A caller
+  asserting on pane text hits the same thing on any machine with a long
+  prompt.
+
 ## [0.0.0-alpha.5] — 2026-08-16
 
 ### Added
