@@ -34,6 +34,7 @@ DOCUMENTS = (
     "src/LibTmux/README.md",
     "src/LibTmux.Query.Json/README.md",
     "src/LibTmux.Workspace/README.md",
+    "src/LibTmux.Mcp/README.md",
     "docs/modes/one-shot.md",
     "docs/modes/control-mode.md",
     "docs/modes/chaining.md",

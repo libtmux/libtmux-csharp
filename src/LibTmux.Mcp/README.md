@@ -79,6 +79,28 @@ which is what tmux has already rendered.
 If control mode cannot start, waits fall back to polling. Cost changes;
 answers do not.
 
+The tools are ordinary classes, so an application that already hosts an
+assistant can run one directly instead of launching a second process:
+
+<!-- snippet: RunAndReadExitStatus usings: LibTmux, LibTmux.Mcp -->
+```csharp
+using LibTmux;
+using LibTmux.Mcp;
+
+WriteTools tools = McpTools.Writing(server.ConnectionOptions);
+
+RunResult result = await tools.RunAsync(
+    "test -f /etc/hostname && echo present",
+    pane.Id.ToString(),
+    timeoutSeconds: 20,
+    cancellationToken: ct);
+
+// The status comes from the shell, not from reading the screen, so a
+// command that prints nothing still says what it did.
+Console.WriteLine($"exit {result.ExitStatus}, timed out: {result.TimedOut}");
+```
+<!-- endsnippet -->
+
 ## Nothing returns unbounded output
 
 Every content-bearing result is cut to a budget, keeps the **newest** lines,
@@ -94,8 +116,75 @@ and says what it dropped:
 ```
 
 A reader that cannot see lines are missing concludes the pane never printed
-them. `tmux_tail_pane` avoids the problem instead of managing it: pass its
-cursor back and the tenth read of a busy pane costs what the first did.
+them:
+
+<!-- snippet: KeepTheNewestLines usings: LibTmux, LibTmux.Mcp -->
+```csharp
+using LibTmux;
+using LibTmux.Mcp;
+
+ReadTools reading = McpTools.Reading(server.ConnectionOptions);
+
+CaptureResult captured = await reading.CapturePaneAsync(
+    pane.Id.ToString(),
+    includeHistory: true,
+    maxLines: 5,
+    cancellationToken: ct);
+
+// A terminal's newest line is the one that says what happened, so the
+// budget keeps the end — and says what it cost, because a reader who
+// cannot see the loss concludes the pane never printed it.
+Console.WriteLine(captured.Content.ToDisplayString());
+Console.WriteLine($"dropped {captured.Content.DroppedLines} earlier lines");
+```
+<!-- endsnippet -->
+
+`tmux_tail_pane` avoids the problem instead of managing it. Pass its cursor
+back and the tenth read of a busy pane costs what the first did:
+
+<!-- snippet: ReadOnlyWhatIsNew usings: LibTmux, LibTmux.Mcp -->
+```csharp
+using LibTmux;
+using LibTmux.Mcp;
+
+ReadTools reading = McpTools.Reading(server.ConnectionOptions);
+string paneId = pane.Id.ToString();
+
+// A first call establishes a position and returns nothing, so watching
+// a pane never starts by paying for a screenful nobody asked for.
+TailResult first = await reading.TailPaneAsync(paneId, cancellationToken: ct);
+
+await reading.WaitForTextAsync(
+    paneId,
+    patterns: null,
+    timeoutSeconds: 5,
+    cancellationToken: ct);
+
+TailResult next = await reading.TailPaneAsync(paneId, first.Cursor, cancellationToken: ct);
+Console.WriteLine($"{next.Content.Lines.Count} new lines");
+```
+<!-- endsnippet -->
+
+To offer these beside your own tools rather than as a separate process:
+
+<!-- snippet: HostTheToolsYourself usings: LibTmux, LibTmux.Mcp, Microsoft.Extensions.DependencyInjection -->
+```csharp
+using LibTmux;
+using LibTmux.Mcp;
+using Microsoft.Extensions.DependencyInjection;
+
+ServiceCollection services = new();
+services.AddLogging();
+
+// Registers the tools, resources and prompts, and gates them on the
+// tier. Choose the transport yourself — this returns the builder.
+McpServerComposition.Add(
+    services,
+    new ServerPolicy { Tier = SafetyTier.ReadOnly },
+    server.ConnectionOptions,
+    callerPaneId: null);
+```
+<!-- endsnippet -->
 
 ## Three tiers, and a tool you do not have cannot be called
 
@@ -133,6 +222,16 @@ Six resources expose the hierarchy without a tool call — `tmux://hierarchy`,
 `tmux://sessions`, `tmux://sessions/{id}/panes`, `tmux://panes/{id}/content`,
 `tmux://self`, `tmux://servers`. A client can pin or refresh one on its own
 initiative; one nobody reads costs nothing.
+
+A client that subscribes to `tmux://hierarchy`, `tmux://sessions` or
+`tmux://servers` is told when they change, from tmux's own notifications rather
+than from a timer — so a view goes stale only when something actually moved.
+That watcher holds a second control client, started on the first subscription
+and stopped with the last, attached with `no-output` because it wants the
+hierarchy and not every byte a pane prints.
+
+Long calls report progress while they run, so a wait shows as running rather
+than hung. It costs nothing when the client asks for none.
 
 Four prompts package workflows that are easy to get wrong:
 `tmux_run_and_report`, `tmux_diagnose_pane`, `tmux_build_workspace`,
