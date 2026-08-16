@@ -34,62 +34,70 @@ await server.Chain().Then("new-window", "-d", "-n", "build").ExecuteAsync(ct);
 
 One-shot starts a tmux client per command. Chaining starts one for the whole
 sequence. Control mode starts one and keeps it, so commands after the first pay
-no process cost at all, in exchange for holding a connection.
+a round trip rather than a process.
 
-Measured by the `LibTmux.Benchmarks` project against tmux 3.7b on `net10.0`:
+The number that belongs to the library is the **marginal** one: what a command
+costs *in addition to* the first, which is the difference between fifty and one
+over forty-nine. Absolute timings belong to the machine — the same host measured
+a one-shot command at 2.4 ms and at 19 ms on the same day — so they are recorded
+per run rather than quoted here.
 
-| Commands | Mode | Mean | Error | Allocated |
-|---|---|---:|---:|---:|
-| 1 | One-shot | 3.8 ms | ± 0.8 | 312 KB |
-| 1 | Chained | 3.6 ms | ± 1.1 | 313 KB |
-| 1 | Control | 0.29 ms | ± 0.05 | 1.3 KB |
-| 50 | One-shot | 118 ms | ± 8.1 | 15,576 KB |
-| 50 | Chained | 3.5 ms | ± 0.6 | 388 KB |
-| 50 | Control | 6.5 ms | ± 0.8 | 59 KB |
+| Mode | Cost of one more command | Because |
+|---|---:|---|
+| One-shot | ~2,300 us | it starts another tmux process |
+| Control | ~205 us | it makes another round trip on an open connection |
+| Chained | ~21 us | it appends to a command line that is already being sent |
 
-The error column is there because one comparison in this table needs it:
-chaining one command and chaining fifty are **the same measurement**. 3.6 ± 1.1
-and 3.5 ± 0.6 overlap completely, and reading the means alone would say fifty
-commands are faster than one, which is not a thing. The allocations say what is
-actually happening — 313 KB for one, 388 KB for fifty — a chain pays for one
-tmux process and almost nothing per command after it.
+Medians of 100 samples, tmux 3.7b, `net10.0`, 2026-08-16 —
+[the full distribution, host and commit](../benchmarks/runs/2026-08-16-tmux-3.7b.md).
 
-There are two crossovers here and they point at different modes.
+### The absolute numbers, and why they are downstairs
 
-**Per command, control mode wins by an order of magnitude** — 0.29 ms against
-3.6, and 1.3 KB against 312 — because its client is already running and nothing
-starts a process. That is what makes holding a connection worth it.
+| Commands | Mode | Median | p95 | Allocated |
+|---:|---|---:|---:|---:|
+| 1 | One-shot | 2.81 ms | 4.03 ms | 292 KB |
+| 1 | Chained | 3.02 ms | 4.43 ms | 291 KB |
+| 1 | Control | 0.43 ms | 0.66 ms | — |
+| 50 | One-shot | 115.93 ms | 155.43 ms | 14,490 KB |
+| 50 | Chained | 4.03 ms | 5.76 ms | 368 KB |
+| 50 | Control | 10.49 ms | 15.63 ms | 60 KB |
 
-**For a batch handed over at once, chaining wins** — fifty commands in one
-invocation cost 3.5 ms, less than fifty round trips on a connection that is
-already open. A chain pays for one round trip however many commands are in it;
-control mode pays for fifty.
+At one command, one-shot and chained are the same measurement: both start
+exactly one process, and the allocations say so — 292 KB against 291 KB. Chaining
+is not a way to make a single command faster and the table should not be read as
+claiming it is.
 
-One-shot is the mode that does not scale: fifty commands is fifty processes,
-118 ms and 15 MB of it. At a single command it is indistinguishable from a
-chain, and the allocations say why — 312 KB either way, because both start
-exactly one process.
+At fifty, the modes separate for reasons that survive a change of machine:
+one-shot pays fifty process starts, chaining pays one, control mode pays one
+plus fifty round trips.
 
-The allocation column is the part that does not move: it repeated to two
-decimal places across runs here while the means moved by a factor of two, so it
-is what to check a change against. Timings depend on the machine and on what
-else it is doing, which is why this table is worth rerunning rather than
-believing.
+**The crossover between chaining and control mode is not portable.** Chaining
+wins here because a process start costs about 2.4 ms while fifty round trips
+cost about 10 ms. On a host where process starts are expensive — a loaded CI
+runner, a container with a cold page cache — the order reverses, and it has
+reversed in a recorded run on this machine. If the choice between those two
+matters to you, measure it where it will run.
 
-Run it for your own tmux and machine:
+**Allocation is the column that does not move.** It repeated byte-for-byte
+across runs whose timings differed by a factor of five, so it is what to check a
+change against.
+
+## Recording your own
 
 ```console
 $ dotnet run \
     --project benchmarks/LibTmux.Benchmarks \
     --configuration Release \
     --framework net10.0 \
-    -- --filter '*ModeBenchmarks*' \
-    --warmupCount 10 \
-    --iterationCount 30
+    -- --filter '*ModeBenchmarks*' --artifacts artifacts/benchmarks
 ```
 
 The project multi-targets, so the framework has to be named: the numbers above
-are `net10.0`, and running the other one measures something else.
+are `net10.0`, and running the other one measures something else. Set
+`LIBTMUX_TMUX` to measure a tmux other than the one on the path.
+
+See [docs/benchmarks](../benchmarks/README.md) for how a run becomes a record,
+and for the warmup mistake that once put an impossible number in this table.
 
 ## Version differences
 

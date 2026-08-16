@@ -65,16 +65,20 @@ same version, without a table to consult.
 Which one a call uses is visible where the call starts — never a flag buried in
 options — and all three work on every supported tmux.
 
-| Mode | Flip it on | Dispatch | 1 command | 50 commands |
-|---|---|---|---:|---:|
-| **[One-shot](docs/modes/one-shot.md)** | `session.CreateWindowAsync(…)` | one command, awaited | 3.8 ms | 118 ms |
-| **[Control](docs/modes/control-mode.md)** | `server.EnterControlModeAsync(ct)` | one client, streamed | 0.29 ms | 6.5 ms |
-| **[Chained](docs/modes/chaining.md)** | `server.Chain()…ExecuteAsync(ct)` | N batched, one invocation | 3.6 ms | 3.5 ms |
+| Mode | Flip it on | Dispatch | What one more command costs |
+|---|---|---|---|
+| **[One-shot](docs/modes/one-shot.md)** | `session.CreateWindowAsync(…)` | one command, awaited | another process — **~2.3 ms** |
+| **[Control](docs/modes/control-mode.md)** | `server.EnterControlModeAsync(ct)` | one client, streamed | another round trip — **~0.2 ms** |
+| **[Chained](docs/modes/chaining.md)** | `server.Chain()…ExecuteAsync(ct)` | N batched, one invocation | more bytes on one command line — **~0.02 ms** |
 
-Chaining's two cells are one measurement, not two: 3.6 ms ± 1.1 and 3.5 ms ±
-0.6 overlap completely. A chain pays for one tmux process and almost nothing
-per command after it — 312 KB allocated for one command, 388 KB for fifty — so
-fifty commands cost what one costs. That is the reason to reach for it.
+That is the marginal cost, which is the part that is a property of the library
+rather than of the machine: the difference between fifty commands and one,
+divided by forty-nine, as medians of 100 samples against tmux 3.7b. The
+absolute numbers move — a tmux process start measured 2.4 ms and 19 ms on the
+same machine the same day — so the [recorded run](docs/benchmarks/) gives the
+whole distribution, the tmux, the host and the date, and
+[docs/benchmarks](docs/benchmarks/README.md) says which parts of it travel to
+your machine and which do not.
 
 The same window, three ways:
 

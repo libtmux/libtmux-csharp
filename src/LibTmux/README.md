@@ -46,16 +46,18 @@ There are no synchronous twins to choose between.
 Which one a call uses is visible where the call starts, and all three work on
 every supported tmux.
 
-| Mode | Flip it on | Dispatch | 1 command | 50 commands |
-|---|---|---|---:|---:|
-| One-shot | `session.CreateWindowAsync(…)` | one command, awaited | 3.8 ms | 118 ms |
-| Control | `server.EnterControlModeAsync(ct)` | one client, streamed | 0.29 ms | 6.5 ms |
-| Chained | `server.Chain()…ExecuteAsync(ct)` | N batched, one invocation | 3.6 ms | 3.5 ms |
+| Mode | Flip it on | Dispatch | What one more command costs |
+|---|---|---|---|
+| One-shot | `session.CreateWindowAsync(…)` | one command, awaited | another process — **~2.3 ms** |
+| Control | `server.EnterControlModeAsync(ct)` | one client, streamed | another round trip — **~0.2 ms** |
+| Chained | `server.Chain()…ExecuteAsync(ct)` | N batched, one invocation | more bytes on one command line — **~0.02 ms** |
 
-Chaining's two cells are one measurement, not two: 3.6 ms ± 1.1 and 3.5 ms ±
-0.6 overlap completely. A chain pays for one tmux process and almost nothing
-per command after it — 312 KB allocated for one command, 388 KB for fifty — so
-fifty commands cost what one costs. That is the reason to reach for it.
+That is the marginal cost — fifty commands minus one, over forty-nine, as
+medians of 100 samples against tmux 3.7b — because it is the part that belongs
+to the library rather than to the machine. Absolute timings move by a factor of
+five on one host depending on what else it is doing. The recorded runs give the
+whole distribution with the tmux, host and date that produced it:
+[github.com/libtmux/libtmux-dotnet/tree/master/docs/benchmarks](https://github.com/libtmux/libtmux-dotnet/tree/master/docs/benchmarks).
 
 ```csharp run
 // One command, a typed object back.

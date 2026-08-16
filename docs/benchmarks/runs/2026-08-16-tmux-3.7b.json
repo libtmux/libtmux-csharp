@@ -1,0 +1,108 @@
+{
+  "schema": "libtmux-benchmark-record-v1",
+  "collected": "2026-08-16",
+  "libraryVersion": "v0.0.0-alpha.3",
+  "commit": "51658d351690f3bd935f03e22773d98e835b7d5d",
+  "tmuxVersion": "3.7b",
+  "host": {
+    "os": "Ubuntu 24.04.4 LTS (Noble Numbat) WSL",
+    "processor": "12th Gen Intel Core i7-12700H",
+    "physicalCores": 10,
+    "logicalCores": 20,
+    "runtime": ".NET 10.0.10 (10.0.1026.32716)",
+    "architecture": "X64"
+  },
+  "method": {
+    "tool": "BenchmarkDotNet",
+    "runStrategy": "Monitoring",
+    "operationsPerSample": 1,
+    "samplesPerCase": 100,
+    "warmupSamples": 5
+  },
+  "cases": [
+    {
+      "mode": "Chained",
+      "commands": 1,
+      "allocated_bytes": 298008,
+      "samples": 100,
+      "min_ms": 2.50911,
+      "median_ms": 3.016593,
+      "mean_ms": 3.18878755,
+      "p90_ms": 3.9798856000000007,
+      "p95_ms": 4.43464075,
+      "p99_ms": 4.881549240000003,
+      "max_ms": 5.400036,
+      "stdev_ms": 0.572947051462527
+    },
+    {
+      "mode": "ControlMode",
+      "commands": 1,
+      "allocated_bytes": 0,
+      "samples": 100,
+      "min_ms": 0.257399,
+      "median_ms": 0.4323275,
+      "mean_ms": 0.457849,
+      "p90_ms": 0.6106505000000003,
+      "p95_ms": 0.6577637,
+      "p99_ms": 0.8097334400000002,
+      "max_ms": 0.863633,
+      "stdev_ms": 0.12268676477324379
+    },
+    {
+      "mode": "OneShot",
+      "commands": 1,
+      "allocated_bytes": 298896,
+      "samples": 100,
+      "min_ms": 2.394533,
+      "median_ms": 2.8142035,
+      "mean_ms": 2.9843521,
+      "p90_ms": 3.736014000000001,
+      "p95_ms": 4.032602149999999,
+      "p99_ms": 4.707045660000001,
+      "max_ms": 4.864422,
+      "stdev_ms": 0.522819767171617
+    },
+    {
+      "mode": "Chained",
+      "commands": 50,
+      "allocated_bytes": 377288,
+      "samples": 100,
+      "min_ms": 3.328478,
+      "median_ms": 4.0294645,
+      "mean_ms": 4.20586635,
+      "p90_ms": 4.979091800000001,
+      "p95_ms": 5.7571560999999996,
+      "p99_ms": 6.160456740000009,
+      "max_ms": 7.86729,
+      "stdev_ms": 0.7080926735210366
+    },
+    {
+      "mode": "ControlMode",
+      "commands": 50,
+      "allocated_bytes": 61176,
+      "samples": 100,
+      "min_ms": 6.393076,
+      "median_ms": 10.4880265,
+      "mean_ms": 10.85190951,
+      "p90_ms": 14.871191700000002,
+      "p95_ms": 15.6327667,
+      "p99_ms": 19.264988740000014,
+      "max_ms": 21.828865,
+      "stdev_ms": 3.005877646735591
+    },
+    {
+      "mode": "OneShot",
+      "commands": 50,
+      "allocated_bytes": 14837640,
+      "samples": 100,
+      "min_ms": 102.945163,
+      "median_ms": 115.928546,
+      "mean_ms": 121.98869973000001,
+      "p90_ms": 144.07676130000002,
+      "p95_ms": 155.42853755,
+      "p99_ms": 182.3362062800001,
+      "max_ms": 205.379573,
+      "stdev_ms": 17.780895164569692
+    }
+  ]
+}

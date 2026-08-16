@@ -9,8 +9,9 @@ starts.
 
 ## Start here
 
-[Choosing a mode](modes/matrix.md) shows the same task three ways, with
-measured cost for one command and for fifty.
+[Choosing a mode](modes/matrix.md) shows the same task three ways, with what
+each costs per additional command and what that does not tell you about your
+machine. [Benchmarks](benchmarks/README.md) holds the recorded runs behind it.
 
 - [One-shot](modes/one-shot.md) — one command, one materialized object
 - [Control mode](modes/control-mode.md) — one client, streamed events

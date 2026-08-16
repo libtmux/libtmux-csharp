@@ -11,9 +11,18 @@ namespace LibTmux.Benchmarks;
 /// while a chain starts one for the whole sequence and a control session keeps
 /// one for its lifetime. Each mode is measured at both sizes so the crossover
 /// is visible rather than asserted.
+///
+/// Where that crossover falls is a property of the machine, not of the library.
+/// Chaining trades fifty process starts for one, and control mode trades them
+/// for fifty round trips on a connection already open, so which of the two wins
+/// at fifty commands depends on what a process start costs here today. Both
+/// orders have been measured on the same machine. That is why
+/// <see cref="ModeBenchmarkConfig"/> reports a distribution, and why a recorded
+/// run names its tmux, its host and its date.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 [MemoryDiagnoser]
+[Config(typeof(ModeBenchmarkConfig))]
 public class ModeBenchmarks
 {
     private TmuxTestFactory _factory = null!;
