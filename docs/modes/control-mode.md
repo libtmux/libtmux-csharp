@@ -4,6 +4,7 @@ A control session keeps one tmux client running for as long as you hold it.
 That is what makes tmux willing to report things nobody asked for: panes
 producing output, windows appearing, sessions changing.
 
+<!-- snippet: WatchForWindowAdd -->
 ```csharp
 await using IControlModeSession control = await server.EnterControlModeAsync(cancellationToken: ct);
 
@@ -18,6 +19,7 @@ await foreach (TmuxEvent observed in control.Events.WithCancellation(ct))
     }
 }
 ```
+<!-- endsnippet -->
 
 Example output:
 

@@ -3,6 +3,7 @@
 A chain hands tmux a whole sequence at once. The process cost is paid once no
 matter how many commands are in it.
 
+<!-- snippet: ManyCommandsOneProcess -->
 ```csharp
 await server.Chain()
     .Then("new-window", "-d", "-n", "build")
@@ -10,16 +11,19 @@ await server.Chain()
     .Then("new-window", "-d", "-n", "lint")
     .ExecuteAsync(ct);
 ```
+<!-- endsnippet -->
 
 Example output — the chain returns what that one invocation produced, so ask
 tmux for anything you want back:
 
+<!-- snippet: ReadBackFromAChain -->
 ```csharp
 TmuxCommandResult result = await server.Chain()
     .Then("new-window", "-d", "-n", "build")
     .Then("display-message", "-p", "#{window_id}")
     .ExecuteAsync(ct);
 ```
+<!-- endsnippet -->
 
 ```
 @1

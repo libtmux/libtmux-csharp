@@ -15,6 +15,7 @@ against every tmux from **3.2a to 3.7b** on **net8.0** and **net10.0**.
 > seven supported tmux versions on every commit — what is unsettled is the shape
 > of the API, not whether it works.
 
+<!-- snippet: ConnectAndBuild usings: LibTmux -->
 ```csharp
 using LibTmux;
 
@@ -26,6 +27,7 @@ Pane pane = (await window.GetPanesAsync())[0];
 await pane.SendTextAsync("dotnet test");
 await pane.EnterAsync();
 ```
+<!-- endsnippet -->
 
 ## Is this for you?
 

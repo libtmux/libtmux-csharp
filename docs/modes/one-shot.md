@@ -4,10 +4,12 @@ A one-shot call starts a tmux client, runs one command, waits for it, and lets
 the client exit. It is what every typed method on `Server`, `Session`,
 `Window`, and `Pane` does unless you asked for something else.
 
+<!-- snippet: CreateWindow -->
 ```csharp
 Window window = await session.CreateWindowAsync(new NewWindowRequest(name: "build"), ct);
 Console.WriteLine($"{window.Id} {window.Index}:{window.Name}");
 ```
+<!-- endsnippet -->
 
 Example output:
 
