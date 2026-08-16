@@ -8,6 +8,62 @@ Versions follow [Semantic Versioning](https://semver.org). During alpha the
 public API can change in any release with no deprecation period — pin an exact
 version.
 
+## [Unreleased]
+
+### Changed
+
+- **`LibTmux.Mcp` is a different server.** It offered five tools; it now offers
+  42, across three safety tiers, with six `tmux://` resources and four workflow
+  prompts. Every tool answers a typed record with a JSON output schema rather
+  than prose, so a client destructures a result instead of parsing one. The
+  tool names all changed — `list_tmux` and friends are gone in favour of
+  `tmux_hierarchy`, `tmux_run` and the rest. [The reference](docs/mcp/tools.md)
+  is generated from the server, so it cannot describe a surface that is absent.
+
+### Added
+
+- **Waiting instead of polling.** `tmux_run` composes a private tmux rendezvous
+  and a private pane option into the command, so "it finished" and "it exited
+  1" are facts rather than readings of a prompt. `tmux_wait_for_text` subscribes
+  to tmux's control-mode stream, so it sleeps until the pane prints rather than
+  asking every few milliseconds. `tmux_start_job` and `tmux_job` carry work that
+  outlives one call, which is what a build needs. `tmux_tail_pane` answers only
+  what is new since its cursor, so the tenth read of a busy pane costs what the
+  first did.
+- **A budget on every content-bearing result.** Captures keep the newest lines,
+  because a terminal's newest line is the one that says what happened, and
+  report the lines and bytes they dropped — a reader who cannot see that lines
+  are missing concludes the pane never printed them.
+- **Three safety tiers, chosen by `LIBTMUX_SAFETY`.** A tool above the active
+  tier is not registered, so it never reaches the model's list. An unrecognised
+  value falls to `readonly` rather than to the default, because a typo must
+  never widen what a server offers.
+- **`eng/mcp/mcp_swap.py`**, which points every installed agent CLI at a local
+  build and reverts from the backup it took. It writes `DOTNET_ROOT` into each
+  config: an agent spawns the server with its own environment, and a
+  mise-installed SDK is on neither its `PATH` nor its `DOTNET_ROOT`, so the
+  binary exits before the handshake and the agent reports only that the server
+  has no tools.
+
+### Fixed
+
+- **A failure says what to do next.** An unhandled error reached a client as
+  "An error occurred invoking 'tmux_run'", which is true and unusable: a model
+  cannot tell a bug from its own bad argument, so it retries the same call. Each
+  now names the cause and the next step, and a tmux server replaced underneath a
+  cached handle is retried once rather than reported.
+- **A socket with no tmux behind it is an answer, not an error.** That is the
+  ordinary state before the first session and the first thing an assistant asks
+  about.
+- **Resolving a pane no longer walks the hierarchy.** It was a tmux process per
+  session and per window to find something tmux answers in one call, paid on
+  every tool call.
+- **A run leaves nothing of its own on screen.** The shell echoes the
+  rendezvous like anything typed, and it is wider than a pane, so tmux stores
+  the wrap as a line break and the marker arrives split across rows. Rows are
+  rejoined into the logical line they came from before matching, which is the
+  only form the marker is whole in.
+
 ## [0.0.0-alpha.6] — 2026-08-16
 
 No change to the library. `git diff v0.0.0-alpha.5..v0.0.0-alpha.6 -- src/`

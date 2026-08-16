@@ -262,15 +262,25 @@ $ dotnet tool install --global LibTmux.Mcp --prerelease
 { "mcpServers": { "tmux": { "command": "libtmux-mcp" } } }
 ```
 
-It exposes `list_tmux`, `create_tmux_session`, `create_tmux_window`,
-`run_in_tmux_pane` and `capture_tmux_pane`. Pass a socket name as its first
-argument to drive a server other than the ambient one, which is what a sandbox
-wants. [Full instructions](src/LibTmux.Mcp/README.md).
+It exposes 42 tools across three safety tiers, six `tmux://` resources and four
+workflow prompts — [the full reference](docs/mcp/tools.md) is generated from the
+server itself. Pass a socket name as its first argument to drive a server other
+than the ambient one, which is what a sandbox wants.
+
+What it is built around is that an assistant should never get stuck and never
+waste context. Nothing polls: `tmux_run` returns the shell's real exit status,
+`tmux_start_job` hands back a handle for work that takes minutes, and
+`tmux_wait_for_text` sleeps on tmux's own control-mode stream until the pane
+prints. Nothing returns unbounded output: every capture keeps the newest lines
+and reports what it dropped. `LIBTMUX_SAFETY` decides which tier is registered,
+and a tool above it never reaches the model's list.
+[Full instructions](src/LibTmux.Mcp/README.md).
 
 ## Documentation
 
 - [Choosing a mode](docs/modes/matrix.md) — the three dispatch modes, measured
 - [API reference](docs/api/README.md) — rendered from the doc comments
+- [tmux MCP tools](docs/mcp/tools.md) — every tool, tier and resource, generated
 - [Public API](docs/public-api.md) — the reviewed, approved surface
 - [Version deltas](docs/parity/version-deltas.json) — every tmux difference, with its proof
 - [Decisions](docs/decisions/) — why the transport, object model and query catalog are shaped this way

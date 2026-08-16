@@ -104,6 +104,40 @@ this repository is pinned to a commit SHA with the version in a trailing
 comment, which is what stops a moved tag from changing what CI runs. Dependabot
 maintains those pins; a pin nobody updates is just a stale action.
 
+## Testing the MCP server means running a real agent
+
+`src/LibTmux.Mcp` is a stdio server, so the only honest test of its tool
+descriptions is whether a model picks the right tool without being told which.
+`eng/mcp/mcp_swap.py` points every installed agent CLI at a local build and
+`revert` puts their configs back from the timestamped backup it took:
+
+```console
+$ uv run eng/mcp/mcp_swap.py use --source release --env TMUX_TMPDIR=/tmp/libtmux-dotnet-dev
+```
+
+Pass `--env TMUX_TMPDIR=...` whenever the sockets under test are not in the
+default root. An agent spawns the server with its own environment, so a socket
+this shell can see is one the server cannot.
+
+That same gap is why the swap writes `DOTNET_ROOT` into each config. A
+framework-dependent apphost finds its runtime through `DOTNET_ROOT` or `PATH`,
+mise puts the SDK in neither, and the failure is silent from the agent's side:
+the binary exits before the handshake and the agent reports only that the
+server has no tools.
+
+The tool reference is generated rather than written, so it cannot describe a
+surface that is not there. Regenerate it whenever the tool surface changes:
+
+```console
+$ uv run eng/mcp/dump_tools.py
+```
+
+A wait takes a control-mode client, which is a real attached client: it shows
+up in the user's `list-clients` for as long as the wait runs. It attaches with
+`ignore-size` so it never drags the window down to its own size, and the watch
+is reference counted per session so it exists only while a wait does. Changing
+either of those changes what a user sees on their own screen.
+
 ## The Python original is a separate checkout
 
 This repository was imported out of a monorepo that also held Python libtmux,
