@@ -61,6 +61,33 @@ public static class McpTools
     public static DestructiveTools Removing(ServerConnectionOptions? options = null) =>
         new(Accessor(options));
 
+    /// <summary>Builds the tools that only read, over a connected server.</summary>
+    /// <param name="server">The server every call reaches.</param>
+    /// <param name="policy">What the tools may spend, or null for the defaults.</param>
+    /// <returns>The reading tools.</returns>
+    /// <remarks>
+    /// Prefer this when a connection is already in hand. Passing options
+    /// instead makes the tools resolve a socket of their own, which is a
+    /// different server whenever the environment says so.
+    /// </remarks>
+    public static ReadTools Reading(Server server, ServerPolicy? policy = null) =>
+        new(new TmuxConnectionAccessor(server), policy ?? new ServerPolicy(), new PaneActivityHub());
+
+    /// <summary>Builds the tools that change tmux, over a connected server.</summary>
+    /// <param name="server">The server every call reaches.</param>
+    /// <param name="policy">What the tools may spend, or null for the defaults.</param>
+    /// <param name="jobs">Where background commands are tracked, or null for a new store.</param>
+    /// <returns>The changing tools.</returns>
+    public static WriteTools Writing(
+        Server server,
+        ServerPolicy? policy = null,
+        JobStore? jobs = null) =>
+        new(
+            new TmuxConnectionAccessor(server),
+            policy ?? new ServerPolicy(),
+            new PaneActivityHub(),
+            jobs ?? new JobStore());
+
     private static TmuxConnectionAccessor Accessor(ServerConnectionOptions? options) =>
         new(options, options?.SocketName);
 }

@@ -25,6 +25,7 @@ public sealed class TmuxConnectionAccessor : IDisposable
     private const string BinaryVariable = "LIBTMUX_TMUX";
 
     private readonly ConcurrentDictionary<string, Lazy<Task<Server>>> _servers = new(StringComparer.Ordinal);
+    private Server? _fixed;
     private readonly ServerConnectionOptions _template;
     private readonly string _binaryPath;
     private readonly string? _defaultSocketName;
@@ -48,6 +49,21 @@ public sealed class TmuxConnectionAccessor : IDisposable
         _logger = logger;
     }
 
+    /// <summary>Initializes the accessor over a server that is already connected.</summary>
+    /// <param name="server">The server every call reaches.</param>
+    /// <remarks>
+    /// For an application that already holds a connection. It reuses that one
+    /// rather than opening a second, and — more importantly — never resolves a
+    /// socket from the environment, which is what a caller wants when the
+    /// environment is not the thing that decided which server this is.
+    /// </remarks>
+    public TmuxConnectionAccessor(Server server)
+        : this(server?.ConnectionOptions, server?.ConnectionOptions.SocketName)
+    {
+        ArgumentNullException.ThrowIfNull(server);
+        _fixed = server;
+    }
+
     /// <summary>Gets the socket used when a call names none.</summary>
     public string? DefaultSocketName => _defaultSocketName;
 
@@ -63,6 +79,23 @@ public sealed class TmuxConnectionAccessor : IDisposable
         string? socketName = null,
         CancellationToken cancellationToken = default)
     {
+        // A server handed in wins over anything a name would resolve to: the
+        // caller already decided which server this is. It is materialized on
+        // first use, because a handle can be perfectly valid and not yet have
+        // read its own identity — Server.CreateOwnedAsync answers one of
+        // those, and the tools need the version and generation it carries.
+        if (_fixed is Server held && string.IsNullOrWhiteSpace(socketName))
+        {
+            if (held.IsMaterialized)
+            {
+                return held;
+            }
+
+            Server materialized = await held.ConnectAsync(cancellationToken).ConfigureAwait(false);
+            _fixed = materialized;
+            return materialized;
+        }
+
         string? resolved = string.IsNullOrWhiteSpace(socketName)
             ? _defaultSocketName
             : socketName.Trim();

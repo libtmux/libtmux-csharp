@@ -94,7 +94,7 @@ assistant can run one directly instead of launching a second process:
 using LibTmux;
 using LibTmux.Mcp;
 
-WriteTools tools = McpTools.Writing(server.ConnectionOptions);
+WriteTools tools = McpTools.Writing(server);
 
 RunResult result = await tools.RunAsync(
     "test -f /etc/hostname && echo present",
@@ -130,7 +130,7 @@ them:
 using LibTmux;
 using LibTmux.Mcp;
 
-ReadTools reading = McpTools.Reading(server.ConnectionOptions);
+ReadTools reading = McpTools.Reading(server);
 
 CaptureResult captured = await reading.CapturePaneAsync(
     pane.Id.ToString(),
@@ -154,7 +154,7 @@ back and the tenth read of a busy pane costs what the first did:
 using LibTmux;
 using LibTmux.Mcp;
 
-ReadTools reading = McpTools.Reading(server.ConnectionOptions);
+ReadTools reading = McpTools.Reading(server);
 string paneId = pane.Id.ToString();
 
 // A first call establishes a position and returns nothing, so watching

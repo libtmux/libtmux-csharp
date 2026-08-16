@@ -23,7 +23,7 @@ public static class Mcp
         Pane pane = session.ActivePane!;
 
         #region RunAndReadExitStatus
-        WriteTools tools = McpTools.Writing(server.ConnectionOptions);
+        WriteTools tools = McpTools.Writing(server);
 
         RunResult result = await tools.RunAsync(
             "test -f /etc/hostname && echo present",
@@ -49,7 +49,7 @@ public static class Mcp
         Pane pane = session.ActivePane!;
 
         #region ReadOnlyWhatIsNew
-        ReadTools reading = McpTools.Reading(server.ConnectionOptions);
+        ReadTools reading = McpTools.Reading(server);
         string paneId = pane.Id.ToString();
 
         // A first call establishes a position and returns nothing, so watching
@@ -78,7 +78,7 @@ public static class Mcp
             ct);
         Pane pane = session.ActivePane!;
 
-        WriteTools writing = McpTools.Writing(server.ConnectionOptions);
+        WriteTools writing = McpTools.Writing(server);
         await writing.RunAsync(
             "seq 1 200",
             pane.Id.ToString(),
@@ -86,7 +86,7 @@ public static class Mcp
             cancellationToken: ct);
 
         #region KeepTheNewestLines
-        ReadTools reading = McpTools.Reading(server.ConnectionOptions);
+        ReadTools reading = McpTools.Reading(server);
 
         CaptureResult captured = await reading.CapturePaneAsync(
             pane.Id.ToString(),
