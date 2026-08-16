@@ -566,20 +566,52 @@ public sealed class PaneOperationsTests
         return lines is { Count: > 0 } ? lines[0] : string.Empty;
     }
 
+    [UnixFact]
+    public async Task Capture_joins_what_the_pane_wrapped()
+    {
+        await using RawTmuxTestContext raw = await RawTmuxTestContext.StartAsync(
+            TestContext.Current.CancellationToken);
+        CancellationToken token = TestContext.Current.CancellationToken;
+        Pane pane = await FirstPaneAsync(raw, token);
+
+        // A prompt this wide leaves two columns, so the payload wraps. It is
+        // built in the shell so the command that sets it cannot match it.
+        string prompt = new('x', 78);
+        await pane.SendTextAsync(
+            "PS1=$(printf 'x%.0s' $(seq 78))",
+            cancellationToken: token);
+        await ReadPaneAsync(pane, prompt, token);
+
+        await pane.SendKeysAsync(
+            new SendKeysRequest("echo WRAPPED", enter: false),
+            token);
+        await ReadPaneAsync(pane, "WRAPPED", token);
+
+        string split = string.Join(
+            '\n',
+            await pane.CaptureAsync(cancellationToken: token));
+        string joined = string.Join(
+            '\n',
+            await pane.CaptureAsync(new CapturePaneRequest(joinWrappedLines: true), token));
+
+        Assert.DoesNotContain($"{prompt}echo WRAPPED", split, StringComparison.Ordinal);
+        Assert.Contains($"{prompt}echo WRAPPED", joined, StringComparison.Ordinal);
+    }
+
     private static async Task<string> ReadPaneAsync(
         Pane pane,
         string expected,
         CancellationToken token)
     {
-        // The shell needs a moment to echo, and by the second command the pane
-        // is never blank, so waiting for it to hold anything at all would keep
-        // answering with what the last command left. The wait is for the text
-        // this reading is about.
+        // Joined: a prompt wide enough leaves typed text split across two
+        // stored lines, and tmux stores that wrap as a real line break.
         DateTimeOffset deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10);
         string text = string.Empty;
         while (DateTimeOffset.UtcNow < deadline)
         {
-            text = string.Join('\n', await pane.CaptureAsync(cancellationToken: token));
+            text = string.Join(
+                '\n',
+                await pane.CaptureAsync(new CapturePaneRequest(joinWrappedLines: true), token));
             if (text.Contains(expected, StringComparison.Ordinal))
             {
                 return text;
