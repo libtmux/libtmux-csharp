@@ -11,13 +11,11 @@ public static class Tour
     [Example("Walk the hierarchy a server holds")]
     public static async Task ShowHierarchy(Server server, Session session)
     {
-        // A server holds sessions, a session holds windows, a window holds
-        // panes. Each accessor answers a list rather than something that
-        // reaches tmux again while it is being read.
-        // A handle says what it read. The scope's server has not read tmux
-        // yet, so what it can say is where it is, not what it found there.
+        // ConnectionOptions is what the server was told, not something tmux answered.
         Console.WriteLine($"socket           {server.ConnectionOptions.SocketName}");
         Console.WriteLine($"session          {session.Name} ({session.Id})");
+        // A server holds sessions, a session holds windows, a window holds
+        // panes; each accessor returns a list without re-querying tmux.
         foreach (Window window in await session.GetWindowsAsync())
         {
             Console.WriteLine($"  window {window.Index,-3} {window.Name}");
