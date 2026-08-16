@@ -39,6 +39,7 @@ jobs:
       # Lets the job ask GitHub for the short-lived token nuget.org trades for
       # a one-hour API key. Nothing else here needs a credential.
       id-token: write
+      attestations: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.0
@@ -123,6 +124,25 @@ jobs:
         id: login
         with:
           user: ${{ vars.NUGET_USER }}
+
+      - name: Generate an SBOM for the packages
+        # A consumer deciding whether to take this needs to know what comes with
+        # it. The SBOM describes the packed artifacts rather than the tree, so it
+        # lists what actually ships.
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.17.9
+        with:
+          path: artifacts/packages
+          format: cyclonedx-json
+          artifact-name: sbom-cyclonedx.json
+          output-file: artifacts/sbom-cyclonedx.json
+
+      - name: Attest what produced these packages
+        # Signed provenance says which workflow, at which commit, on which
+        # runner, built each file. Trusted publishing already proves the push
+        # came from this repository; this proves the same about the bytes.
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.1.0
+        with:
+          subject-path: 'artifacts/packages/*.nupkg'
 
       - name: Push
         # The matching .snupkg is pushed alongside each package automatically,

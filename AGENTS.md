@@ -81,6 +81,12 @@ runs the integration suite against it, behind a `compatibility` job that plays
 the same role as `gate`. That is what proves the compatibility range; the build
 workflow only ever sees whatever tmux Ubuntu ships.
 
+`dotnet.yml` also carries a `macos arm64` lane, inside `gate`, because the
+compatibility claim names macOS and a claim nobody runs is a claim. It restores
+without `--locked-mode`: the lock files are generated for the Linux runtime
+identifiers this repository publishes, so locking a macOS restore would fail for
+a reason that is not a dependency problem.
+
 Two more workflows run on a schedule rather than on the gate, because what they
 check can change without a commit: `codeql.yml` analyses the build, and
 `scorecard.yml` scores the repository's supply chain. Every action reference in

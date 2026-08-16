@@ -161,12 +161,60 @@ jobs:
           path: artifacts/packages
           if-no-files-found: warn
 
+  # The compatibility claim names macOS, and until now only Linux was ever run.
+  # A claim nobody tests is a claim, so this proves the parts that can differ:
+  # a different libc, a different tmux build, a different process model, and on
+  # a runner that is arm64 rather than x64.
+  macos:
+    name: macos arm64
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Install tmux
+        run: |
+          brew install tmux
+          tmux -V
+
+      - name: Restore
+        # Not --locked-mode: the lock files are generated for the Linux runtime
+        # identifiers this repository publishes, and a macOS restore resolves a
+        # different graph. Locking that here would fail for a reason that is not
+        # a dependency problem.
+        run: dotnet restore LibTmux.slnx
+
+      - name: Build
+        run: dotnet build LibTmux.slnx --configuration Release --no-restore --warnaserror
+
+      - name: Unit tests
+        run: >
+          dotnet test tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj
+          --configuration Release --no-build --framework net10.0
+          -- --minimum-expected-tests 200
+
+      - name: Integration tests
+        # This is the part that could only ever be guessed at before: real tmux,
+        # started and driven on a platform whose process and socket behaviour is
+        # not Linux's.
+        env:
+          LIBTMUX_INTEGRATION_REQUIRED: '1'
+        run: >
+          dotnet test tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj
+          --configuration Release --no-build --framework net10.0
+          -- --minimum-expected-tests 400
+
   # One name for branch protection to require. Without it, every job added here
   # has to be added to the protection rule too, and a job nobody remembered to
   # require is a job that can fail without blocking anything.
   gate:
     name: gate
-    needs: [build]
+    needs: [build, macos]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -175,8 +223,11 @@ jobs:
         # 'success' rather than checking for 'failure' is what makes that true
         # for statuses nobody has invented yet.
         run: |
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "build: ${{ needs.build.result }}" >&2
-            exit 1
-          fi
-          echo "build: success"
+          failed=0
+          for pair in "build:${{ needs.build.result }}" "macos:${{ needs.macos.result }}"; do
+            name="${pair%%:*}"
+            result="${pair#*:}"
+            echo "${name}: ${result}"
+            [ "$result" = "success" ] || failed=1
+          done
+          exit "$failed"

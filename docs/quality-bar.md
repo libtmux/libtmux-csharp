@@ -38,7 +38,7 @@ Both are absences, not defects.
 | Trimming and AOT | `IsTrimmable`, `IsAotCompatible`, both analyzers on, and a [publish smoke test](../tests/LibTmux.AotSmoke) that runs the AOT binary |
 | Reproducible restore | Central Package Management, lock files, `RestoreLockedMode` in CI, `Deterministic`, `ContinuousIntegrationBuild` |
 | Multi-targeting is real | net8.0 and net10.0 both tested; net8.0 consumers resolve an 8.0 logging abstraction, [verified from the live feed](benchmarks/README.md) |
-| Supply chain | 22/22 actions SHA-pinned, Dependabot maintaining them, CodeQL `security-and-quality`, OpenSSF Scorecard, OIDC trusted publishing with no long-lived key |
+| Supply chain | 26/26 actions SHA-pinned, Dependabot maintaining them, CodeQL `security-and-quality`, OpenSSF Scorecard, OIDC trusted publishing with no long-lived key, a CycloneDX SBOM and signed build provenance for every published package |
 | One dependency | `Microsoft.Extensions.Logging.Abstractions`; anything that would add another ships as its own package |
 
 **The 0.5:** `LangVersion` is pinned to 12.0 while targeting net10.0, so newer
@@ -56,11 +56,12 @@ target, but it is a constraint worth naming.
 | A control session survives its consumer | Bounded event channel, bounded disposal that kills the client and not the server beneath it |
 | A stale handle cannot hit a live server | Generation guard on one-shot **and** chained entity commands; a chain mixing servers is refused before it runs ([tests](../tests/LibTmux.IntegrationTests/Chaining/ChainGenerationTests.cs)) |
 | All three transports | One-shot, control mode, and chaining, each measured and each working on every supported tmux |
+| The macOS claim is tested, not asserted | A `macos arm64` lane builds, unit-tests and runs the integration suite against real tmux on Apple silicon, inside the required `gate` check |
 | Does not disturb other tmux users | Socket root of its own; the rules are in [AGENTS.md](../AGENTS.md) and enforced by a module initializer |
 | Parity with the Python original is tracked | [Parity ledger](parity/parity-ledger.json) maps every Python symbol to where it went |
 
-**The 0.5:** Linux only in CI. macOS is a supported platform and is untested
-here, which libtmux-cxx does test.
+**The 0.5:** the macOS lane runs `net10.0` only and does not publish ahead of
+time there, so the AOT claim is still proven on Linux alone.
 
 ## Examples — 9.5
 
