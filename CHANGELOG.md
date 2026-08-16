@@ -8,6 +8,47 @@ Versions follow [Semantic Versioning](https://semver.org). During alpha the
 public API can change in any release with no deprecation period — pin an exact
 version.
 
+## [0.0.0-alpha.5] — 2026-08-16
+
+### Added
+
+- **`LIBTMUX_SOCKET_NAME` and `LIBTMUX_SOCKET_PATH` point a connection that
+  named no socket.** A harness, sandbox or container can move every
+  unqualified connection at once without the call sites in between naming a
+  socket they should not have to know about. A caller who named one — by path,
+  by name, or by factory — is never redirected, and between the two variables
+  the path wins. Adds no public member: the existing resolution path reads them
+  where it already reads `TMUX_TMPDIR`.
+- **Every documented example is executed against live tmux in CI**, not only
+  compiled. The examples are real methods that run as tests, and the blocks the
+  documents publish are copied from that code by
+  `eng/docs/sync_snippets.py`, which fails the build when the two drift. The
+  first example in the README — a bare `Server.ConnectAsync()` — could not run
+  under the old harness and now does.
+
+### Fixed
+
+- **A control-mode command that ends the client no longer shifts every later
+  reply by one.** The waiter is queued before the write, so the exit sweep
+  finds it; a write that then fails marks the slot abandoned rather than
+  leaving one for a command tmux never saw.
+- **Disposing a control session no longer kills the tmux server.** Only the
+  client is killed, so other clients — and other sessions on the same socket —
+  survive.
+- Control mode survives a consumer that stops reading its event stream.
+- A chain refuses a target read from a server that has since restarted, rather
+  than aiming a reused id at a different object.
+- A query document is treated as input rather than as instructions: an unknown
+  field name is refused against the closed catalog instead of resolving to any
+  public property.
+- macOS: a pane's path is compared resolved, since `/tmp` is a symlink there,
+  and the suite no longer assumes `/bin/sh` reports as `sh`.
+
+### Changed
+
+- The macOS lane runs as an advisory job and reports what it finds, rather than
+  the compatibility claim naming a platform nobody ran.
+
 ## [0.0.0-alpha.4] — 2026-08-16
 
 ### Added
