@@ -7,9 +7,10 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    # The trailing space stops Dependabot appending a colon.
     commit-message:
-      prefix: ci
+      prefix: "ci(deps) "
     groups:
       actions:
         patterns: ["*"]
@@ -21,9 +22,18 @@ updates:
   - package-ecosystem: nuget
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     commit-message:
-      prefix: deps
+      prefix: "dotnet(deps) "
     groups:
       dotnet:
         patterns: ["*"]
+
+  # rollForward is disable, so the pin never moves on its own. .tool-versions
+  # names the same version and has no updater, so move both together.
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "dotnet(deps[sdk]) "
