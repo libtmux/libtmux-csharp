@@ -15,11 +15,10 @@ internal static class QueryInterpreter
 {
     /// <summary>How long one regex may run before it is treated as hostile.</summary>
     /// <remarks>
-    /// A query document can arrive from somewhere else — that is the point of it
-    /// being a document — and a pattern like <c>(a+)+$</c> against a long subject
-    /// backtracks for longer than anyone will wait. Without a timeout the
-    /// evaluating process is the one that pays, so matching is bounded and a
-    /// pattern that exceeds the budget raises rather than hangs.
+    /// A query document can come from outside this process, and a pattern
+    /// like <c>(a+)+$</c> against a long subject can backtrack indefinitely.
+    /// Matching is bounded, so an over-budget pattern raises rather than
+    /// hangs the evaluating process.
     /// </remarks>
     private static readonly TimeSpan RegexBudget = TimeSpan.FromSeconds(1);
 
@@ -143,11 +142,10 @@ internal static class QueryInterpreter
     {
         Type type = element.GetType();
 
-        // A document can be deserialized from somewhere else, so a FieldNode is
-        // not necessarily one this library minted. Resolving an unknown wire
-        // name by convention would let a forged node read any public property
-        // on the element, which is the closed catalog defeating itself. So the
-        // name is checked against the catalog before anything is resolved.
+        // A document can be deserialized from elsewhere, so a FieldNode may
+        // not be one this library minted. Resolving an unknown wire name by
+        // convention would let a forged node read any public property, so the
+        // name is checked against the catalog first.
         if (!QueryFieldCatalog.TryGetTarget(field.WireName, out _))
         {
             throw new UnsupportedQueryExpressionException(

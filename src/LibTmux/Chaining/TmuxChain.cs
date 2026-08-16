@@ -75,11 +75,8 @@ public sealed class TmuxChain
             throw new InvalidOperationException("A chain needs at least one command.");
         }
 
-        // Every entity-bound command in the chain has to name the same server,
-        // and the whole batch is then guarded once. Checking per command would
-        // be several round trips describing a server that can change between
-        // them; one guard in the same invocation is what makes the answer true
-        // for the commands it protects.
+        // Commands must share one server generation, checked once per batch:
+        // a per-command check could race with a server change between them.
         ServerGeneration[] required = [.. _commands
             .Select(static command => command.RequiredGeneration)
             .Where(static generation => generation.HasValue)

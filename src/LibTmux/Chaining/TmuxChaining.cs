@@ -52,9 +52,8 @@ public static class TmuxChaining
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(pane);
 
-        // The pane's ID survives into the chain as text, so the generation has
-        // to travel beside it. Without this the chain would aim %2 at whatever
-        // holds that ID now, which after a restart is a different pane.
+        // The pane ID travels into the chain as plain text, so RequiredGeneration
+        // pins it: after a restart, that ID could name a different pane.
         return Command([.. pane.BuildSendKeysArguments(request)]) with
         {
             RequiredGeneration = pane.Generation,

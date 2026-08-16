@@ -9,13 +9,10 @@ namespace LibTmux.Query;
 /// build the document.
 /// </para>
 /// <para>
-/// This deliberately diverges from Python on unknown input. There, an
-/// unrecognised operator is swallowed: <c>OpNotFound</c> derives from
-/// <c>ValueError</c> and the raise sits inside a <c>try</c> whose
-/// <c>except ValueError</c> branch resets the operator to <c>exact</c>, so
-/// <c>name__nope="x"</c> silently becomes an exact match and the exception
-/// never reaches a caller. Answering a different question than the one asked
-/// is the failure this port refuses.
+/// This deliberately diverges from Python: there, an unrecognised
+/// operator falls back silently to an exact match. Answering a
+/// different question than the one asked is the failure this port
+/// refuses.
 /// </para>
 /// </remarks>
 public static class QueryEdgeParser

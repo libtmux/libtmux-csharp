@@ -122,11 +122,10 @@ internal static class QueryTranslator
             "Contains" => QueryStringOperation.ContainsOrdinal,
             _ => throw Unsupported(call),
         };
-        // The wire operations are ordinal, so the overload that says so is the
-        // one to accept. It is also the one CA1310 tells a caller to write, and
-        // refusing it would mean the library rejecting what .NET's own
-        // analyzers asked for. A culture-sensitive comparison has no wire form
-        // and still throws rather than quietly meaning something else.
+        // The wire form is ordinal, so only the overload naming
+        // StringComparison.Ordinal is accepted -- the same one CA1310 asks
+        // callers to write. A culture-sensitive overload has no wire form and
+        // throws instead of silently meaning something else.
         if (call.Object is null || call.Arguments.Count is not (1 or 2))
         {
             throw Unsupported(call);
@@ -213,12 +212,10 @@ internal static class QueryTranslator
 
     private static FieldNode FieldFor(MemberInfo member)
     {
-        // An entity says what it is, and what tmux calls its fields is not a
-        // transformation of what C# calls them: Session.Attached is
-        // session_attached, and Client.IsControlClient is client_control. The
-        // catalog carries that pair, so a filter can be written over the
-        // objects the library hands back. A type it does not know is a row a
-        // caller declared, whose property names are the wire names already.
+        // What tmux calls a field is not a transformation of what C# calls
+        // it -- Client.IsControlClient is client_control, not
+        // is_control_client. The catalog carries that pairing; an unknown
+        // type is a caller's own row, whose property names are wire names already.
         string wireName =
             member.DeclaringType is { } owner
             && QueryFieldCatalog.TryGetWireName(owner.Name, member.Name, out string mapped)

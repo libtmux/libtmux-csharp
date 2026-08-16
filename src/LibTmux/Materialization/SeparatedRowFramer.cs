@@ -11,13 +11,6 @@ namespace LibTmux.Internal;
 /// for a delimiter that a value could hold. It splits on
 /// <see cref="FormatProjection.RowSeparator" />, a per-process random marker
 /// the template emits around every scalar.
-/// <para>
-/// The earlier protocol prefixed each scalar with <c>#{n:…}</c>. That asked
-/// tmux to expand every field twice, once to measure and once to render, and a
-/// field that changed in between announced one length and produced another,
-/// desynchronising the rest of the payload. Expanding once removes the race
-/// rather than narrowing it.
-/// </para>
 /// </remarks>
 internal static class SeparatedRowFramer
 {

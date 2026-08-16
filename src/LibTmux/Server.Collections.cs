@@ -100,12 +100,9 @@ public sealed partial class Server
                 .ListAsync(this, listCommand, extraArguments, cancellationToken)
                 .ConfigureAwait(false);
         }
-        // Leniency is for a server that is not there: Python libtmux answers an
-        // empty list when the daemon or socket is missing, and these accessors
-        // keep that. It is deliberately not extended to a handle that cannot
-        // answer — "the server reported no tmux version" is an endpoint that
-        // has read nothing, and an empty list for that is a wrong answer
-        // wearing the shape of a real one.
+        // Matches Python libtmux's leniency for a missing daemon or socket. A
+        // handle that never captured a version throws InvalidOperationException,
+        // which this catch does not see, so it always propagates.
         catch (LibTmuxException error) when (policy.Tolerates(error))
         {
             return [];

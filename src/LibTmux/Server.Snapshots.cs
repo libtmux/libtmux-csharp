@@ -61,12 +61,8 @@ public sealed partial class Server
     /// <returns>A handle whose relations are the ones this reading found.</returns>
     /// <exception cref="InvalidOperationException">The handle has no connection.</exception>
     /// <remarks>
-    /// A handle that has not yet found a live server discovers one first. A
-    /// scope hands back the endpoint it started rather than a materialized
-    /// handle, because a tmux server with no sessions exits at once and there
-    /// is nothing to discover until the first session exists. Since handles
-    /// are immutable, the scope cannot materialize its own later, so requiring
-    /// it here would make the obvious call the wrong one.
+    /// A handle that has not yet found a live server discovers one first,
+    /// because a scope hands back the unmaterialized endpoint it started.
     /// </remarks>
     [UnsupportedOSPlatform("windows")]
     public async Task<Server> CaptureSnapshotAsync(
@@ -80,10 +76,8 @@ public sealed partial class Server
             .CaptureAsync(live, depth, cancellationToken)
             .ConfigureAwait(false);
 
-        // The capture belongs to a new handle. Changing this one would make a
-        // handle somebody already holds start answering differently. The new
-        // one carries the generation the capture actually read, which is what
-        // makes a stale capture detectable rather than merely old.
+        // Returns a new handle rather than mutating this one, so a caller
+        // already holding it keeps seeing what it originally read.
         return new Server(connection, live.Generation, live.RawVersion, snapshot);
     }
 

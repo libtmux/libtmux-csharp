@@ -166,11 +166,9 @@ public sealed partial class Server
             throw new InvalidDataException("tmux reported a malformed session identifier.");
         }
 
-        // Materialize rather than resolve by identifier: a caller reads Name
-        // straight off the created session, and that is snapshot state.
-        // Deliberately not GetSessionsAsync: that accessor answers "what is
-        // there" and reports empty on any failure, which would turn a
-        // transient listing error into a misleading "session not reported".
+        // Materializes and re-lists rather than resolving by id, so Name reads
+        // from the snapshot; skips GetSessionsAsync, whose lenient failure
+        // handling would turn a real listing error into a false negative.
         Server materialized = await ConnectAsync(cancellationToken).ConfigureAwait(false);
         IReadOnlyList<IReadOnlyDictionary<string, string?>> rows = await RelationReader
             .ListAsync(materialized, "list-sessions", [], cancellationToken)
@@ -295,10 +293,8 @@ public sealed partial class Server
         }
     }
 
-    // tmux forks the daemon and returns before it notices it holds no sessions,
-    // so for a moment the socket is neither serving nor gone and the next
-    // command fails with "server exited unexpectedly" a few percent of the
-    // time. Waiting for either settled answer closes that window.
+    // tmux forks before noticing it holds no sessions, so the socket briefly
+    // answers neither; waiting for either settled answer closes that window.
     [UnsupportedOSPlatform("windows")]
     private async Task WaitForSettledEndpointAsync(CancellationToken cancellationToken)
     {
@@ -329,10 +325,8 @@ public sealed partial class Server
                 && standardError.Contains("No such file or directory", StringComparison.Ordinal));
     }
 
-    // A server that dies mid-command reports neither presence nor absence.
-    // Asking one to stop and finding it already stopping is the outcome that
-    // was requested, so only kill treats this as success; waiting for a settled
-    // endpoint must keep treating it as "not settled yet".
+    // A dying server is success for Kill (already stopping is what was asked)
+    // but not-yet-settled for the endpoint wait.
     private static bool NamesDyingServer(TmuxCommandResult result) =>
         result.StandardErrorLines.Any(static line =>
             line.Contains("server exited unexpectedly", StringComparison.Ordinal));

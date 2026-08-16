@@ -158,9 +158,8 @@ internal static class TmuxCapabilities
             ? existing.ToFrozenSet(StringComparer.Ordinal)
             : existing.Concat(additions).ToFrozenSet(StringComparer.Ordinal);
 
-    // Capability sets are otherwise additive, because tmux almost only gains
-    // flags. A flag it drops still has to be expressible, or the version that
-    // dropped it is described as still carrying it.
+    // Capability sets are additive by default; Without exists so a version
+    // that drops a flag can still say so explicitly.
     private static FrozenSet<string> Without(
         IEnumerable<string> existing,
         params string[] removals) =>

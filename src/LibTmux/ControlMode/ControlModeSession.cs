@@ -18,12 +18,10 @@ internal sealed class ControlModeSession : IControlModeSession
     private readonly Process _process;
     /// <summary>How many unread events are held before the oldest are dropped.</summary>
     /// <remarks>
-    /// A pane can produce output faster than anything reads it, and a caller is
-    /// allowed to never read <see cref="Events"/> at all. Unbounded buffering
-    /// turns either of those into memory growth with no ceiling, so the channel
-    /// is bounded and drops the oldest event when full: a consumer that fell
-    /// behind wants recent output, and the alternative is blocking the reader
-    /// that also completes commands.
+    /// A pane can outpace any reader, and a caller may never read
+    /// <see cref="Events"/> at all, so unbounded buffering has no ceiling.
+    /// The channel drops the oldest event instead of blocking, since blocking
+    /// would also stall the reader that completes commands.
     /// </remarks>
     internal const int EventBufferCapacity = 4096;
 
@@ -68,16 +66,15 @@ internal sealed class ControlModeSession : IControlModeSession
         string? target,
         Action<ProcessStartInfo> configureEnvironment)
     {
-        // Standard error is redirected and deliberately not drained. Draining
-        // it looks obviously correct and is not: a tmux client can hand its
-        // stderr to the server it starts, so the write end outlives the client.
-        // A task reading the pipe then never ends -- that read does not observe
-        // cancellation on Unix -- and disposal would have to either wait for the
-        // server or close the handle underneath a read in flight. Both hang.
+        // Stderr is intentionally left undrained: a tmux client can hand its
+        // write end to the server it starts, so the pipe can outlive the client
+        // and a reader on it never observes cancellation on Unix. Waiting for
+        // the server to exit, or closing the handle mid-read, would both hang
+        // disposal instead.
         //
-        // The risk this leaves is a client blocking on a full stderr pipe. A
-        // control client writes to stderr only when tmux itself fails to start,
-        // which is kilobytes at most and is followed by the process exiting.
+        // The residual risk is a client blocking on a full stderr pipe. It
+        // writes to stderr only when tmux itself fails to start -- at most
+        // kilobytes, followed by the process exiting.
         ProcessStartInfo startInfo = new(tmuxBinaryPath)
         {
             RedirectStandardInput = true,
@@ -131,17 +128,9 @@ internal sealed class ControlModeSession : IControlModeSession
         await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // The waiter is queued before the write, and that ordering is load
-            // bearing in a way that is easy to miss. Some commands -- kill-server
-            // most obviously -- end the client as their answer. The pump fails
-            // every queued waiter when the process exits, so a waiter registered
-            // after the write can miss that sweep and then wait for a reply from
-            // a process that is gone.
-            //
-            // A write that then fails would leave a slot for a command tmux
-            // never saw, shifting every later reply by one. The slot is marked
-            // abandoned instead, so it is present for the exit sweep and
-            // skipped when replies are matched.
+            // Queued before the write: a command such as kill-server can end
+            // the client as its own answer, and the pump's exit sweep must
+            // find this waiter already queued to fail it.
             lock (_pending)
             {
                 _pending.Enqueue(pending);
@@ -156,9 +145,8 @@ internal sealed class ControlModeSession : IControlModeSession
             catch
             {
                 // tmux never saw this command, so it will never answer it. The
-                // slot stays in the queue -- removing it from the middle is not
-                // something a queue does -- but it is marked so replies skip it
-                // instead of being handed to the wrong caller.
+                // slot is marked abandoned rather than removed, so replies skip
+                // it instead of being handed to the wrong caller.
                 pending.Abandon();
                 throw;
             }
@@ -195,11 +183,8 @@ internal sealed class ControlModeSession : IControlModeSession
                     // returns is worse than a client that did not shut down
                     // politely.
                     //
-                    // Only the client is killed. The tree below it can contain
-                    // the tmux server, which other clients -- and other tests
-                    // running beside this one -- are still using; taking that
-                    // out to close one session is a much larger action than the
-                    // caller asked for.
+                    // Kills only the client, not its process tree: the server
+                    // underneath may still be serving other clients.
                     _process.Kill(entireProcessTree: false);
                     await _process.WaitForExitAsync().ConfigureAwait(false);
                 }

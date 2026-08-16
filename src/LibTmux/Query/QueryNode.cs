@@ -161,9 +161,9 @@ public sealed record NotNode(QueryNode Operand) : QueryNode;
 
 /// <summary>The conjunction of ordered operands.</summary>
 /// <remarks>
-/// Operand order is part of the value: two conjunctions with the same operands
-/// in a different order are different documents, because the wire form and any
-/// future pushdown both preserve order.
+/// Operand order is part of the value: two conjunctions with the same
+/// operands in a different order are different documents, because the
+/// wire form preserves order.
 /// </remarks>
 public sealed record AndNode : QueryNode
 {

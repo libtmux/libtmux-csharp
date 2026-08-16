@@ -3,10 +3,8 @@ namespace LibTmux;
 /// <summary>Reports a command-policy failure.</summary>
 public sealed class TmuxCommandException : LibTmuxException
 {
-    // This exception carries a result, and a result only exists because tmux
-    // ran and answered. The failure is tmux refusing, not the command going
-    // missing, so the dispatch state is not a parameter -- it is a fact about
-    // the type.
+    // A result exists only because tmux ran, so this exception is always
+    // TmuxDispatchState.Dispatched -- not a constructor parameter.
 
     /// <summary>Initializes a command exception.</summary>
     public TmuxCommandException(

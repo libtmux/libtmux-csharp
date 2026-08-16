@@ -668,8 +668,6 @@ public sealed partial class Pane
     {
         NewPaneRequest options = request ?? new NewPaneRequest();
         Server owner = Server;
-        // The command does not exist before 3.7, so there is nothing to omit
-        // and nothing worth dispatching.
         List<string> arguments = BuildNewPaneArguments(options);
 
         return await CreatePaneFromAsync(arguments, "new-pane", cancellationToken)
