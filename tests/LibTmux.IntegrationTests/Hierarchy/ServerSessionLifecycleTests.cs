@@ -99,7 +99,14 @@ public sealed class ServerSessionLifecycleTests
             ],
             token);
         string[] observed = shape.StandardOutputLines[0].Split(' ');
-        Assert.Equal("/tmp", observed[2]);
+
+        // The pane reports where it actually is, which is not always the path
+        // that was asked for: on macOS /tmp is a symlink to /private/tmp and
+        // tmux prints the resolved one. The request is what this asserts, so
+        // both sides are resolved before comparing.
+        Assert.Equal(
+            Path.GetFullPath(new DirectoryInfo("/tmp").ResolveLinkTarget(true)?.FullName ?? "/tmp"),
+            Path.GetFullPath(new DirectoryInfo(observed[2]).ResolveLinkTarget(true)?.FullName ?? observed[2]));
 
         // tmux 3.2a sizes a second session from the one already on the server
         // and ignores -x/-y outright, also taking the status line out of the

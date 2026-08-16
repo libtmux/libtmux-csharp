@@ -56,14 +56,16 @@ target, but it is a constraint worth naming.
 | A control session survives its consumer | Bounded event channel, bounded disposal that kills the client and not the server beneath it |
 | A stale handle cannot hit a live server | Generation guard on one-shot **and** chained entity commands; a chain mixing servers is refused before it runs ([tests](../tests/LibTmux.IntegrationTests/Chaining/ChainGenerationTests.cs)) |
 | All three transports | One-shot, control mode, and chaining, each measured and each working on every supported tmux |
-| The macOS claim is measured | A `macos arm64` lane builds, unit-tests and runs the integration suite against real tmux on Apple silicon. **839 of 854 pass; 15 fail.** Advisory until those are diagnosed |
+| The macOS claim is measured | A `macos arm64` lane builds, unit-tests and runs the integration suite against real tmux on Apple silicon. **846 of 849 pass; 2 remain.** Advisory until those are diagnosed |
 | Does not disturb other tmux users | Socket root of its own; the rules are in [AGENTS.md](../AGENTS.md) and enforced by a module initializer |
 | Parity with the Python original is tracked | [Parity ledger](parity/parity-ledger.json) maps every Python symbol to where it went |
 
 **The 0.5 is now a known deficit rather than an unknown one.** macOS was listed
 as supported and had never been run; the first lane found 15 failing integration
-tests. Until they are fixed, the honest claim is Linux, with macOS measured and
-reported. The lane also runs `net10.0` only and does not publish ahead of time
+tests. Thirteen were test assumptions about Linux rather than library defects
+— `/bin/sh` reporting as `bash`, `/tmp` resolving to `/private/tmp`, and
+packaging tests in a lane that does not pack. Two remain, both timing-shaped.
+Until they are fixed the claim stays Linux, with macOS measured and reported. The lane also runs `net10.0` only and does not publish ahead of time
 there, so the AOT claim is still proven on Linux alone.
 
 ## Examples — 9.5
