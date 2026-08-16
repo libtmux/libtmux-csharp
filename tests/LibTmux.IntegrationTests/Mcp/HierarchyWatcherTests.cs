@@ -13,6 +13,22 @@ namespace LibTmux.IntegrationTests;
 /// working across that is the part below: tmux says a window appeared, and a
 /// subscriber is told.
 /// </remarks>
+/// <summary>Serializes the tests that hold a tmux control client.</summary>
+/// <remarks>
+/// A control client is a tmux process attached for as long as a test runs, and
+/// several at once slow the machine enough to change what unrelated tests see.
+/// The first symptom is always a test waiting on a shell to redraw, because
+/// those carry the tightest budgets.
+///
+/// Measured after the harness stopped leaking servers, which was the larger
+/// half of the same problem: serialized, four runs of the suite were clean;
+/// parallel, one run in three failed.
+/// </remarks>
+[CollectionDefinition("tmux control clients", DisableParallelization = true)]
+public sealed class ControlClientCollectionDefinition;
+
+/// <content>Telling a subscriber the hierarchy changed.</content>
+[Collection("tmux control clients")]
 [UnsupportedOSPlatform("windows")]
 public sealed class HierarchyWatcherTests
 {
@@ -79,11 +95,13 @@ public sealed class HierarchyWatcherTests
         // that needed it.
         await watcher.UnsubscribeAsync("tmux://hierarchy");
 
+        // Polled gently: every probe is a tmux process, and a tight interval
+        // here spawns hundreds of them beside the rest of the suite.
         IReadOnlyList<Client> clients = await TmuxWait.UntilAsync(
             cancellation => scope.Session.Server.GetClientsAsync(cancellation),
             current => current.Count == 0,
             TimeSpan.FromSeconds(10),
-            TimeSpan.FromMilliseconds(50),
+            TimeSpan.FromMilliseconds(250),
             token);
         Assert.Empty(clients);
     }

@@ -64,6 +64,13 @@ cover the cases, and the server's instructions steer between them:
 | Output you did **not** start | `tmux_wait_for_text` | Wakes on the pane printing, not on a timer |
 | Watch a pane across turns | `tmux_tail_pane` | Answers only what is **new** since its cursor |
 
+A client that speaks the [Tasks extension](https://modelcontextprotocol.io) can
+start `tmux_run`, `tmux_wait_for_text`, `tmux_wait_for_channel` or `tmux_job`
+as a task and collect the result later — the protocol's own version of what
+`tmux_start_job` does by hand. It is offered, never required, so a client
+without it keeps the blocking call it had. A listing stays a plain call: making
+it a task would cost a round trip to collect an answer that was already there.
+
 Nothing here sleeps in a loop. A wait subscribes to tmux's own
 [control mode](https://github.com/tmux/tmux/wiki/Control-Mode), so tmux reports
 pane output as it happens and the wait is released the moment there is
@@ -229,6 +236,13 @@ than from a timer — so a view goes stale only when something actually moved.
 That watcher holds a second control client, started on the first subscription
 and stopped with the last, attached with `no-output` because it wants the
 hierarchy and not every byte a pane prints.
+
+Both subscription shapes are served: `resources/subscribe`, and the
+`subscriptions/listen` stream that replaced it in the 2026-07-28 revision.
+The newer one is answered by this server rather than by the SDK's built-in
+handling, because that grants the subscription without telling the application
+— which would leave a client subscribed to a watcher nobody started, waiting
+for events that never come.
 
 Long calls report progress while they run, so a wait shows as running rather
 than hung. It costs nothing when the client asks for none.

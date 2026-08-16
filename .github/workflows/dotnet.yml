@@ -156,6 +156,7 @@ jobs:
           uv run python eng/parity/verify_capabilities.py
           uv run python eng/parity/verify_workflows.py
           uv run python eng/docs/sync_snippets.py --check
+          uv run eng/mcp/dump_tools.py --check
 
       - name: Check out the pinned Python libtmux
         # The parity records quote one revision of the Python library. It is

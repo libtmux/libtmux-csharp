@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Extensions.Tasks;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -105,7 +106,20 @@ public static class McpServerComposition
                 }
 
                 return new EmptyResult();
-            });
+            })
+
+            // The revision that replaced resources/subscribe answers listen
+            // itself, granting the subscription without telling the
+            // application — so a client on a current revision would subscribe
+            // and hear nothing. Owning the stream is what closes that.
+            .WithSubscriptionsListenHandler(SubscriptionStream.Create())
+
+            // The protocol's own answer to a call that waits. A client that
+            // declares the extension gets a handle back at once and collects
+            // later; one that has not keeps the blocking call it had.
+            .WithTasks(
+                new InMemoryMcpTaskStore(),
+                tasks => tasks.ExecutionModeSelector = TaskCapableTools.Select);
 
         // Registration, not filtering. A tool the operator's tier does not
         // allow never reaches the model's list, so it cannot be called by name,

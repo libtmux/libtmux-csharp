@@ -43,6 +43,15 @@
           "ModelContextProtocol.Core": "[2.2.0]"
         }
       },
+      "ModelContextProtocol.Extensions.Tasks": {
+        "type": "Direct",
+        "requested": "[2.2.0, )",
+        "resolved": "2.2.0",
+        "contentHash": "cIGGEIL/KVbPBxflSF6TRKmjNTGk668e8x/R+Jx9l8VPHH70BisCmjdtHdkDHbbBr9gGMbjBjJdiNMJecweCGw==",
+        "dependencies": {
+          "ModelContextProtocol": "[2.2.0]"
+        }
+      },
       "Microsoft.Extensions.AI.Abstractions": {
         "type": "Transitive",
         "resolved": "10.8.3",
@@ -368,6 +377,15 @@
           "Microsoft.Extensions.Caching.Abstractions": "10.0.10",
           "Microsoft.Extensions.Hosting.Abstractions": "10.0.10",
           "ModelContextProtocol.Core": "[2.2.0]"
+        }
+      },
+      "ModelContextProtocol.Extensions.Tasks": {
+        "type": "Direct",
+        "requested": "[2.2.0, )",
+        "resolved": "2.2.0",
+        "contentHash": "cIGGEIL/KVbPBxflSF6TRKmjNTGk668e8x/R+Jx9l8VPHH70BisCmjdtHdkDHbbBr9gGMbjBjJdiNMJecweCGw==",
+        "dependencies": {
+          "ModelContextProtocol": "[2.2.0]"
         }
       },
       "Microsoft.Extensions.AI.Abstractions": {

@@ -19,7 +19,21 @@
          what already shipped. -->
     <IncludeSymbols>false</IncludeSymbols>
 
-    <!-- The server binds tool parameters by reflection, so it is not trimmed. -->
+    <!-- Not trimmed, and the reason is more specific than "it reflects".
+         Publishing ahead of time turns off reflective JSON for the whole
+         assembly, and the SDK builds each tool's output schema by reflecting
+         over its return type — so the process aborts at startup with
+         "JsonTypeInfo metadata for type HierarchyView was not provided",
+         before any tool is called. Measured: the AOT publish itself is clean,
+         zero trim warnings.
+
+         Reaching it would mean a source-generated context naming every result
+         and parameter type, passed through the WithTools overload that takes
+         serializer options. That is a list which fails the server at startup
+         the first time somebody adds a tool and forgets it, to speed up a
+         process an agent starts once per session — and this package ships as
+         a framework-dependent tool, which would not use the native build
+         anyway. -->
     <IsAotCompatible>false</IsAotCompatible>
   </PropertyGroup>
 
@@ -31,6 +45,7 @@
     <ProjectReference Include="..\LibTmux\LibTmux.csproj" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="ModelContextProtocol.Extensions.Tasks" />
     <InternalsVisibleTo Include="LibTmux.IntegrationTests" />
   </ItemGroup>
 </Project>

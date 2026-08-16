@@ -7,6 +7,7 @@ using ModelContextProtocol;
 namespace LibTmux.IntegrationTests;
 
 /// <summary>What the tools do to a real tmux server.</summary>
+[Collection("tmux control clients")]
 [UnsupportedOSPlatform("windows")]
 public sealed class TmuxToolsTests
 {

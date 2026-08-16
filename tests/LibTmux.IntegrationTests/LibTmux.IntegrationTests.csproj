@@ -29,6 +29,7 @@
     <ProjectReference Include="../../src/LibTmux.Query.Json/LibTmux.Query.Json.csproj" />
     <ProjectReference Include="../../src/LibTmux.Workspace/LibTmux.Workspace.csproj" />
     <ProjectReference Include="../../src/LibTmux.Mcp/LibTmux.Mcp.csproj" />
+    <PackageReference Include="ModelContextProtocol.Extensions.Tasks" />
     <ProjectReference Include="../LibTmux.TestChild/LibTmux.TestChild.csproj"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>

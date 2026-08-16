@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.Versioning;
-using System.Text.Json;
 using ModelContextProtocol.Server;
 
 namespace LibTmux.Mcp;
@@ -26,11 +25,6 @@ public sealed class HierarchyResources
     private const string JsonMime = "application/json";
     private const string TextMime = "text/plain";
 
-    private static readonly JsonSerializerOptions Shape = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = false,
-    };
-
     private readonly ReadTools _read;
 
     /// <summary>Initializes the resources over the reading tools.</summary>
@@ -55,7 +49,9 @@ public sealed class HierarchyResources
         MimeType = JsonMime)]
     [Description("Every tmux session, window and pane on the default server.")]
     public async Task<string> HierarchyAsync(CancellationToken cancellationToken = default) =>
-        Json(await _read.HierarchyAsync(cancellationToken: cancellationToken).ConfigureAwait(false));
+        ResourceJson.Render(
+            await _read.HierarchyAsync(cancellationToken: cancellationToken).ConfigureAwait(false),
+            ResourceJson.Default.HierarchyView);
 
     /// <summary>Answers the sessions.</summary>
     /// <param name="cancellationToken">Cancels the tmux query.</param>
@@ -67,8 +63,10 @@ public sealed class HierarchyResources
         MimeType = JsonMime)]
     [Description("The tmux sessions on the default server.")]
     public async Task<string> SessionsAsync(CancellationToken cancellationToken = default) =>
-        Json(await _read.ListSessionsAsync(cancellationToken: cancellationToken)
-            .ConfigureAwait(false));
+        ResourceJson.Render(
+            await _read.ListSessionsAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false),
+            ResourceJson.Default.IReadOnlyListSessionInfo);
 
     /// <summary>Answers the panes of one session.</summary>
     /// <param name="sessionId">The session, by id or name.</param>
@@ -83,8 +81,10 @@ public sealed class HierarchyResources
     public async Task<string> SessionPanesAsync(
         string sessionId,
         CancellationToken cancellationToken = default) =>
-        Json(await _read.ListPanesAsync(session: sessionId, cancellationToken: cancellationToken)
-            .ConfigureAwait(false));
+        ResourceJson.Render(
+            await _read.ListPanesAsync(session: sessionId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false),
+            ResourceJson.Default.IReadOnlyListPaneInfo);
 
     /// <summary>Answers what one pane is showing.</summary>
     /// <param name="paneId">The pane, such as <c>%1</c>.</param>
@@ -121,7 +121,9 @@ public sealed class HierarchyResources
         MimeType = JsonMime)]
     [Description("The tmux pane this MCP server is running inside, or null.")]
     public async Task<string> SelfAsync(CancellationToken cancellationToken = default) =>
-        Json(await _read.WhoAmIAsync(cancellationToken: cancellationToken).ConfigureAwait(false));
+        ResourceJson.Render(
+            await _read.WhoAmIAsync(cancellationToken: cancellationToken).ConfigureAwait(false),
+            ResourceJson.Default.PaneInfo);
 
     /// <summary>Answers the tmux servers on this machine.</summary>
     /// <param name="cancellationToken">Cancels the probes.</param>
@@ -133,9 +135,7 @@ public sealed class HierarchyResources
         MimeType = JsonMime)]
     [Description("The tmux servers running for this user, by socket.")]
     public async Task<string> ServersAsync(CancellationToken cancellationToken = default) =>
-        Json(await _read.ListServersAsync(cancellationToken).ConfigureAwait(false));
-
-    // A resource that answers nothing still has to answer something: the SDK
-    // treats a null result as a fault rather than as an empty reading.
-    private static string Json<T>(T value) => JsonSerializer.Serialize(value, Shape);
+        ResourceJson.Render(
+            await _read.ListServersAsync(cancellationToken).ConfigureAwait(false),
+            ResourceJson.Default.IReadOnlyListDiscoveredServer);
 }

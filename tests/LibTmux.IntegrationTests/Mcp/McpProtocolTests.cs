@@ -1,11 +1,15 @@
 using System.IO.Pipelines;
 using System.Runtime.Versioning;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using LibTmux.IntegrationTests.Transport;
 using LibTmux.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ModelContextProtocol;
 using ModelContextProtocol.Client;
+using ModelContextProtocol.Extensions.Tasks;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -19,6 +23,7 @@ namespace LibTmux.IntegrationTests;
 /// it routes a question here at all. None of that is visible from calling a
 /// method directly.
 /// </remarks>
+[Collection("tmux control clients")]
 [UnsupportedOSPlatform("windows")]
 public sealed class McpProtocolTests
 {
@@ -181,6 +186,137 @@ public sealed class McpProtocolTests
         Assert.Contains("tmux_list_panes", text, StringComparison.Ordinal);
     }
 
+    [UnixFact]
+    public async Task A_subscribed_client_is_told_when_the_hierarchy_changes()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ProtocolHarness harness = await ProtocolHarness.StartAsync(token);
+
+        await harness.Client.CallToolAsync(
+            "tmux_create_session",
+            new Dictionary<string, object?> { ["name"] = "watched" },
+            cancellationToken: token);
+
+        TaskCompletionSource<JsonNode?> acknowledged = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<JsonNode?> updated = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await using IAsyncDisposable ack = harness.Client.RegisterNotificationHandler(
+            NotificationMethods.SubscriptionsAcknowledgedNotification,
+            (notification, _) =>
+            {
+                acknowledged.TrySetResult(notification.Params);
+                return default;
+            });
+        await using IAsyncDisposable changed = harness.Client.RegisterNotificationHandler(
+            NotificationMethods.ResourceUpdatedNotification,
+            (notification, _) =>
+            {
+                updated.TrySetResult(notification.Params);
+                return default;
+            });
+
+        // The listen request IS the stream: over stdio it stays open for as
+        // long as the subscription lives, so it is started rather than
+        // awaited, and cancelled to end the subscription.
+        using CancellationTokenSource listening = CancellationTokenSource
+            .CreateLinkedTokenSource(token);
+        Task stream = harness.Client.SendRequestAsync(
+            new JsonRpcRequest
+            {
+                Method = RequestMethods.SubscriptionsListen,
+                Params = JsonSerializer.SerializeToNode(
+                    new SubscriptionsListenRequestParams
+                    {
+                        Notifications = new SubscriptionsListenNotifications
+                        {
+                            ResourceSubscriptions = ["tmux://hierarchy"],
+                        },
+                    },
+                    McpJsonUtilities.DefaultOptions),
+            },
+            listening.Token);
+
+        Assert.True(
+            await Task.WhenAny(acknowledged.Task, Task.Delay(TimeSpan.FromSeconds(15), token))
+                == acknowledged.Task,
+            "the server never acknowledged the subscription");
+
+        // A window appearing is a structural change, which is what tmux
+        // reports to a control client without being asked.
+        await harness.Client.CallToolAsync(
+            "tmux_create_window",
+            new Dictionary<string, object?> { ["name"] = "second" },
+            cancellationToken: token);
+
+        Assert.True(
+            await Task.WhenAny(updated.Task, Task.Delay(TimeSpan.FromSeconds(20), token))
+                == updated.Task,
+            "no resources/updated notification arrived within 20s");
+
+        JsonNode? parameters = await updated.Task;
+        Assert.Equal(
+            "tmux://hierarchy",
+            Assert.IsType<JsonObject>(parameters)["uri"]?.GetValue<string>());
+
+        // Tagged with the stream it belongs to, which is what lets a client
+        // sharing one channel tell two subscriptions apart.
+        Assert.NotNull(
+            Assert.IsType<JsonObject>(parameters)["_meta"]?
+                ["io.modelcontextprotocol/subscriptionId"]);
+
+        await listening.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => stream);
+    }
+
+    [UnixFact]
+    public async Task A_waiting_tool_can_be_started_as_a_task_and_collected_later()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ProtocolHarness harness = await ProtocolHarness.StartAsync(token);
+
+        CallToolResult made = await harness.Client.CallToolAsync(
+            "tmux_create_session",
+            new Dictionary<string, object?> { ["name"] = "tasked" },
+            cancellationToken: token);
+        string pane = made.StructuredContent!.Value.GetProperty("paneId").GetString()!;
+
+        // Started, not awaited: the point of a task is that the caller gets a
+        // handle back before the work is done.
+        CallToolResult finished = await harness.Client.CallToolWithPollingAsync(
+            new CallToolRequestParams
+            {
+                Name = "tmux_run",
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["command"] = JsonSerializer.SerializeToElement("echo TASKED && exit 7"),
+                    ["paneId"] = JsonSerializer.SerializeToElement(pane),
+                    ["timeoutSeconds"] = JsonSerializer.SerializeToElement(20),
+                },
+            },
+            cancellationToken: token);
+
+        Assert.NotEqual(true, finished.IsError);
+        Assert.Equal(7, finished.StructuredContent!.Value.GetProperty("exitStatus").GetInt32());
+    }
+
+    [UnixFact]
+    public async Task A_listing_stays_a_plain_call_rather_than_becoming_a_task()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ProtocolHarness harness = await ProtocolHarness.StartAsync(token);
+
+        ResultOrCreatedTask<CallToolResult> answered = await harness.Client.CallToolAsTaskAsync(
+            new CallToolRequestParams { Name = "tmux_list_sessions" },
+            cancellationToken: token);
+
+        // A listing answers in milliseconds. Making it a task would cost a
+        // second round trip to collect an answer that was already there.
+        Assert.False(answered.IsTask);
+        Assert.NotNull(answered.Result);
+    }
+
     /// <summary>A server and a client joined by a pipe, over a throwaway socket.</summary>
     /// <remarks>
     /// Composed through <see cref="McpServerComposition" /> rather than wired
@@ -191,12 +327,18 @@ public sealed class McpProtocolTests
     {
         private readonly McpServer _server;
         private readonly ServiceProvider _services;
+        private readonly string _socketName;
 
-        private ProtocolHarness(McpServer server, McpClient client, ServiceProvider services)
+        private ProtocolHarness(
+            McpServer server,
+            McpClient client,
+            ServiceProvider services,
+            string socketName)
         {
             _server = server;
             Client = client;
             _services = services;
+            _socketName = socketName;
         }
 
         internal McpClient Client { get; }
@@ -207,12 +349,13 @@ public sealed class McpProtocolTests
         {
             ServiceCollection services = new();
             services.AddLogging();
+            string socketName = $"ltp-{Guid.NewGuid():N}"[..20];
             McpServerComposition.Add(
                 services,
                 new ServerPolicy { Tier = tier, WaitCeiling = TimeSpan.FromSeconds(10) },
                 new ServerConnectionOptions(
                     tmuxBinaryPath: System.Environment.GetEnvironmentVariable("LIBTMUX_TMUX") ?? "tmux",
-                    socketName: $"ltp-{Guid.NewGuid():N}"[..20],
+                    socketName: socketName,
                     configurationFile: "/dev/null"),
                 callerPaneId: null);
             ServiceProvider provider = services.BuildServiceProvider();
@@ -234,7 +377,7 @@ public sealed class McpProtocolTests
                     serverToClient.Reader.AsStream()),
                 cancellationToken: cancellationToken);
 
-            return new ProtocolHarness(server, client, provider);
+            return new ProtocolHarness(server, client, provider, socketName);
         }
 
         public async ValueTask DisposeAsync()
@@ -242,6 +385,27 @@ public sealed class McpProtocolTests
             await Client.DisposeAsync().ConfigureAwait(false);
             await _server.DisposeAsync().ConfigureAwait(false);
             await _services.DisposeAsync().ConfigureAwait(false);
+
+            // The tools start a tmux server on this socket, and nothing else
+            // here owns it. Left behind it keeps running: a suite run leaked
+            // one per test until the machine carried dozens of idle servers
+            // and unrelated timing tests began to fail.
+            try
+            {
+                Server tmux = await Server.ConnectAsync(
+                        new ServerConnectionOptions(
+                            tmuxBinaryPath: System.Environment.GetEnvironmentVariable("LIBTMUX_TMUX") ?? "tmux",
+                            socketName: _socketName,
+                            configurationFile: "/dev/null"),
+                        CancellationToken.None)
+                    .ConfigureAwait(false);
+                await tmux.KillAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (LibTmuxException)
+            {
+                // No server was ever started on it, which is the common case
+                // for a test that only listed things.
+            }
         }
     }
 }

@@ -38,6 +38,23 @@ version.
   tier is not registered, so it never reaches the model's list. An unrecognised
   value falls to `readonly` rather than to the default, because a typo must
   never widen what a server offers.
+- **Subscriptions on both protocol revisions.** A client is told when the
+  hierarchy changes, from tmux's own notifications rather than a timer. The
+  2026-07-28 revision replaced `resources/subscribe` with a long-lived
+  `subscriptions/listen` stream, and the SDK's built-in handling grants that
+  subscription without telling the application — a client would subscribe
+  successfully and then wait forever for events from a watcher nobody started.
+  This server owns the stream instead, which means owning its contract: one
+  acknowledgement before any event, every event tagged with the listen request
+  so a client sharing one channel can tell streams apart, and staying up until
+  the request is cancelled.
+- **The Tasks extension, offered and never required.** A client that speaks it
+  can start `tmux_run`, `tmux_wait_for_text`, `tmux_wait_for_channel` or
+  `tmux_job` as a task and collect the result later. A client that does not
+  keeps the blocking call it had. A listing stays a plain call: making it a
+  task would cost a round trip to collect an answer that was already there.
+- **Progress while a wait runs**, so a client showing a thirty second wait can
+  tell it from a hung one.
 - **`eng/mcp/mcp_swap.py`**, which points every installed agent CLI at a local
   build and reverts from the backup it took. It writes `DOTNET_ROOT` into each
   config: an agent spawns the server with its own environment, and a
@@ -58,6 +75,12 @@ version.
 - **Resolving a pane no longer walks the hierarchy.** It was a tmux process per
   session and per window to find something tmux answers in one call, paid on
   every tool call.
+- **The protocol test harness no longer leaks a tmux server per test.** It
+  started one and disposed only the MCP objects, so a suite run left dozens
+  behind. They were idle but not free: at load 24 on 20 cores the first thing
+  to fail was an unrelated library test waiting ten seconds for a shell to
+  redraw a wide prompt, which is the sort of failure that gets called flaky and
+  retried rather than read.
 - **A run leaves nothing of its own on screen.** The shell echoes the
   rendezvous like anything typed, and it is wider than a pane, so tmux stores
   the wrap as a line break and the marker arrives split across rows. Rows are
