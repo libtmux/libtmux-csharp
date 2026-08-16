@@ -34,7 +34,10 @@ public sealed class ChainGenerationTests
         // same socket and hands out the same IDs.
         await first.KillAsync(token);
         await raw.ExecuteAsync(["new-session", "-d", "-s", "replacement"], token);
-        Server second = await ConnectAsync(raw, token);
+
+        // Starting a server and being able to talk to it are not the same
+        // instant, and how far apart they are depends on the machine.
+        Server second = await ConnectWhenReadyAsync(raw, token);
 
         // The chain is built on the new server from a handle belonging to the
         // old one. That is the shape a caller reaches by accident: entity
@@ -92,6 +95,23 @@ public sealed class ChainGenerationTests
         await server.Chain()
             .Then(new SendKeysRequest("echo fresh").ToCommand(pane))
             .ExecuteAsync(token);
+    }
+
+    private static async Task<Server> ConnectWhenReadyAsync(
+        RawTmuxTestContext raw,
+        CancellationToken token)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await ConnectAsync(raw, token);
+            }
+            catch (LibTmuxException) when (attempt < 100)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(50), token);
+            }
+        }
     }
 
     private static Task<Server> ConnectAsync(RawTmuxTestContext raw, CancellationToken token) =>
