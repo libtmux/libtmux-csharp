@@ -81,8 +81,23 @@ The build is the style guide: `TreatWarningsAsErrors`, `Nullable` enabled,
 analyzers at `10-recommended`, and `EnforceCodeStyleInBuild`. If it compiles
 clean, the formatting is right.
 
-Comments explain *why*, not *what*. The surrounding code is the reference for
-density and idiom.
+**A comment earns its maintenance cost or it goes.** Keep one only where losing
+it would cost a maintainer real time rediscovering something the code, types,
+assertions and tests do not already carry: an invariant, an ordering or lifetime
+requirement, a tmux version boundary, or a reason a simpler implementation would
+be wrong. State the constraint and stop — the reasoning that found it belongs in
+the commit message, where it is free to keep. Delete comments that narrate the
+next lines, restate a name or an assertion, excuse the code, or hand-track a
+value the code owns, and prefer deletion when the call is close. One or two
+lines; a comment reaching four is carrying several facts or arguing.
+
+XML documentation is judged the other way round — by whether it helps a caller
+use the API correctly, not by whether it is non-obvious. `CS1591` is
+unsuppressed in the published projects, so a public member without it does not
+build.
+
+[`AGENTS.md`](AGENTS.md) states the full policy and the three gates a comment
+has to pass.
 
 Commit messages say what changed and why it was worth changing. No emojis.
 
