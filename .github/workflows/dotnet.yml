@@ -210,10 +210,13 @@ jobs:
         # not Linux's.
         env:
           LIBTMUX_INTEGRATION_REQUIRED: '1'
+        # The packaging tests read what a pack produced and this lane does not
+        # pack: packaging is a property of the artifacts, which are built and
+        # proven once on Linux, not of the platform driving tmux.
         run: >
           dotnet test tests/LibTmux.IntegrationTests/LibTmux.IntegrationTests.csproj
           --configuration Release --no-build --framework net10.0
-          -- --minimum-expected-tests 400
+          -- --filter-not-class '*PackageClosureTests*' --minimum-expected-tests 400
 
   # One name for branch protection to require. Without it, every job added here
   # has to be added to the protection rule too, and a job nobody remembered to

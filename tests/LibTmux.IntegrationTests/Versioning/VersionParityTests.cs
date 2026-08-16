@@ -1086,9 +1086,17 @@ public sealed class VersionParityTests
             static lines => lines.Any(line => line.Trim() is "1" or "94"));
     }
 
+    /// <summary>Waits for the pane to be running any of the names given.</summary>
+    /// <remarks>
+    /// More than one name is accepted because what tmux reports for a shell is
+    /// the process, not the path that was asked for. On macOS <c>/bin/sh</c> is
+    /// bash in sh-compatibility mode, so respawning with <c>/bin/sh</c> settles
+    /// at <c>bash</c>; on Linux it settles at <c>sh</c>. Both are the shell that
+    /// was asked for.
+    /// </remarks>
     private static async Task WaitForPaneCommandAsync(
         RawTmuxTestContext context,
-        string command)
+        params string[] accepted)
     {
         DateTimeOffset deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10);
         string running = string.Empty;
@@ -1100,7 +1108,7 @@ public sealed class VersionParityTests
             running = capture.StandardOutputLines.Count > 0
                 ? capture.StandardOutputLines[0].Trim()
                 : string.Empty;
-            if (string.Equals(running, command, StringComparison.Ordinal))
+            if (accepted.Contains(running, StringComparer.Ordinal))
             {
                 return;
             }
@@ -1109,7 +1117,8 @@ public sealed class VersionParityTests
         }
 
         throw new InvalidOperationException(
-            $"The pane runs '{running}' rather than '{command}'.");
+            $"The pane runs '{running}' rather than any of "
+            + $"'{string.Join("', '", accepted)}'.");
     }
 
     private static async Task<IReadOnlyList<string>> WaitForPaneAsync(
@@ -1317,7 +1326,7 @@ public sealed class VersionParityTests
 
         // Killing and restarting a pane's process is not instant, and keys
         // typed into the gap reach nothing.
-        await WaitForPaneCommandAsync(context, "sh");
+        await WaitForPaneCommandAsync(context, "sh", "bash");
     }
 
     private static async Task SeedPaneCommandAsync(
