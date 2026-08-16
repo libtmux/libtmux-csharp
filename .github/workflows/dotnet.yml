@@ -26,17 +26,17 @@ jobs:
     name: build and prove
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.0
         with:
           # SourceLink points at the commit that produced the assembly, which
           # a shallow checkout does not have.
           fetch-depth: 0
 
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
 
       - name: Install tmux
         # The examples, the ahead-of-time smoke test and the package consumer
@@ -152,7 +152,7 @@ jobs:
           LIBTMUX_PYTHON_REPOSITORY: ${{ runner.temp }}/python-libtmux
         run: uv run --with pytest python -m pytest eng --quiet
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         # A run that failed before packing has nothing to upload, and saying so
         # twice would bury which step actually failed.
         if: always()
