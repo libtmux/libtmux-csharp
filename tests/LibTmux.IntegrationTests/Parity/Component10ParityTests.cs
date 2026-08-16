@@ -152,8 +152,7 @@ public sealed class Component10ParityTests
         Assert.False(bare.IsMaterialized);
 
         // The owning helper waits out that teardown, so the endpoint it hands
-        // back is usable straight away; the first session is what makes the
-        // server durable.
+        // back is usable at once: the first session is what makes it durable.
         await using OwnedServerScope scope = await Server.CreateOwnedAsync(
             IsolatedOptions(),
             token);
@@ -232,9 +231,8 @@ public sealed class Component10ParityTests
 
     private static async Task<bool> ProvesDetachAsync(Session session, CancellationToken token)
     {
-        // tmux refuses with "no current client" rather than treating an absent
-        // client as nothing to do, and that refusal is surfaced rather than
-        // swallowed: a caller asked to detach something that was not there.
+        // tmux refuses with "no current client" instead of treating an absent
+        // client as a no-op, and that refusal is surfaced rather than swallowed.
         TmuxCommandException failure = await Assert.ThrowsAsync<TmuxCommandException>(
             () => session.DetachClientAsync(cancellationToken: token));
         return failure.Result.ExitCode != 0

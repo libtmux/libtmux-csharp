@@ -136,15 +136,13 @@ public sealed class Component18ParityTests
             Options(),
             token);
 
-        // A session fixture is only useful if the session is really there.
         Assert.True(await scope.Session.Server.HasSessionAsync(scope.Session.Name, true, token));
         return scope.Session.Name.StartsWith("lt", StringComparison.Ordinal);
     }
 
     private static bool ProvesEnvironment()
     {
-        // Python's guard sets and unsets process variables and puts them back.
-        // Here the environment is described rather than mutated, so two tests
+        // The environment is described rather than mutated, so two tests
         // running at once cannot see each other's changes.
         TestEnvironment environment = new(
             "/tmp",
@@ -175,10 +173,8 @@ public sealed class Component18ParityTests
 
     private static bool ProvesDefaults()
     {
-        // Python keeps the retry bounds and the name prefix as module
-        // constants, which a caller can read but not change per test. Here
-        // they are the defaults of an options record, so a slow machine can
-        // wait longer without editing the library.
+        // These are defaults on an options record rather than fixed constants,
+        // so a slow machine can wait longer without editing the library.
         TmuxTestOptions defaults = TmuxTestOptions.Default;
         Assert.True(defaults.Timeout > TimeSpan.Zero);
         Assert.True(defaults.PollInterval > TimeSpan.Zero);

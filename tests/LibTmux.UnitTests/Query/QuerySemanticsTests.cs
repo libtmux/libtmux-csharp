@@ -9,10 +9,8 @@ public sealed class QuerySemanticsTests
     [Fact]
     public void An_entity_translates_through_the_name_tmux_uses_for_the_field()
     {
-        // What C# calls a property and what tmux calls the field are not
-        // transformations of one another, so the catalog carries the pair. A
-        // filter written over the objects the library hands back is the one a
-        // caller has reason to write.
+        // A property name and its tmux field name are not derivable from one
+        // another, so the catalog stores the pair explicitly.
         Assert.Equal(
             "session_name",
             Field(QueryExtensions.Translate<Session>(

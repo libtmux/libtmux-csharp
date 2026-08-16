@@ -231,10 +231,8 @@ public sealed class Component13ParityTests
             server,
             async client =>
             {
-                // Naming a client is accepted. What locking then does to the
-                // terminal is tmux running the lock-command, which names a
-                // program the machine may not have, so the client's survival
-                // is not what this proves.
+                // Locking runs tmux's lock-command, which may not exist on this
+                // machine, so this only proves the request is accepted, not survival.
                 await server.LockClientAsync(client.Name, token);
                 return true;
             },
@@ -275,12 +273,8 @@ public sealed class Component13ParityTests
 
                 await server.SuspendClientAsync(client.Name, token);
 
-                // Suspending and detaching both end the attachment, and what
-                // separates them is what becomes of the client itself: a
-                // suspended one is still there to be resumed. Whether tmux has
-                // stopped listing it yet is left unasserted, because the client
-                // drops out only once it acts on the request, on its own
-                // schedule.
+                // Unlike detach, suspend keeps the client process alive to be
+                // resumed; when tmux drops it from the client list is unasserted.
                 return IsRunning(clientProcessId);
             },
             token);

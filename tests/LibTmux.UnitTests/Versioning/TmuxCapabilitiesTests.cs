@@ -411,9 +411,8 @@ public sealed class TmuxCapabilitiesTests
             "option_dollar_double_escape",
             TmuxCapabilities.GetRequired(TmuxVersion.Parse("3.5")).Capabilities);
 
-        // 3.2a advertises the display-message target-client flag in its own
-        // usage text and refuses the command carrying it, so the boundary is
-        // named rather than counted.
+        // tmux 3.2a's usage text advertises display-message's target-client
+        // flag but refuses it at runtime, so the boundary is named, not counted.
         Assert.DoesNotContain(
             "display_message_client",
             TmuxCapabilities.GetRequired(TmuxVersion.Parse("3.2a")).Capabilities);

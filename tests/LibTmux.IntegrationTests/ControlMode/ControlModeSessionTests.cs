@@ -91,8 +91,8 @@ public sealed class ControlModeSessionTests
         await control.SendAsync("send-keys -t %0 'echo libtmux-control-marker' Enter", token);
 
         // tmux escapes the payload the way it escapes an option value, so a
-        // reader that passed it through would report literal backslash-零-one-五
-        // where the program wrote a carriage return.
+        // reader that passed it through would report the literal escape
+        // sequence "\015" where the program wrote a carriage return.
         string seen = string.Empty;
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));

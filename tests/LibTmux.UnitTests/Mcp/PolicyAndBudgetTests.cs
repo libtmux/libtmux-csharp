@@ -227,10 +227,8 @@ public sealed class PaneTextTests
     [Fact]
     public void Rows_already_joined_do_not_swallow_the_line_beneath_them()
     {
-        // A capture asked for -J has joined the wrap already. Joining again by
-        // width reads the long logical line as continued and takes the real
-        // output with it — measured on a host whose name filled the prompt,
-        // where the command's own output disappeared.
+        // A capture already joined with -J must not be re-joined by width:
+        // that reads the joined line as still wrapped and swallows the row after it.
         string joined = new string('x', 200) + Marker;
 
         IReadOnlyList<string> kept = PaneText.Scrub([joined, "mcp-ran"], paneWidth: 80);

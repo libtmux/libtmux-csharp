@@ -4,32 +4,12 @@ using LibTmux.Internal;
 
 namespace LibTmux.UnitTests.Fuzzing;
 
-/// <summary>Feeds the parsers input tmux would never send, and requires them to cope.</summary>
-/// <remarks>
-/// Every one of these parsers reads bytes produced by another program. The
-/// suite proves what they do with the output a supported tmux actually
-/// produces; this asks what they do with everything else — a truncated line, a
-/// separator inside a value, an escape at the end of a string, a version from a
-/// tmux that does not exist yet.
-///
-/// The contract is deliberately weak, because a parser is allowed to reject
-/// nonsense. What it is not allowed to do is fail in a way the caller cannot
-/// catch: an index out of range, a null dereference, an unbounded loop. So each
-/// case asserts the call returned or threw something the library documents,
-/// within a time bound.
-///
-/// This is randomized robustness testing over a seeded corpus, not
-/// coverage-guided fuzzing. The corpus carries the shapes that have broken
-/// parsers before, and the generator explores around them with a fixed seed so
-/// a failure is reproducible from the test name alone.
-/// </remarks>
+/// <summary>Feeds the parsers input tmux would never send; each case must
+/// return or throw a documented exception, never hang or throw anything else.</summary>
 public sealed class ParserFuzzTests
 {
-    /// <summary>How long any single parse may take before it counts as hung.</summary>
-    /// <remarks>
-    /// Generous on purpose: this is looking for an unbounded loop, not for slow
-    /// code, and a shared CI runner is not a quiet machine.
-    /// </remarks>
+    /// <summary>How long a parse may run before it counts as an unbounded
+    /// loop rather than slow code on a shared CI runner.</summary>
     private static readonly TimeSpan ParseBudget = TimeSpan.FromSeconds(2);
 
     /// <summary>Fixed, so a failure reproduces rather than haunting one run in ten.</summary>

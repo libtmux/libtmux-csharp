@@ -5,11 +5,8 @@ namespace LibTmux.AotSmoke;
 
 /// <summary>Drives the library from an ahead-of-time published binary.</summary>
 /// <remarks>
-/// Trim and ahead-of-time warnings are only complete once something is
-/// published that way, and a warning that reaches a caller is a failure they
-/// see at run time rather than at build. This exercises the parts a caller
-/// reaches without an expression tree, which is the surface that claims to be
-/// safe to publish.
+/// Trim/AOT warnings only surface once something is published that way and
+/// run; this exercises the surface a caller reaches without an expression tree.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 internal static class Program

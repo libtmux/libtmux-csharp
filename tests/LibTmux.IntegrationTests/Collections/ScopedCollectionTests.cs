@@ -78,10 +78,8 @@ public sealed class ScopedCollectionTests
         CancellationToken token = TestContext.Current.CancellationToken;
         Server server = await ConnectAsync(raw, token);
 
-        // A socket the caller cannot open is a live server answering with a
-        // refusal, which reaches tmux by a different route than a daemon that
-        // exited and prints different text. Leniency is a promise about every
-        // way a listing can fail, so it is worth more than one of them.
+        // A permission-denied socket is a live server refusing -- a different
+        // failure route than an exited daemon -- so leniency is proved on both.
         File.SetUnixFileMode(raw.SocketPath, UnixFileMode.None);
         try
         {

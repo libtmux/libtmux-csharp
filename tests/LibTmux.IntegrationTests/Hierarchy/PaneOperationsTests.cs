@@ -109,8 +109,8 @@ public sealed class PaneOperationsTests
         await Assert.ThrowsAsync<ArgumentException>(
             () => pane.SendKeysAsync(new SendKeysRequest(), token));
 
-        // A copy-mode command against a pane in no mode is tmux's refusal to
-        // surface, not something to pre-empt from a possibly stale snapshot.
+        // A pane in no mode makes tmux itself refuse the copy-mode command;
+        // this library does not pre-check pane mode before sending it.
         await Assert.ThrowsAsync<TmuxCommandException>(
             () => pane.SendKeysAsync(new SendKeysRequest(copyModeCommand: "cancel"), token));
 
@@ -250,9 +250,8 @@ public sealed class PaneOperationsTests
         CancellationToken token = TestContext.Current.CancellationToken;
         Pane pane = await FirstPaneAsync(raw, token);
 
-        // Both overlays need a client, and the test process has none. The
-        // refusal is tmux's, and its wording is exactly what the version gates
-        // exist to keep a user from seeing, so only the type is asserted.
+        // Both overlays need an attached client, which this test process lacks,
+        // so only the exception type is asserted, not tmux's refusal text.
         await Assert.ThrowsAsync<TmuxCommandException>(
             () => pane.DisplayPopupAsync(cancellationToken: token));
         await Assert.ThrowsAsync<TmuxCommandException>(
@@ -463,10 +462,8 @@ public sealed class PaneOperationsTests
         Server server = await ConnectAsync(raw, token);
         Pane pane = await FirstPaneAsync(server, token);
 
-        // tmux 3.7 alone dereferences a null window name here and takes the
-        // whole server down, so that one version always gets a name. Both
-        // branches must end with the name the caller asked for, and with a
-        // server still running.
+        // tmux 3.7 alone dereferences a null window name here and crashes the
+        // whole server, so that version always gets a placeholder name.
         bool workaround = TmuxCapabilities.GetRequired(server.Version!.Value)
             .RequiresBreakPane37Workaround;
 
@@ -477,10 +474,8 @@ public sealed class PaneOperationsTests
         Window unnamed = await anonymous.BreakAsync(cancellationToken: token);
         Assert.NotEmpty(await server.GetSessionsAsync(token));
 
-        // On the affected version tmux discards the name it was given, which
-        // is why the named path above needs a follow-up rename to keep its
-        // promise. The placeholder is there to stop the crash, not to name
-        // anything, so the name it lands with is tmux's own either way.
+        // On the affected version tmux discards the given name outright, so
+        // the placeholder only stops the crash; the resulting name is tmux's own.
         Assert.NotEqual("wanted", unnamed.Name);
         Assert.True(workaround || unnamed.Name != "libtmux");
     }
@@ -603,14 +598,12 @@ public sealed class PaneOperationsTests
         string expected,
         CancellationToken token)
     {
-        // Joined: a prompt wide enough leaves typed text split across two
-        // stored lines, and tmux stores that wrap as a real line break.
+        // Joined: a wide prompt leaves typed text split across two stored
+        // lines, since tmux stores the wrap as a real line break.
         //
-        // The budget is generous because what is waited on is a shell
-        // redrawing a prompt, which is the first thing to slow down on a
-        // loaded machine. Running out says so rather than returning what it
-        // last saw: a silent give-up surfaces as an assertion about content
-        // and reads as a bug in the capture rather than as a timeout.
+        // The generous budget covers a loaded machine redrawing the prompt;
+        // timing out throws instead of returning stale text, so a failure
+        // here reads as a timeout, not a wrong content assertion.
         DateTimeOffset deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(45);
         string text = string.Empty;
         while (DateTimeOffset.UtcNow < deadline)
@@ -649,9 +642,8 @@ public sealed class PaneOperationsTests
             Func<TState, Exception?, string> formatter)
         {
             ArgumentNullException.ThrowIfNull(formatter);
-            // The dispatcher records every command failure at error level, and
-            // these proofs are about the warning a dropped flag produces, so
-            // only warnings are counted.
+            // The dispatcher logs command failures at error level; these tests
+            // only care about the warning a dropped flag produces.
             if (logLevel == LogLevel.Warning)
             {
                 _warnings.Add(formatter(state, exception));

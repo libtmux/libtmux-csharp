@@ -269,10 +269,8 @@ public sealed class Component04ParityTests
 
     private static bool SeparatorIsExcluded(TmuxVersion version)
     {
-        // Python reserves a fixed separator and hopes no value contains it.
-        // The separator here is randomised per process instead, so a value
-        // cannot be crafted to hold it, and it carries no format punctuation
-        // for tmux to expand.
+        // The separator is randomized per process and carries no format
+        // punctuation, so no captured value can collide with it or expand.
         FormatProjection projection = FormatProjection.Create("list-sessions", version);
         return projection.FramedFieldCount == projection.Fields.Count
             && !projection.Template.Contains('\t', StringComparison.Ordinal)

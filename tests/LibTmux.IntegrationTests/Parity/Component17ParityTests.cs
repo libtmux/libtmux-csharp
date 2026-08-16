@@ -74,10 +74,8 @@ public sealed class Component17ParityTests
 
     private static bool ProvesExceptionsShareARoot()
     {
-        // Python gives every libtmux failure one base to catch, and so does
-        // this. A few answer to a framework base instead, chosen because that
-        // is what a caller already writes a handler for: a stale handle is a
-        // state mistake, and a wait that ran out is a timeout.
+        // Every libtmux failure shares one base, except a stale handle (an
+        // InvalidOperationException) and a timed-out wait (a TimeoutException).
         Dictionary<string, Type> byDesign = new(StringComparer.Ordinal)
         {
             [nameof(StaleServerGenerationException)] = typeof(InvalidOperationException),
@@ -138,9 +136,8 @@ public sealed class Component17ParityTests
                 logger: logger),
             token);
 
-        // Python gives each module a logger of its own. Every tmux command here
-        // passes through one dispatcher, so one recorder covers all of them and
-        // a command is recorded once rather than once per module that helped.
+        // Every tmux command passes through one dispatcher, so one recorder
+        // covers them all and logs a command once, not once per helper module.
         logger.Clear();
         Session session = await TestHierarchy.RequireFirstSessionAsync(server, token);
         await session.Options.SetAsync(new SetOptionRequest("@recorded", "yes"), token);

@@ -6,11 +6,8 @@ namespace LibTmux.UnitTests.Query;
 
 /// <summary>Proves a query document is treated as input rather than as instructions.</summary>
 /// <remarks>
-/// The point of a portable query document is that it can arrive from somewhere
-/// else, which makes deserialization a trust boundary. These tests pin the
-/// refusals that make the boundary real: the declared limits have to hold on the
-/// way in, not only on the way out, and a document does not get to nominate the
-/// schema it will be read under.
+/// Deserialization is this library's trust boundary: declared limits must hold
+/// while reading a document, and a document cannot nominate its own schema.
 /// </remarks>
 public sealed class QueryJsonTrustBoundaryTests
 {
@@ -79,9 +76,8 @@ public sealed class QueryJsonTrustBoundaryTests
     [Fact]
     public void Regex_options_outside_the_supported_set_are_refused()
     {
-        // The value arrives as an integer, so without a check any bit pattern
-        // becomes a flags enum. 1024 is RegexOptions.NonBacktracking, which
-        // translation never emits.
+        // An unchecked integer becomes any bit pattern as a flags enum; 1024 is
+        // RegexOptions.NonBacktracking, which this library's translation never emits.
         string json = Document(
             """
             {"kind":"regex","input":{"kind":"field","target":"session","name":"session_name"},
@@ -94,9 +90,8 @@ public sealed class QueryJsonTrustBoundaryTests
     [Fact]
     public void A_field_outside_the_catalog_cannot_be_read_from_an_element()
     {
-        // A FieldNode is forgeable, so the interpreter cannot assume one it is
-        // handed came from translation. Resolving an unknown name by convention
-        // would read any public property on the element.
+        // A FieldNode is forgeable, so the interpreter can't trust one came from
+        // translation; resolving names by convention would expose any public property.
         QueryDocument forged = new(
             QueryDocument.CurrentSchema,
             QueryDocument.CurrentVersion,

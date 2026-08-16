@@ -98,14 +98,12 @@ public sealed class Component15ParityTests
         Pane pane,
         CancellationToken token)
     {
-        // Python mixes the hook methods into every object. Here each object
-        // carries an accessor that knows its own table.
-        //
-        // A hook only exists in the table its own scope names. tmux accepts a
-        // window hook set globally and then keeps nothing, so each accessor is
-        // exercised with a hook that belongs to it.
+        // Python mixes the hook methods into every object; here each accessor
+        // owns its own table.
         (TmuxHooks Hooks, string Name)[] scopes =
         [
+            // Each scope is exercised with a hook it owns: tmux keeps a window
+            // hook set globally rather than placing it in the window's table.
             (server.Hooks, "alert-bell"),
             (session.Hooks, "alert-bell"),
             (window.Hooks, "window-renamed"),

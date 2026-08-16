@@ -185,9 +185,8 @@ public sealed class Component11ParityTests
     {
         await window.SplitPaneAsync(cancellationToken: token);
 
-        // where()/find_where() become one expression surface over captured
-        // rows. It translates the closed catalog of tmux format fields rather
-        // than typed handle members, so a caller filters what tmux reported.
+        // where()/find_where() become one expression surface over captured rows,
+        // filtering tmux's reported format fields rather than handle members.
         IReadOnlyList<Pane> panes = await window.GetPanesAsync(token);
         IReadOnlyList<PaneRow> rows = [.. panes.Select(pane => new PaneRow(pane.Id.ToString()))];
         string first = panes[0].Id.ToString();

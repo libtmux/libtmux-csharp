@@ -5,10 +5,9 @@ namespace LibTmux.PackageConsumer;
 
 /// <summary>Uses the library the way a downstream project would.</summary>
 /// <remarks>
-/// This reaches the library through the built package rather than through a
-/// project reference, so it fails when the package is missing an assembly,
-/// targets the wrong frameworks, or hides something a caller needs. None of
-/// that is visible from inside the repository.
+/// Reaches the library through the built package, not a project reference, to
+/// catch a missing assembly, wrong target framework, or gap invisible from
+/// inside the repository.
 /// </remarks>
 [UnsupportedOSPlatform("windows")]
 internal static class Program
