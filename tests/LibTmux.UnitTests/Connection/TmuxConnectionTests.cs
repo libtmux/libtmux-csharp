@@ -256,6 +256,100 @@ public sealed class ConnectionValueTests
     }
 
     [Fact]
+    public void The_environment_names_the_socket_a_connection_left_unqualified()
+    {
+        // What this buys is a process moving every unqualified connection at
+        // once -- a test harness, a sandbox, an example -- without the call
+        // sites in between naming a socket they should not have to know about.
+        var connection = CreateFakeConnection(
+            new ServerConnectionOptions(childEnvironment: ChildEnvironment(
+                ("LIBTMUX_SOCKET_NAME", "libtmux-example-connect"))));
+
+        Assert.Equal(["-L", "libtmux-example-connect"], connection.PrefixArguments);
+    }
+
+    [Fact]
+    public void An_environment_socket_path_outranks_an_environment_socket_name()
+    {
+        // The same order the options themselves use: a path says exactly which
+        // socket, and a name only says which one under a root.
+        string path = Path.Combine(Path.GetTempPath(), "libtmux-env.sock");
+        var connection = CreateFakeConnection(
+            new ServerConnectionOptions(childEnvironment: ChildEnvironment(
+                ("LIBTMUX_SOCKET_PATH", path),
+                ("LIBTMUX_SOCKET_NAME", "ignored"))));
+
+        Assert.Equal(["-S", Path.GetFullPath(path)], connection.PrefixArguments);
+    }
+
+    // A caller who answered the question is not asked it again. Anything else
+    // would let an exported variable redirect a connection that was explicit
+    // about where it goes, in each of the three ways there are to be explicit.
+    [Fact]
+    public void An_explicit_socket_name_ignores_the_environment()
+    {
+        var connection = CreateFakeConnection(new ServerConnectionOptions(
+            socketName: "named",
+            childEnvironment: ChildEnvironment(("LIBTMUX_SOCKET_NAME", "ignored"))));
+
+        Assert.Equal(["-L", "named"], connection.PrefixArguments);
+    }
+
+    [Fact]
+    public void A_socket_name_factory_ignores_the_environment()
+    {
+        var connection = CreateFakeConnection(new ServerConnectionOptions(
+            socketNameFactory: static () => "made",
+            childEnvironment: ChildEnvironment(("LIBTMUX_SOCKET_NAME", "ignored"))));
+
+        Assert.Equal(["-L", "made"], connection.PrefixArguments);
+    }
+
+    [Fact]
+    public void An_explicit_socket_name_ignores_an_environment_socket_path()
+    {
+        var connection = CreateFakeConnection(new ServerConnectionOptions(
+            socketName: "named",
+            childEnvironment: ChildEnvironment(
+                ("LIBTMUX_SOCKET_PATH", "/tmp/libtmux-ignored.sock"))));
+
+        Assert.Equal(["-L", "named"], connection.PrefixArguments);
+    }
+
+    [Fact]
+    public void This_process_answers_when_the_child_environment_says_nothing()
+    {
+        // The child environment is what a connection's tmux clients will run
+        // with, so it answers first. A process that exported the variable for
+        // itself still expects it to hold.
+        const string Name = "libtmux-process-scoped";
+        string? before = Environment.GetEnvironmentVariable("LIBTMUX_SOCKET_NAME");
+        Environment.SetEnvironmentVariable("LIBTMUX_SOCKET_NAME", Name);
+        try
+        {
+            var connection = CreateFakeConnection(new ServerConnectionOptions());
+
+            Assert.Equal(["-L", Name], connection.PrefixArguments);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LIBTMUX_SOCKET_NAME", before);
+        }
+    }
+
+    private static Dictionary<string, string?> ChildEnvironment(
+        params (string Name, string Value)[] variables)
+    {
+        Dictionary<string, string?> environment = new(StringComparer.Ordinal);
+        foreach ((string name, string value) in variables)
+        {
+            environment[name] = value;
+        }
+
+        return environment;
+    }
+
+    [Fact]
     public void Named_endpoint_identity_uses_the_normalized_effective_socket_root()
     {
         string firstRoot = Path.Combine(Path.GetTempPath(), "libtmux-root-one");

@@ -318,9 +318,20 @@ internal sealed class TmuxConnection
     private static ResolvedConnection Resolve(ServerConnectionOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        string? socketPath = options.SocketPath is null
-            ? null
-            : Path.GetFullPath(options.SocketPath);
+
+        // A caller who named a socket, in any of the three ways there are to
+        // name one, has already answered the question. The environment is only
+        // consulted for a connection that asked for nothing, which is what
+        // lets a process move every unqualified connection at once without
+        // every call site learning about it.
+        bool chosen = options.SocketPath is not null
+            || options.SocketName is not null
+            || options.SocketNameFactory is not null;
+
+        string? socketPath = options.SocketPath is not null
+            ? Path.GetFullPath(options.SocketPath)
+            : NormalizeSocketPath(
+                chosen ? null : ReadVariable(options.ChildEnvironment, SocketPathVariable));
         string? socketName = null;
         IReadOnlyDictionary<string, string?>? childEnvironment = options.ChildEnvironment;
         EndpointIdentity endpointIdentity;
@@ -337,6 +348,9 @@ internal sealed class TmuxConnection
                 }
             }
 
+            socketName ??= chosen
+                ? null
+                : ReadVariable(options.ChildEnvironment, SocketNameVariable);
             socketName ??= "default";
             ResolvedSocketRoot socketRoot = ResolveSocketRoot(options.ChildEnvironment);
             childEnvironment = FreezeSocketRoot(
@@ -356,16 +370,38 @@ internal sealed class TmuxConnection
             childEnvironment);
     }
 
+    /// <summary>Names the socket every unqualified connection should use.</summary>
+    private const string SocketNameVariable = "LIBTMUX_SOCKET_NAME";
+
+    /// <summary>Locates the socket every unqualified connection should use.</summary>
+    private const string SocketPathVariable = "LIBTMUX_SOCKET_PATH";
+
+    /// <summary>Reads a variable the child would see, falling back to this process.</summary>
+    /// <remarks>
+    /// A connection's child environment is what its tmux clients will run
+    /// with, so it is what a variable means for that connection. Only when it
+    /// says nothing does this process's own environment answer.
+    /// </remarks>
+    private static string? ReadVariable(
+        IReadOnlyDictionary<string, string?>? childEnvironment,
+        string name)
+    {
+        string? value;
+        if (childEnvironment is null || !childEnvironment.TryGetValue(name, out value))
+        {
+            value = Environment.GetEnvironmentVariable(name);
+        }
+
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static string? NormalizeSocketPath(string? socketPath) =>
+        socketPath is null ? null : Path.GetFullPath(socketPath);
+
     private static ResolvedSocketRoot ResolveSocketRoot(
         IReadOnlyDictionary<string, string?>? childEnvironment)
     {
-        string? configuredRoot;
-        if (childEnvironment is null
-            || !childEnvironment.TryGetValue("TMUX_TMPDIR", out configuredRoot))
-        {
-            configuredRoot = Environment.GetEnvironmentVariable("TMUX_TMPDIR");
-        }
-
+        string? configuredRoot = ReadVariable(childEnvironment, "TMUX_TMPDIR");
         if (string.IsNullOrEmpty(configuredRoot))
         {
             return new ResolvedSocketRoot(
