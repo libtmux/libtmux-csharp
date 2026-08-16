@@ -40,11 +40,6 @@ def git(repository: pathlib.Path, *arguments: str) -> str:
     ------
     SourceBindingError
         When Git is unavailable or reports failure.
-
-    Examples
-    --------
-    >>> callable(git)
-    True
     """
     try:
         completed = subprocess.run(

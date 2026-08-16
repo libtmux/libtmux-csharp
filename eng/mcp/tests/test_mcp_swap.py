@@ -669,8 +669,6 @@ def test_use_local_populates_swapped_at_and_seq_no(
     # that goes into the backup filename, so checking format suffices.
     assert len(entry.swapped_at) == 14 and entry.swapped_at.isdigit()
     assert entry.swapped_at in entry.backup_path
-    # First swap on a clean state starts at zero; subsequent swaps
-    # increment.
     assert entry.seq_no == 0
 
 
@@ -763,8 +761,6 @@ def test_lifo_revert_orders_by_seq_no_not_dict_iteration(
     args = mcp_swap.build_parser().parse_args(["revert", "--cli", "claude"])
     assert mcp_swap.cmd_revert(args) == 0
 
-    # LIFO: seq_no=1 (claude:user) restored first, seq_no=0 (claude:project)
-    # restored second. Final file contents = older backup = "ORIGINAL".
     assert info.config_path.read_text() == "ORIGINAL\n"
 
 
@@ -775,8 +771,6 @@ def test_non_claude_scope_user_passes_through_to_global_config(
     info = mcp_swap.CLIS["cursor"]
     _write_json(info.config_path, {"mcpServers": {"tmux": _pinned_json_entry()}})
 
-    # Pass --scope user explicitly: should write the same global entry as
-    # if the flag were absent (cursor has no per-project layer).
     args = mcp_swap.build_parser().parse_args(
         [
             "use",
@@ -1134,7 +1128,6 @@ def test_use_local_returns_clean_error_on_malformed_claude_user_mcpServers(
     assert rc == 1
     assert "[claude:user]" in captured.err
     assert "layout appears to have changed" in captured.err
-    # No Python traceback should reach the user — only the formatted error.
     assert "Traceback" not in captured.err
 
 
@@ -1170,9 +1163,7 @@ def test_status_continues_to_other_clis_on_malformed_claude(
     )
     captured = capsys.readouterr()
     assert rc == 0
-    # Cursor line still printed despite Claude being malformed.
     assert "[cursor]" in captured.out
-    # Claude error printed to stderr, not stdout — and no traceback.
     assert "[claude]" in captured.err
     assert "layout appears to have changed" in captured.err
     assert "Traceback" not in captured.err
@@ -2275,16 +2266,10 @@ def test_preflight_passes_spec_env_to_the_process(tmp_path: pathlib.Path) -> Non
 # ---------------------------------------------------------------------------
 # JSON writer fidelity
 #
-# The swap edits one entry inside a file the user owns, so bytes it did
-# not set out to change must survive the rewrite. ``load_config`` ->
-# ``dump_config_bytes`` is the whole write path, so an unmodified config
-# has to come back byte-identical.
-#
-# Out of scope, and normalized rather than preserved: indent width, CRLF,
-# `\/` and `\uXXXX` escapes of characters that need none, duplicate keys,
-# and number spelling (`1e5` -> `100000.0`). None appear in what the JSON
-# CLIs write — they all emit `JSON.stringify(x, null, 2)` — and none
-# change what a CLI reads, only the bytes a dotfile diff shows.
+# An unmodified config must round-trip load_config -> dump_config_bytes
+# byte-identical. Not guaranteed: indent width, CRLF, `\/` and `\uXXXX`
+# escapes, duplicate keys, and number spelling (`1e5` -> `100000.0`) --
+# none appear in real JSON-CLI output, and none change what a CLI reads.
 # ---------------------------------------------------------------------------
 
 
@@ -2964,12 +2949,8 @@ def test_revert_uses_the_original_target_when_a_config_link_is_replaced(
 # ---------------------------------------------------------------------------
 # opencode and pi
 #
-# These two exercise axes the first six never did. opencode is the first
-# JSONC config, the first container key that is not ``mcpServers`` or
-# ``mcp_servers``, and the first entry dialect that packs argv into one
-# array; pi is the first CLI whose config is read by an extension rather
-# than by the agent itself. The comment-fidelity cases are the point of
-# the JSONC codec, so they are asserted on bytes, not on parsed values.
+# opencode adds JSONC, a non-mcpServers container key, and an argv-array
+# dialect; pi's config is read by an extension, not the agent itself.
 # ---------------------------------------------------------------------------
 
 
@@ -3303,13 +3284,10 @@ def test_detect_reports_the_pi_adapter_prerequisite(
 # ---------------------------------------------------------------------------
 # JSONC writer fidelity
 #
-# The JSON writer reserializes the whole document, so it can only promise
-# to preserve values. The JSONC writer splices text and therefore promises
-# bytes: anything it did not deliberately change must come back identical,
-# including the comments, the trailing comma, the indent width and the
-# absence of a final newline. The string cases exist because a
-# comment-stripper that is not string-aware corrupts a URL or a Windows
-# path silently, which is the worst failure this codec could have.
+# Unlike the JSON writer (values only), the JSONC splice writer promises
+# byte-identical untouched regions, including comments and formatting;
+# string-aware scanning matters because a naive stripper corrupts
+# URLs/paths silently.
 # ---------------------------------------------------------------------------
 
 

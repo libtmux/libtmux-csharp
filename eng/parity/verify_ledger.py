@@ -896,13 +896,7 @@ def validate_error_policies(
 
 
 def main() -> int:
-    """Run ledger and version-matrix validation.
-
-    Examples
-    --------
-    >>> callable(main)
-    True
-    """
+    """Run ledger and version-matrix validation."""
     violations = validate(
         load_document("python-public-api.json"),
         approval_snapshot(load_document("parity-ledger.json")),

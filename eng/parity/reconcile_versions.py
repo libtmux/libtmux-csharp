@@ -417,11 +417,6 @@ def source_content_fingerprint(
     mode, and bytes. Evidence outputs and the reconciliation document can be
     excluded so writing or committing those metadata files closes over the
     same tested source identity.
-
-    Examples
-    --------
-    >>> callable(source_content_fingerprint)
-    True
     """
     repository = repository.resolve()
     excluded: list[pathlib.PurePosixPath] = []

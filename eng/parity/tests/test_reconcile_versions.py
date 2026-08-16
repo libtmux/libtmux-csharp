@@ -30,13 +30,7 @@ def load_reconciler() -> dict[str, t.Any]:
 
 
 def load_generator() -> dict[str, t.Any]:
-    """Load the parity generator as an import-free test namespace.
-
-    Examples
-    --------
-    >>> callable(load_generator)
-    True
-    """
+    """Load the parity generator as an import-free test namespace."""
     return runpy.run_path(
         str(pathlib.Path(__file__).parents[1] / "generate_inventory.py")
     )

@@ -37,8 +37,9 @@ def version_validator() -> t.Callable[[dict[str, t.Any]], list[str]]:
 
     Examples
     --------
-    >>> callable(version_validator())
-    True
+    >>> validate = version_validator()
+    >>> validate({"capabilities": []})
+    ['missing required capabilities']
     """
     namespace = runpy.run_path(
         str(pathlib.Path(__file__).parents[1] / "reconcile_versions.py")
