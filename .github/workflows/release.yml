@@ -52,7 +52,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
       - name: Install tmux
         # The consumer proof drives a real server rather than a stub.
@@ -140,7 +140,7 @@ jobs:
         # Signed provenance says which workflow, at which commit, on which
         # runner, built each file. Trusted publishing already proves the push
         # came from this repository; this proves the same about the bytes.
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.1.0
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v2.1.0
         with:
           subject-path: 'artifacts/packages/*.nupkg'
 
