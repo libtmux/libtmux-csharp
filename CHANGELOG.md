@@ -34,9 +34,16 @@ version.
   endpoint, server generation, and pane. Search and every serialized tool
   result now obey hard global line and UTF-8 byte ceilings.
 - MCP Tasks admit at most eight active executions, retain a bounded result set,
-  and apply only to waits and job collection. `tmux_run` is synchronous again;
-  work that must survive a client disconnect uses `tmux_start_job` and
-  `tmux_job` instead.
+  and apply only to waits and job collection.
+- **`tmux_run` no longer answers as an MCP task.**
+
+  - Previous behaviour: a task-capable client received a task handle and
+    collected the result later.
+  - New behaviour: the call blocks until the command exits, for every client.
+  - Reason: an SDK task carries no durable tmux handle, so a client that
+    disconnected lost work it believed was parked.
+  - Recommended action: use `tmux_start_job` and `tmux_job`. tmux owns that
+    handle, so it survives a disconnect.
 
 ### Fixed
 
