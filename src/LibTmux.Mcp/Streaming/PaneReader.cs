@@ -207,6 +207,8 @@ internal static class PaneReader
     {
         IReadOnlyList<string> previousRows = RowsFromOffset(capturedRows, previousOffset);
         List<string> reported = DropAlreadySeen(previousRows, cursor);
+        // Rows above the previous anchor carry no recorded digest, so a cursor
+        // that moved up reports them rather than risk dropping a rewrite.
         if (cursorOffset < previousOffset)
         {
             reported.InsertRange(
