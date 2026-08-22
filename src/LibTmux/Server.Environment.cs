@@ -4,7 +4,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Resolves a server from tmux's exported environment.</summary>
+// Resolves a server from tmux's exported environment.
 public sealed partial class Server
 {
     /// <summary>Returns the server whose pane this process was spawned in.</summary>
@@ -22,6 +22,14 @@ public sealed partial class Server
     public static Server FromEnvironment(
         IReadOnlyDictionary<string, string>? environment = null)
     {
+        if (TmuxEnvironmentVariables.HasPsmuxMarker(environment)
+            || TmuxEnvironmentVariables.LooksLikePsmuxServer(environment))
+        {
+            throw new TmuxObjectNotFoundException(
+                "A psmux environment cannot select the audited executable safely; open it with explicit connection options.",
+                TmuxEnvironmentVariables.ServerVariable);
+        }
+
         if (!TmuxEnvironmentVariables.TryRead(environment, out TmuxServerLocation? entry))
         {
             throw new TmuxObjectNotFoundException(

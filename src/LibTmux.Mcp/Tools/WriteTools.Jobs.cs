@@ -16,13 +16,14 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels sending the command.</param>
     /// <returns>The handle to collect it with.</returns>
-    [McpServerTool(Name = "tmux_start_job", Destructive = false, OpenWorld = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_start_job", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description(
         "Start a shell command in a pane and return a job handle IMMEDIATELY, without "
         + "waiting. Use for anything that may run longer than a few seconds — a build, "
         + "a test suite, a deploy — so you can do other work and collect the result "
         + "later with tmux_job. The command keeps running in the pane regardless of "
-        + "what you do next.")]
+        + "what you do next. If cancellation races dispatch, call tmux_list_jobs: "
+        + "a possibly started command keeps a recoverable handle.")]
     public async Task<JobInfo> StartJobAsync(
         [Description("The shell command to run.")] string command,
         [Description("The pane id, such as %1. Omit for the active pane.")]
@@ -36,7 +37,13 @@ public sealed partial class WriteTools
         Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
         Pane pane = await TmuxTargets.PaneAsync(server, paneId, cancellationToken)
             .ConfigureAwait(false);
-        return await _jobs.StartAsync(server, pane, command, suppressHistory, cancellationToken)
+        return await _jobs.StartAsync(
+                server,
+                pane,
+                command,
+                suppressHistory,
+                _policy.MaxBytes,
+                cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -67,15 +74,16 @@ public sealed partial class WriteTools
         double? waitSeconds = null,
         [Description("The most output lines to return, newest kept.")]
         int? maxLines = null,
-        [Description("The tmux socket to use. Omit for the default server.")]
+        [Description(
+            "The originating tmux socket. Omit to use the endpoint recorded by "
+            + "tmux_start_job; a supplied socket must match it.")]
         string? socketName = null,
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        JobInfo job = _jobs.Get(jobId);
-        Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
-        Pane pane = await TmuxTargets.PaneAsync(server, job.PaneId, cancellationToken)
-            .ConfigureAwait(false);
+        JobStore.StoredJob stored = _jobs.Resolve(jobId, socketName);
+        JobInfo job = stored.Describe();
+        Pane pane = stored.Pane;
 
         if (waitSeconds is double seconds && job.State == JobState.Running)
         {
@@ -84,29 +92,31 @@ public sealed partial class WriteTools
                 .WatchAsync(pane, cancellationToken)
                 .ConfigureAwait(false);
             await WaitForFinishAsync(
-                    jobId,
-                    pane.Id.ToString(),
+                    stored,
+                    pane,
                     budget,
                     progress,
                     cancellationToken)
                 .ConfigureAwait(false);
-            job = _jobs.Get(jobId);
+            job = stored.Describe();
         }
 
-        TailCursor? cursor = TailCursor.Decode(_jobs.CursorFor(jobId));
+        using JobStore.StoredJob.OutputLease output = await stored
+            .AcquireOutputAsync(cancellationToken)
+            .ConfigureAwait(false);
+        TailCursor? cursor = TailCursor.Decode(output.Cursor, pane);
         PaneRead read = cursor is null
             ? await PaneReader.ReadVisibleAsync(pane, null, cancellationToken).ConfigureAwait(false)
             : await PaneReader.ReadSinceAsync(pane, cursor, cancellationToken).ConfigureAwait(false);
 
-        _jobs.Advance(jobId, TailCursor.Build(pane.Id.ToString(), read.State, read.CursorRows).Encode());
-
-        return new JobReport(
-            job,
-            BoundedText.Fit(
-                PaneText.Scrub(read.Lines, pane.Width),
-                maxLines ?? _policy.MaxLines,
-                _policy.MaxBytes),
+        JobReport report = FitJobReport(
+            stored.Describe(),
+            PaneText.Scrub(read.Lines, pane.Width),
+            maxLines ?? _policy.MaxLines,
             read.LinesMissed);
+        string nextCursor = TailCursor.Build(pane, read.State, read.CursorRows).Encode();
+        output.Advance(nextCursor);
+        return report;
     }
 
     /// <summary>Lists the jobs this server still remembers.</summary>
@@ -116,64 +126,121 @@ public sealed partial class WriteTools
         "List the background jobs this server started and still remembers, newest "
         + "first. A job is forgotten when the server restarts, but its command keeps "
         + "running in its pane.")]
-    public IReadOnlyList<JobInfo> ListJobs() => _jobs.List();
+    public JobList ListJobs() => _jobs.List(_policy.MaxBytes);
 
     /// <summary>Interrupts a job.</summary>
     /// <param name="jobId">The handle.</param>
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels sending the interrupt.</param>
     /// <returns>The job.</returns>
-    [McpServerTool(Name = "tmux_cancel_job", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_cancel_job", Destructive = true, OpenWorld = false, UseStructuredContent = true)]
     [Description(
         "Interrupt a background job by sending its pane Ctrl-C. This is a request, not "
         + "a guarantee: a program that ignores SIGINT keeps running. Check the pane's "
-        + "current_command afterwards to see whether it actually stopped.")]
+        + "currentCommand afterwards to see whether it actually stopped.")]
     public async Task<JobInfo> CancelJobAsync(
         [Description("The job handle from tmux_start_job.")] string jobId,
-        [Description("The tmux socket to use. Omit for the default server.")]
+        [Description(
+            "The originating tmux socket. Omit to use the endpoint recorded by "
+            + "tmux_start_job; a supplied socket must match it.")]
         string? socketName = null,
         CancellationToken cancellationToken = default)
-    {
-        JobInfo job = _jobs.Get(jobId);
-        Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
-        Pane pane = await TmuxTargets.PaneAsync(server, job.PaneId, cancellationToken)
-            .ConfigureAwait(false);
-        return await _jobs.CancelAsync(pane, jobId, cancellationToken).ConfigureAwait(false);
-    }
+        => await _jobs.CancelAsync(jobId, socketName, cancellationToken).ConfigureAwait(false);
 
     private async Task WaitForFinishAsync(
-        string jobId,
-        string paneId,
+        JobStore.StoredJob job,
+        Pane pane,
         TimeSpan budget,
         IProgress<ProgressNotificationValue>? progress,
         CancellationToken cancellationToken)
     {
+        string paneId = pane.Id.ToString();
         DateTimeOffset started = DateTimeOffset.UtcNow;
         DateTimeOffset deadline = started + budget;
         while (DateTimeOffset.UtcNow < deadline)
         {
+            if (job.State != JobState.Running)
+            {
+                return;
+            }
+
             ReadTools.Report(
                 progress,
                 DateTimeOffset.UtcNow - started,
                 budget,
-                $"job {jobId} still running in {paneId}");
-            if (_jobs.Get(jobId).State != JobState.Running)
+                $"job {job.JobId} still running in {paneId}");
+            object? signal = _activity.CaptureSignal(pane);
+            if (job.State != JobState.Running)
             {
                 return;
             }
 
-            object? signal = _activity.CaptureSignal(paneId);
-            if (_jobs.Get(jobId).State != JobState.Running)
+            TimeSpan remaining = deadline - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero)
             {
                 return;
             }
 
-            await _activity.WaitForActivityAsync(
-                    paneId,
-                    signal,
-                    deadline - DateTimeOffset.UtcNow,
+            if (await WaitForTerminalOrActivityAsync(
+                    job,
+                    token => _activity.WaitForActivityAsync(
+                        paneId,
+                        signal,
+                        remaining,
+                        token),
                     cancellationToken)
-                .ConfigureAwait(false);
+                .ConfigureAwait(false))
+            {
+                return;
+            }
         }
     }
+
+    internal static async Task<bool> WaitForTerminalOrActivityAsync(
+        JobStore.StoredJob job,
+        Func<CancellationToken, Task<bool>> waitForActivity,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        ArgumentNullException.ThrowIfNull(waitForActivity);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (job.State != JobState.Running)
+        {
+            return true;
+        }
+
+        using CancellationTokenSource activityCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<bool> activity = waitForActivity(activityCancellation.Token);
+        Task completed = await Task.WhenAny(job.Terminal, activity).ConfigureAwait(false);
+        if (completed == job.Terminal)
+        {
+            await activityCancellation.CancelAsync().ConfigureAwait(false);
+            try
+            {
+                _ = await activity.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (activityCancellation.IsCancellationRequested)
+            {
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return true;
+        }
+
+        _ = await activity.ConfigureAwait(false);
+        return job.State != JobState.Running;
+    }
+
+    private JobReport FitJobReport(
+        JobInfo job,
+        IReadOnlyList<string> lines,
+        int maxLines,
+        bool linesMissed) =>
+        StructuredTextResultBudget.Fit(
+            lines,
+            maxLines,
+            _policy.MaxBytes,
+            output => new JobReport(job, output, linesMissed),
+            "job result");
 }

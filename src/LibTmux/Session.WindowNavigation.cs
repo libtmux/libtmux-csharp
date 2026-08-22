@@ -1,8 +1,9 @@
 using System.Runtime.Versioning;
+using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Moves between a session's windows and owns ones it creates.</summary>
+// Moves between a session's windows and owns ones it creates.
 public sealed partial class Session
 {
     /// <summary>Selects the window that was last active.</summary>
@@ -11,9 +12,10 @@ public sealed partial class Session
     [UnsupportedOSPlatform("windows")]
     public async Task<Window> SelectLastWindowAsync(CancellationToken cancellationToken = default)
     {
-        await RunAsync(["last-window", "-t", _id.ToString()], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["last-window", "-t", _id.ToString()], cancellationToken),
+                () => ActiveWindowAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await ActiveWindowAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Creates a window in this session and takes ownership of it.</summary>
@@ -25,8 +27,11 @@ public sealed partial class Session
         NewWindowRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        Window created = await CreateWindowAsync(request, cancellationToken).ConfigureAwait(false);
-        return new OwnedWindowScope(created);
+        var sequence = new TmuxMutationSequence();
+        Window created = await sequence
+            .MutateAsync(() => CreateWindowAsync(request, cancellationToken))
+            .ConfigureAwait(false);
+        return sequence.Observe(() => new OwnedWindowScope(created));
     }
 }
 

@@ -4,7 +4,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides window hierarchy relations.</summary>
+// Provides window hierarchy relations.
 public sealed partial class Window
 {
     private readonly Server? _owner;

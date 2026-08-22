@@ -72,4 +72,90 @@ public sealed class TmuxEnvironmentTests
         Assert.Equal("/tmp/tmux-1000/default", server.ConnectionOptions.SocketPath);
         Assert.False(server.IsMaterialized);
     }
+
+    [Fact]
+    public void Resolving_psmux_fails_closed_before_selecting_a_path_executable()
+    {
+        const string RawTmux = "/tmp/psmux-4242/team,53123,0";
+        TmuxObjectNotFoundException error = Assert.Throws<TmuxObjectNotFoundException>(
+            () => Server.FromEnvironment(
+                Env(("TMUX", RawTmux), ("PSMUX_SESSION", "work"))));
+
+        Assert.Equal("TMUX", error.Target);
+        Assert.Contains("explicit connection options", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resolving_default_psmux_fails_closed_on_ambiguous_routing()
+    {
+        TmuxObjectNotFoundException error = Assert.Throws<TmuxObjectNotFoundException>(
+            () => Server.FromEnvironment(
+                Env(
+                    ("TMUX", "/tmp/psmux-4242/default,53123,0"),
+                    ("PSMUX_SESSION", "work"))));
+
+        Assert.Equal("TMUX", error.Target);
+    }
+
+    [Fact]
+    public void A_psmux_marker_with_an_unverified_tmux_value_fails_closed()
+    {
+        TmuxObjectNotFoundException error = Assert.Throws<TmuxObjectNotFoundException>(
+            () => Server.FromEnvironment(
+                Env(
+                    ("TMUX", "/tmp/tmux-1000/default,4242,3"),
+                    ("PSMUX_SESSION", "work"))));
+
+        Assert.Equal("TMUX", error.Target);
+    }
+
+    [Fact]
+    public void An_empty_psmux_marker_still_fails_closed()
+    {
+        TmuxObjectNotFoundException error = Assert.Throws<TmuxObjectNotFoundException>(
+            () => Server.FromEnvironment(
+                Env(
+                    ("TMUX", "/tmp/psmux-4242/team,53123,0"),
+                    ("PSMUX_SESSION", string.Empty))));
+
+        Assert.Equal("TMUX", error.Target);
+    }
+
+    [Fact]
+    public void A_psmux_shaped_server_without_its_marker_fails_closed()
+    {
+        TmuxObjectNotFoundException error = Assert.Throws<TmuxObjectNotFoundException>(
+            () => Server.FromEnvironment(
+                Env(("TMUX", "/tmp/psmux-4242/team,53123,0"))));
+
+        Assert.Equal("TMUX", error.Target);
+    }
+
+    [Theory]
+    [InlineData("tmux", "psmux_session")]
+    [InlineData("TmUx", "PsMuX_SeSsIoN")]
+    public void Psmux_environment_detection_is_case_insensitive(
+        string tmuxVariable,
+        string psmuxVariable)
+    {
+        TmuxObjectNotFoundException error = Assert.Throws<TmuxObjectNotFoundException>(
+            () => Server.FromEnvironment(
+                Env(
+                    (tmuxVariable, "/tmp/psmux-4242/team,53123,0"),
+                    (psmuxVariable, "work"))));
+
+        Assert.Equal("TMUX", error.Target);
+    }
+
+    [Fact]
+    public void Lowercase_psmux_marker_rejects_an_otherwise_regular_tmux_environment()
+    {
+        TmuxObjectNotFoundException error = Assert.Throws<TmuxObjectNotFoundException>(
+            () => Server.FromEnvironment(
+                Env(
+                    ("TMUX", "/tmp/tmux-1000/default,4242,3"),
+                    ("psmux_session", "work"))));
+
+        Assert.Equal("TMUX", error.Target);
+    }
 }

@@ -227,8 +227,13 @@ public sealed class TmuxHooks
         ArgumentNullException.ThrowIfNull(request);
         List<string> arguments = BuildSetArguments(request);
 
-        await DispatchAsync(arguments, request.Name, cancellationToken).ConfigureAwait(false);
-        return await ReadBackAsync(request.Name, request.Scope, request.Global, cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => DispatchAsync(arguments, request.Name, cancellationToken),
+                () => ReadBackAsync(
+                    request.Name,
+                    request.Scope,
+                    request.Global,
+                    cancellationToken))
             .ConfigureAwait(false);
     }
 
@@ -242,16 +247,17 @@ public sealed class TmuxHooks
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var sequence = new TmuxMutationSequence();
         if (request.ClearExisting)
         {
-            await SetAsync(
-                    new SetHookRequest(
-                        request.Name,
-                        string.Empty,
-                        request.Scope,
-                        request.Global,
-                        unset: true),
-                    cancellationToken)
+            await sequence.MutateAsync(() => SetAsync(
+                new SetHookRequest(
+                    request.Name,
+                    string.Empty,
+                    request.Scope,
+                    request.Global,
+                    unset: true),
+                cancellationToken))
                 .ConfigureAwait(false);
         }
 
@@ -266,10 +272,17 @@ public sealed class TmuxHooks
             AddTarget(arguments, request.Scope);
             arguments.Add(indexed);
             arguments.Add(entry.Value);
-            await DispatchAsync(arguments, request.Name, cancellationToken).ConfigureAwait(false);
+            await sequence
+                .MutateAsync(() => DispatchAsync(arguments, request.Name, cancellationToken))
+                .ConfigureAwait(false);
         }
 
-        return await ReadBackAsync(request.Name, request.Scope, request.Global, cancellationToken)
+        return await sequence
+            .ObserveAsync(() => ReadBackAsync(
+                request.Name,
+                request.Scope,
+                request.Global,
+                cancellationToken))
             .ConfigureAwait(false);
     }
 

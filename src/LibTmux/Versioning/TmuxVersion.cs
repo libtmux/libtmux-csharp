@@ -103,7 +103,8 @@ public readonly partial record struct TmuxVersion : IComparable<TmuxVersion>
         {
             VersionKind.Development or VersionKind.ReleaseCandidate =>
                 _sequence.CompareTo(other._sequence),
-            VersionKind.Release => ComparePatch(_patch, other._patch),
+            VersionKind.MicroRelease => _sequence.CompareTo(other._sequence),
+            VersionKind.PatchRelease => ComparePatch(_patch, other._patch),
             _ => 0,
         };
         if (comparison != 0)
@@ -141,8 +142,17 @@ public readonly partial record struct TmuxVersion : IComparable<TmuxVersion>
         string tmuxBinaryPath = "tmux",
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         ArgumentException.ThrowIfNullOrWhiteSpace(tmuxBinaryPath);
+        if (OperatingSystem.IsWindows()
+            || string.Equals(
+                Path.GetExtension(tmuxBinaryPath),
+                ".exe",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new PlatformNotSupportedException(
+                "Standalone version detection does not launch Windows executables.");
+        }
+
         var transport = new TmuxProcessTransport(tmuxBinaryPath);
         TmuxCommandResult result = await transport
             .ExecuteAsync(["-V"], cancellationToken)
@@ -286,7 +296,7 @@ public readonly partial record struct TmuxVersion : IComparable<TmuxVersion>
         left.CompareTo(right) >= 0;
 
     [GeneratedRegex(
-        "\\A(?:next-(?<nextMajor>0|[1-9][0-9]*)\\.(?<nextMinor>0|[1-9][0-9]*)|(?<major>0|[1-9][0-9]*)\\.(?<minor>0|[1-9][0-9]*)(?:(?<patch>[a-z]+)(?<patchVendor>-openbsd)?|(?<finalVendor>-openbsd)|-rc(?<rc>[1-9][0-9]*)|-dev(?:\\.(?<dev>0|[1-9][0-9]*))?)?)\\z",
+        "\\A(?:next-(?<nextMajor>0|[1-9][0-9]*)\\.(?<nextMinor>0|[1-9][0-9]*)|(?<major>0|[1-9][0-9]*)\\.(?<minor>0|[1-9][0-9]*)(?:\\.(?<micro>0|[1-9][0-9]*)|(?<patch>[a-z]+)(?<patchVendor>-openbsd)?|(?<finalVendor>-openbsd)|-rc(?<rc>[1-9][0-9]*)|-dev(?:\\.(?<dev>0|[1-9][0-9]*))?)?)\\z",
         RegexOptions.CultureInvariant)]
     private static partial Regex VersionRegex();
 
@@ -349,10 +359,21 @@ public readonly partial record struct TmuxVersion : IComparable<TmuxVersion>
                 suffix = "dev";
             }
         }
+        else if (match.Groups["micro"].Success)
+        {
+            if (!TryParseComponent(match.Groups["micro"].Value, out sequence))
+            {
+                result = default;
+                return false;
+            }
+
+            kind = VersionKind.MicroRelease;
+            suffix = sequence.ToString(CultureInfo.InvariantCulture);
+        }
         else
         {
-            kind = VersionKind.Release;
             patch = match.Groups["patch"].Success ? match.Groups["patch"].Value : null;
+            kind = patch is null ? VersionKind.Release : VersionKind.PatchRelease;
             vendor = match.Groups["patchVendor"].Success
                 || match.Groups["finalVendor"].Success;
             suffix = patch is null
@@ -410,6 +431,8 @@ public readonly partial record struct TmuxVersion : IComparable<TmuxVersion>
         Development = 1,
         ReleaseCandidate = 2,
         Release = 3,
+        MicroRelease = 4,
+        PatchRelease = 5,
     }
 
     private readonly record struct ParsedVersion(

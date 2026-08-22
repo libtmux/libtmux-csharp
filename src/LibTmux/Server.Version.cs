@@ -1,6 +1,6 @@
 namespace LibTmux;
 
-/// <summary>Provides captured tmux version metadata.</summary>
+// Provides captured tmux version metadata.
 public sealed partial class Server
 {
     /// <summary>Gets the captured tmux version.</summary>

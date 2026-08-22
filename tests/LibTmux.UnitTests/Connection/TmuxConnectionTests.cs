@@ -160,6 +160,8 @@ public sealed class ConnectionValueTests
     {
         var startInfo = new ProcessStartInfo("tmux");
         startInfo.Environment["TMUX"] = "inherited";
+        startInfo.Environment["PSMUX_SESSION"] = "inherited";
+        startInfo.Environment["PSMUX_TARGET_FULL"] = "$9";
         startInfo.Environment["REMOVE"] = "value";
         string? processTmux = Environment.GetEnvironmentVariable("TMUX");
         var overrides = new Dictionary<string, string?>
@@ -171,6 +173,8 @@ public sealed class ConnectionValueTests
         TmuxConnection.ApplyChildEnvironment(startInfo, overrides);
 
         Assert.False(startInfo.Environment.ContainsKey("TMUX"));
+        Assert.False(startInfo.Environment.ContainsKey("PSMUX_SESSION"));
+        Assert.False(startInfo.Environment.ContainsKey("PSMUX_TARGET_FULL"));
         Assert.False(startInfo.Environment.ContainsKey("REMOVE"));
         Assert.Equal("child", startInfo.Environment["ADD"]);
         Assert.Equal(processTmux, Environment.GetEnvironmentVariable("TMUX"));
@@ -180,9 +184,14 @@ public sealed class ConnectionValueTests
 
         TmuxConnection.ApplyChildEnvironment(
             overriddenStartInfo,
-            new Dictionary<string, string?> { ["TMUX"] = "explicit" });
+            new Dictionary<string, string?>
+            {
+                ["TMUX"] = "explicit",
+                ["PSMUX_SESSION"] = "explicit-session",
+            });
 
         Assert.Equal("explicit", overriddenStartInfo.Environment["TMUX"]);
+        Assert.Equal("explicit-session", overriddenStartInfo.Environment["PSMUX_SESSION"]);
         Assert.Equal(processTmux, Environment.GetEnvironmentVariable("TMUX"));
 
         var emptyStartInfo = new ProcessStartInfo("tmux");
@@ -198,6 +207,50 @@ public sealed class ConnectionValueTests
             removedStartInfo,
             new Dictionary<string, string?> { ["TMUX"] = null });
         Assert.False(removedStartInfo.Environment.ContainsKey("TMUX"));
+    }
+
+    [Fact]
+    public void Psmux_child_environment_is_forwarded_through_wslenv_without_routing_state()
+    {
+        var startInfo = new ProcessStartInfo("psmux.exe");
+        startInfo.Environment["WSLENV"] =
+            "PATH/p:psmux_session:PSMUX_DATA_DIR/p:TMUX:OTHER/l:tmux_pane:psmux_data_dir/u:psmux_route_debug/u";
+        startInfo.Environment["PSMUX_SESSION"] = "inherited";
+        startInfo.Environment["Psmux_Route_Debug"] = "1";
+        startInfo.Environment["TMUX"] = "inherited";
+        startInfo.Environment["tmux_pane"] = "%99";
+
+        TmuxConnection.ApplyChildEnvironment(
+            startInfo,
+            new Dictionary<string, string?>
+            {
+                ["PSMUX_DATA_DIR"] = "C:\\isolated\\psmux",
+            },
+            forwardPsmuxDataDirectoryThroughWsl: true);
+
+        Assert.Equal("C:\\isolated\\psmux", startInfo.Environment["PSMUX_DATA_DIR"]);
+        Assert.Equal("PATH/p:OTHER/l:PSMUX_DATA_DIR/w", startInfo.Environment["WSLENV"]);
+        Assert.False(startInfo.Environment.ContainsKey("PSMUX_SESSION"));
+        Assert.False(startInfo.Environment.ContainsKey("Psmux_Route_Debug"));
+        Assert.False(startInfo.Environment.ContainsKey("TMUX"));
+        Assert.False(startInfo.Environment.ContainsKey("tmux_pane"));
+    }
+
+    [Fact]
+    public void Psmux_child_environment_creates_wslenv_when_none_is_inherited()
+    {
+        var startInfo = new ProcessStartInfo("psmux.exe");
+        startInfo.Environment.Remove("WSLENV");
+
+        TmuxConnection.ApplyChildEnvironment(
+            startInfo,
+            new Dictionary<string, string?>
+            {
+                ["PSMUX_DATA_DIR"] = "C:\\isolated\\psmux",
+            },
+            forwardPsmuxDataDirectoryThroughWsl: true);
+
+        Assert.Equal("PSMUX_DATA_DIR/w", startInfo.Environment["WSLENV"]);
     }
 
     public static TheoryData<TmuxColorMode, string[]> PrefixCases =>
@@ -780,6 +833,7 @@ public sealed class GenerationGuardTests
             (request, _) => throw new TmuxTransportException(
                 "transport failed",
                 request.LogicalArguments,
+                TmuxDispatchState.NotDispatched,
                 root),
             () => "libtmux_guard_abcd1234");
         string[] logical = ["select-pane", "-t", "%0", "-P", "hostile;value"];
@@ -790,6 +844,7 @@ public sealed class GenerationGuardTests
                 .ExecuteAsync(logical, TestContext.Current.CancellationToken));
 
         Assert.Equal(logical, error.Arguments);
+        Assert.Equal(TmuxDispatchState.NotDispatched, error.Dispatch);
         Assert.Same(root, error.InnerException);
         Assert.DoesNotContain(error.Arguments, argument => argument.Contains("guard", StringComparison.Ordinal));
     }
@@ -911,14 +966,13 @@ public sealed class ConnectionPlatformContractTests
     [SuppressMessage(
         "Interoperability",
         "CA1416:Validate platform compatibility",
-        Justification = "This Windows-only test verifies the runtime platform guard.")]
-    public async Task Process_backed_server_members_throw_on_windows()
+        Justification = "This Windows-only test verifies the production trust gate.")]
+    public async Task Process_backed_server_requires_preview_opt_in_on_windows()
     {
-        Server server = Server.Open();
+        string missing = Path.Combine(Path.GetTempPath(), $"missing-tmux-{Guid.NewGuid():N}.exe");
+        Server server = Server.Open(new ServerConnectionOptions(tmuxBinaryPath: missing));
 
         await Assert.ThrowsAsync<PlatformNotSupportedException>(
             () => server.ConnectAsync(TestContext.Current.CancellationToken));
-        await Assert.ThrowsAsync<PlatformNotSupportedException>(
-            () => server.GetSessionAsync(default, TestContext.Current.CancellationToken));
     }
 }

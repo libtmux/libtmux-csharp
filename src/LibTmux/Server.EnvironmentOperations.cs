@@ -2,7 +2,7 @@ using System.Runtime.Versioning;
 
 namespace LibTmux;
 
-/// <summary>Reaches the server's own environment.</summary>
+// Reaches the server's own environment.
 public sealed partial class Server
 {
     private TmuxEnvironment? _environment;

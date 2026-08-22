@@ -41,17 +41,26 @@ class Contract:
     tool : bool
         Whether this packs as a .NET tool, which carries its binaries and
         their symbols under ``tools/`` rather than ``lib/``.
+    dependency_versions : tuple[tuple[str, str, str], ...]
+        Exact framework, package, and minimum versions the public dependency
+        contract intentionally fixes.
     """
 
     dependencies: frozenset[str]
     tool: bool = False
+    dependency_versions: tuple[tuple[str, str, str], ...] = ()
 
 
 #: Logging abstractions are interfaces with no implementation attached, so a
 #: caller who wants no logging still pays nothing for it. Every other entry
 #: names exactly what that package exists to add.
 CONTRACTS = {
-    "LibTmux": Contract(frozenset({"Microsoft.Extensions.Logging.Abstractions"})),
+    "LibTmux": Contract(
+        frozenset({"Microsoft.Extensions.Logging.Abstractions"}),
+        dependency_versions=(
+            ("net8.0", "Microsoft.Extensions.Logging.Abstractions", "8.0.0"),
+        ),
+    ),
     "LibTmux.Query.Json": Contract(frozenset({"LibTmux"})),
     "LibTmux.Workspace": Contract(frozenset({"LibTmux", "YamlDotNet"})),
     "LibTmux.Mcp": Contract(frozenset(), tool=True),
@@ -176,6 +185,27 @@ def inspect(package: pathlib.Path) -> list[str]:
         for dependency in root.iter(f"{namespace}dependency")
         if dependency.attrib.get("id") not in contract.dependencies
     )
+    groups = {
+        group.attrib.get("targetFramework"): group
+        for group in root.iter(f"{namespace}group")
+    }
+    for framework, dependency_id, expected in contract.dependency_versions:
+        group = groups.get(framework)
+        matching = (
+            []
+            if group is None
+            else [
+                dependency
+                for dependency in group.findall(f"{namespace}dependency")
+                if dependency.attrib.get("id") == dependency_id
+            ]
+        )
+        if len(matching) != 1 or matching[0].attrib.get("version") != expected:
+            actual = "missing" if len(matching) != 1 else matching[0].attrib.get("version")
+            violations.append(
+                f"{identifier} requires {dependency_id} {actual} for {framework}; "
+                f"expected {expected}"
+            )
 
     # A package page that says nothing about what the package is, who wrote it,
     # or where it came from is one a reader has to leave to evaluate.

@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides typed session identity.</summary>
+// Provides typed session identity.
 public sealed partial class Session
 {
     private readonly SessionId _id;

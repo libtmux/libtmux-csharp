@@ -1,9 +1,28 @@
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Runtime.Versioning;
-using System.Threading.Channels;
 using LibTmux.Internal;
 
 namespace LibTmux;
+
+internal interface IControlModeProcess : IDisposable
+{
+    public bool HasExited { get; }
+
+    public Task WriteLineAsync(
+        ReadOnlyMemory<char> command,
+        CancellationToken cancellationToken);
+
+    public Task FlushAsync(CancellationToken cancellationToken);
+
+    public Task<string?> ReadLineAsync();
+
+    public void CloseInput();
+
+    public void Kill();
+
+    public Task WaitForExitAsync(CancellationToken cancellationToken = default);
+}
 
 /// <summary>Reads one tmux control client and correlates what it says.</summary>
 /// <remarks>
@@ -15,31 +34,28 @@ namespace LibTmux;
 [UnsupportedOSPlatform("windows")]
 internal sealed class ControlModeSession : IControlModeSession
 {
-    private readonly Process _process;
+    private readonly IControlModeProcess _process;
+    private readonly TimeSpan _exitBudget;
     /// <summary>How many unread events are held before the oldest are dropped.</summary>
     /// <remarks>
     /// A pane can outpace any reader, and a caller may never read
     /// <see cref="Events"/> at all, so unbounded buffering has no ceiling.
-    /// The channel drops the oldest event instead of blocking, since blocking
+    /// The buffer drops the oldest event instead of blocking, since blocking
     /// would also stall the reader that completes commands.
     /// </remarks>
     internal const int EventBufferCapacity = 4096;
 
-    private readonly Channel<TmuxEvent> _events =
-        Channel.CreateBounded<TmuxEvent>(new BoundedChannelOptions(EventBufferCapacity)
-        {
-            SingleReader = false,
-            SingleWriter = true,
-            FullMode = BoundedChannelFullMode.DropOldest,
-        });
+    private readonly ControlModeEventBuffer _events = new(EventBufferCapacity);
 
     private readonly Queue<PendingCommand> _pending = new();
-    private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private readonly SemaphoreSlim _writeLock;
+    private readonly object _disposeGate = new();
     private readonly TaskCompletionSource _ready =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Task _pump;
-    private bool _disposed;
+    private Task? _disposeTask;
+    private int _stopRequested;
 
     /// <summary>How long disposal waits for the client to exit before killing it.</summary>
     /// <remarks>
@@ -47,17 +63,27 @@ internal sealed class ControlModeSession : IControlModeSession
     /// stopped, or waiting on something -- would otherwise hang the caller's
     /// disposal forever, and disposal is the one operation that has to finish.
     /// </remarks>
-    private static readonly TimeSpan ExitBudget = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DefaultExitBudget = TimeSpan.FromSeconds(5);
 
-    private ControlModeSession(Process process)
+    internal ControlModeSession(
+        IControlModeProcess process,
+        SemaphoreSlim? writeLock = null,
+        TimeSpan? exitBudget = null)
     {
-        _process = process;
+        _process = process ?? throw new ArgumentNullException(nameof(process));
+        _writeLock = writeLock ?? new SemaphoreSlim(1, 1);
+        _exitBudget = exitBudget ?? DefaultExitBudget;
+        if (_exitBudget <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(exitBudget));
+        }
+
         _pump = Task.Run(PumpAsync);
     }
 
-    public IAsyncEnumerable<TmuxEvent> Events => _events.Reader.ReadAllAsync();
+    public IAsyncEnumerable<TmuxEvent> Events => _events.ReadAllAsync();
 
-    public bool IsRunning => !_process.HasExited;
+    public bool IsRunning => Volatile.Read(ref _stopRequested) == 0 && !_process.HasExited;
 
     [UnsupportedOSPlatform("windows")]
     internal static ControlModeSession Start(
@@ -66,15 +92,8 @@ internal sealed class ControlModeSession : IControlModeSession
         string? target,
         Action<ProcessStartInfo> configureEnvironment)
     {
-        // Stderr is intentionally left undrained: a tmux client can hand its
-        // write end to the server it starts, so the pipe can outlive the client
-        // and a reader on it never observes cancellation on Unix. Waiting for
-        // the server to exit, or closing the handle mid-read, would both hang
-        // disposal instead.
-        //
-        // The residual risk is a client blocking on a full stderr pipe. It
-        // writes to stderr only when tmux itself fails to start -- at most
-        // kilobytes, followed by the process exiting.
+        // Draining stderr can hang when tmux hands its pipe to the longer-lived server.
+        // Startup failures write too little to fill that pipe before the client exits.
         ProcessStartInfo startInfo = new(tmuxBinaryPath)
         {
             RedirectStandardInput = true,
@@ -102,7 +121,7 @@ internal sealed class ControlModeSession : IControlModeSession
         configureEnvironment(startInfo);
         Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("The tmux control client did not start.");
-        return new ControlModeSession(process);
+        return new ControlModeSession(new SystemControlModeProcess(process));
     }
 
     /// <summary>Waits until tmux has answered its own attach.</summary>
@@ -114,13 +133,14 @@ internal sealed class ControlModeSession : IControlModeSession
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(command);
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ThrowIfStopping();
         if (_process.HasExited)
         {
             throw new InvalidOperationException("The tmux control client has exited.");
         }
 
         PendingCommand pending = new();
+        Exception? dispatchFailure = null;
 
         // Queueing and writing happen together under one lock. tmux answers in
         // the order it was asked, so a caller that queued second and wrote
@@ -128,27 +148,36 @@ internal sealed class ControlModeSession : IControlModeSession
         await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // Queued before the write: a command such as kill-server can end
-            // the client as its own answer, and the pump's exit sweep must
-            // find this waiter already queued to fail it.
             lock (_pending)
             {
+                ThrowIfStopping();
+                if (_process.HasExited)
+                {
+                    throw new InvalidOperationException("The tmux control client has exited.");
+                }
+
+                // Queued before the write: a command such as kill-server can end
+                // the client as its own answer, and the pump's exit sweep must
+                // find this waiter already queued to fail it.
                 _pending.Enqueue(pending);
             }
 
             try
             {
-                await _process.StandardInput.WriteLineAsync(command.AsMemory(), cancellationToken)
+                await _process.WriteLineAsync(command.AsMemory(), cancellationToken)
                     .ConfigureAwait(false);
-                await _process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await _process.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch
+            catch (Exception error)
             {
-                // tmux never saw this command, so it will never answer it. The
-                // slot is marked abandoned rather than removed, so replies skip
-                // it instead of being handed to the wrong caller.
-                pending.Abandon();
-                throw;
+                // A failed pipe write may have dispatched any prefix, including
+                // the whole command. No later reply can be correlated safely.
+                Volatile.Write(ref _stopRequested, 1);
+                dispatchFailure = error;
+                FailPending(new InvalidOperationException(
+                    "The control client lost command alignment after an ambiguous write failure.",
+                    error));
+                _ = pending.Completion.Task.Exception;
             }
         }
         finally
@@ -156,70 +185,266 @@ internal sealed class ControlModeSession : IControlModeSession
             _writeLock.Release();
         }
 
+        if (dispatchFailure is not null)
+        {
+            try
+            {
+                await DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception cleanupFailure)
+            {
+                dispatchFailure.Data["LibTmux.ControlModeCleanupFailure"] = cleanupFailure;
+            }
+
+            ExceptionDispatchInfo.Capture(dispatchFailure).Throw();
+        }
+
         return await pending.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        Task disposal;
+        lock (_disposeGate)
+        {
+            Volatile.Write(ref _stopRequested, 1);
+            disposal = _disposeTask ??= DisposeCoreAsync();
+        }
+
+        await disposal.ConfigureAwait(false);
+    }
+
+    private async Task DisposeCoreAsync()
+    {
+        var cleanupFailures = new List<Exception>();
+        bool writeLockHeld = false;
+        try
+        {
+            FailPending(new ObjectDisposedException(nameof(ControlModeSession)));
+            writeLockHeld = await _writeLock.WaitAsync(_exitBudget).ConfigureAwait(false);
+            if (!writeLockHeld)
+            {
+                await StopProcessAsync(cleanupFailures, forceStop: true).ConfigureAwait(false);
+                writeLockHeld = await _writeLock.WaitAsync(_exitBudget).ConfigureAwait(false);
+                if (!writeLockHeld)
+                {
+                    cleanupFailures.Add(new TimeoutException(
+                        "The active control-mode write did not stop after its client was killed."));
+                }
+            }
+            else
+            {
+                await StopProcessAsync(cleanupFailures, forceStop: false).ConfigureAwait(false);
+            }
+
+            // A sender can pass its final stopping check immediately before
+            // disposal begins, then enqueue while disposal is waiting for it.
+            FailPending(new ObjectDisposedException(nameof(ControlModeSession)));
+        }
+        catch (Exception error)
+        {
+            cleanupFailures.Add(error);
+        }
+        finally
+        {
+            if (writeLockHeld)
+            {
+                try
+                {
+                    _writeLock.Release();
+                }
+                catch (Exception error)
+                {
+                    cleanupFailures.Add(error);
+                }
+            }
+        }
+
+        Exception? pumpFailure = null;
+        try
+        {
+            await _pump.WaitAsync(_exitBudget).ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            pumpFailure = error;
+        }
+
+        try
+        {
+            _process.Dispose();
+        }
+        catch (Exception error)
+        {
+            cleanupFailures.Add(error);
+        }
+
+        try
+        {
+            if (writeLockHeld)
+            {
+                _writeLock.Dispose();
+            }
+        }
+        catch (Exception error)
+        {
+            cleanupFailures.Add(error);
+        }
+
+        ThrowDisposalFailures(pumpFailure, cleanupFailures);
+    }
+
+    private async Task StopProcessAsync(
+        List<Exception> cleanupFailures,
+        bool forceStop)
+    {
+        bool hasExited;
+        try
+        {
+            hasExited = _process.HasExited;
+        }
+        catch (Exception error)
+        {
+            cleanupFailures.Add(error);
+            hasExited = false;
+        }
+
+        if (hasExited)
         {
             return;
         }
 
-        _disposed = true;
-        try
+        if (!forceStop)
         {
-            if (!_process.HasExited)
+            try
             {
-                _process.StandardInput.Close();
-                using CancellationTokenSource budget = new(ExitBudget);
-                try
-                {
-                    await _process.WaitForExitAsync(budget.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Asking did not work, so stop asking. A disposal that never
-                    // returns is worse than a client that did not shut down
-                    // politely.
-                    //
-                    // Kills only the client, not its process tree: the server
-                    // underneath may still be serving other clients.
-                    _process.Kill(entireProcessTree: false);
-                    await _process.WaitForExitAsync().ConfigureAwait(false);
-                }
+                _process.CloseInput();
+            }
+            catch (InvalidOperationException) when (ProcessHasExited())
+            {
+                return;
+            }
+            catch (Exception error)
+            {
+                cleanupFailures.Add(error);
+            }
+
+            using var budget = new CancellationTokenSource(_exitBudget);
+            try
+            {
+                await _process.WaitForExitAsync(budget.Token).ConfigureAwait(false);
+                return;
+            }
+            catch (OperationCanceledException) when (budget.IsCancellationRequested)
+            {
+                forceStop = true;
+            }
+            catch (InvalidOperationException) when (ProcessHasExited())
+            {
+                return;
+            }
+            catch (Exception error)
+            {
+                cleanupFailures.Add(error);
+                forceStop = true;
             }
         }
-        catch (InvalidOperationException)
+
+        if (!forceStop)
         {
-            // The client raced us to exit, which is the state we wanted anyway.
+            return;
         }
-        finally
+
+        // Kills only the client, not its process tree: its server may still be
+        // serving other clients.
+        try
         {
-            await _pump.ConfigureAwait(false);
-            _process.Dispose();
-            _writeLock.Dispose();
+            if (!ProcessHasExited())
+            {
+                _process.Kill();
+            }
+        }
+        catch (InvalidOperationException) when (ProcessHasExited())
+        {
+        }
+        catch (Exception error)
+        {
+            cleanupFailures.Add(error);
+        }
+
+        using var forceBudget = new CancellationTokenSource(_exitBudget);
+        try
+        {
+            await _process.WaitForExitAsync(forceBudget.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (forceBudget.IsCancellationRequested)
+        {
+            cleanupFailures.Add(new TimeoutException(
+                "The control-mode client did not exit after it was killed."));
+        }
+        catch (InvalidOperationException) when (ProcessHasExited())
+        {
+        }
+        catch (Exception error)
+        {
+            cleanupFailures.Add(error);
         }
     }
 
-    /// <summary>One waiting command, and whether tmux ever heard it.</summary>
+    private bool ProcessHasExited()
+    {
+        try
+        {
+            return _process.HasExited;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void ThrowDisposalFailures(
+        Exception? pumpFailure,
+        List<Exception> cleanupFailures)
+    {
+        if (pumpFailure is not null)
+        {
+            if (cleanupFailures.Count == 0)
+            {
+                ExceptionDispatchInfo.Capture(pumpFailure).Throw();
+            }
+
+            throw new AggregateException([pumpFailure, .. cleanupFailures]);
+        }
+
+        if (cleanupFailures.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(cleanupFailures[0]).Throw();
+        }
+
+        if (cleanupFailures.Count > 1)
+        {
+            throw new AggregateException(cleanupFailures);
+        }
+    }
+
+    private void ThrowIfStopping() =>
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _stopRequested) != 0, this);
+
+    /// <summary>One waiting command.</summary>
     private sealed class PendingCommand
     {
         internal TaskCompletionSource<IReadOnlyList<string>> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        internal bool IsAbandoned { get; private set; }
-
-        internal void Abandon() => IsAbandoned = true;
     }
 
     private async Task PumpAsync()
     {
         string? exitReason = null;
+        Exception? pumpFailure = null;
         try
         {
-            while (await _process.StandardOutput.ReadLineAsync().ConfigureAwait(false)
-                is string line)
+            while (await _process.ReadLineAsync().ConfigureAwait(false) is string line)
             {
                 if (line.StartsWith("%begin ", StringComparison.Ordinal))
                 {
@@ -242,52 +467,67 @@ internal sealed class ControlModeSession : IControlModeSession
                     break;
                 }
 
-                _events.Writer.TryWrite(ToEvent(name, arguments));
+                _events.TryWrite(ToEvent(name, arguments));
             }
+        }
+        catch (Exception error)
+        {
+            pumpFailure = error;
+            throw;
         }
         finally
         {
-            _events.Writer.TryWrite(new TmuxExitEvent(exitReason));
-            _events.Writer.TryComplete();
-            _ready.TrySetException(new InvalidOperationException(
-                "The tmux control client exited before it finished attaching."));
-            FailPending();
+            _events.TryWrite(new TmuxExitEvent(exitReason));
+            _events.Complete();
+            Exception terminalFailure = pumpFailure ?? new InvalidOperationException(
+                "The tmux control client exited before it finished attaching.");
+            _ready.TrySetException(terminalFailure);
+            StopAndFailPending(terminalFailure);
         }
     }
 
     private async Task ReadBlockAsync(string beginLine)
     {
-        // A block ends only at %end or %error carrying the same numbers the
-        // %begin did. Stopping at the first line that starts with a percent
-        // would truncate a block whose own output starts with one, and a pane
-        // id such as %0 does exactly that.
+        // Only a matching %end or %error terminates a block; output may start with %.
         string suffix = beginLine["%begin ".Length..];
         List<string> lines = [];
         bool failed = false;
+        bool terminated = false;
 
-        while (await _process.StandardOutput.ReadLineAsync().ConfigureAwait(false)
-            is string line)
+        while (await _process.ReadLineAsync().ConfigureAwait(false) is string line)
         {
             if (IsBlockTerminator(line, "%end ", suffix))
             {
+                terminated = true;
                 break;
             }
 
             if (IsBlockTerminator(line, "%error ", suffix))
             {
                 failed = true;
+                terminated = true;
                 break;
             }
 
             lines.Add(line);
         }
 
-        // Attaching is itself a command, so tmux answers it before any caller
-        // has asked. Handing that block to the first caller would answer every
-        // command with the previous one's output for the life of the session,
-        // and waiting for "nobody is queued" loses the race against a caller
-        // that sends immediately.
-        if (_ready.TrySetResult())
+        if (!terminated)
+        {
+            throw new InvalidDataException(
+                "The tmux control client ended before its command block was terminated.");
+        }
+
+        // Attach's reply is the readiness block; enqueuing it shifts every later reply.
+        TmuxCommandException? failure = failed
+            ? new TmuxCommandException(
+                lines.Count == 0 ? "The tmux command failed." : string.Join('\n', lines),
+                BuildFailure(lines))
+            : null;
+        bool completedReadiness = failure is null
+            ? _ready.TrySetResult()
+            : _ready.TrySetException(failure);
+        if (completedReadiness)
         {
             return;
         }
@@ -295,19 +535,7 @@ internal sealed class ControlModeSession : IControlModeSession
         TaskCompletionSource<IReadOnlyList<string>>? completion;
         lock (_pending)
         {
-            // Abandoned slots belong to commands that were never sent, so tmux
-            // is not answering them. Skipping them here is what keeps replies
-            // aligned with the commands that actually reached it.
-            completion = null;
-            while (_pending.Count > 0)
-            {
-                PendingCommand candidate = _pending.Dequeue();
-                if (!candidate.IsAbandoned)
-                {
-                    completion = candidate.Completion;
-                    break;
-                }
-            }
+            completion = _pending.Count == 0 ? null : _pending.Dequeue().Completion;
         }
 
         if (completion is null)
@@ -317,9 +545,7 @@ internal sealed class ControlModeSession : IControlModeSession
 
         if (failed)
         {
-            completion.TrySetException(new TmuxCommandException(
-                lines.Count == 0 ? "The tmux command failed." : string.Join('\n', lines),
-                BuildFailure(lines)));
+            completion.TrySetException(failure!);
             return;
         }
 
@@ -369,15 +595,52 @@ internal sealed class ControlModeSession : IControlModeSession
         return new TmuxOutputEvent(arguments[0], OptionParser.DecodeEscapes(payload));
     }
 
-    private void FailPending()
+    private void FailPending(Exception? failure = null)
     {
+        failure ??= new InvalidOperationException(
+            "The tmux control client exited before answering.");
         lock (_pending)
         {
             while (_pending.Count > 0)
             {
-                _pending.Dequeue().Completion.TrySetException(new InvalidOperationException(
-                    "The tmux control client exited before answering."));
+                _pending.Dequeue().Completion.TrySetException(failure);
             }
         }
+    }
+
+    private void StopAndFailPending(Exception failure)
+    {
+        lock (_pending)
+        {
+            Volatile.Write(ref _stopRequested, 1);
+            while (_pending.Count > 0)
+            {
+                _pending.Dequeue().Completion.TrySetException(failure);
+            }
+        }
+    }
+
+    private sealed class SystemControlModeProcess(Process process) : IControlModeProcess
+    {
+        public bool HasExited => process.HasExited;
+
+        public Task WriteLineAsync(
+            ReadOnlyMemory<char> command,
+            CancellationToken cancellationToken) =>
+            process.StandardInput.WriteLineAsync(command, cancellationToken);
+
+        public Task FlushAsync(CancellationToken cancellationToken) =>
+            process.StandardInput.FlushAsync(cancellationToken);
+
+        public Task<string?> ReadLineAsync() => process.StandardOutput.ReadLineAsync();
+
+        public void CloseInput() => process.StandardInput.Close();
+
+        public void Kill() => process.Kill(entireProcessTree: false);
+
+        public Task WaitForExitAsync(CancellationToken cancellationToken = default) =>
+            process.WaitForExitAsync(cancellationToken);
+
+        public void Dispose() => process.Dispose();
     }
 }

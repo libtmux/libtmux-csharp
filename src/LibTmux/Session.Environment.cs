@@ -2,7 +2,7 @@ using System.Runtime.Versioning;
 
 namespace LibTmux;
 
-/// <summary>Resolves a session from tmux's exported environment.</summary>
+// Resolves a session from tmux's exported environment.
 public sealed partial class Session
 {
     /// <summary>Returns the session holding the pane this process runs in.</summary>

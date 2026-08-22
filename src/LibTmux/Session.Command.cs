@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides raw command execution for a tmux session.</summary>
+// Provides raw command execution for a tmux session.
 public sealed partial class Session
 {
     private readonly TmuxCommandDispatcher _commandDispatcher;
@@ -24,7 +24,6 @@ public sealed partial class Session
         string? targetOverride = null,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         return TargetedCommandArguments.ExecuteAsync(
             _commandDispatcher,
             arguments,
@@ -42,7 +41,6 @@ internal static class TargetedCommandArguments
         string target,
         CancellationToken cancellationToken)
     {
-        PlatformGuard.ThrowIfWindows();
         TmuxCommandDispatcher.ValidateArguments(arguments);
         RejectRawTargetOptions(arguments);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);

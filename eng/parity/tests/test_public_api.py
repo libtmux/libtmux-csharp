@@ -13,9 +13,10 @@ import typing as t
 
 TMUX_VERSION_CONTRACT: dict[str, t.Any] = {
     "grammar": [
-        "version = next / release / prerelease",
+        "version = next / release / micro / prerelease",
         'next = "next-" core',
         'release = core [patch] ["-openbsd"]',
+        'micro = core "." uint',
         'prerelease = core ("-rc" posint / "-dev" ["." uint])',
         'core = uint "." uint',
         "patch = 1*LOWER",
@@ -27,6 +28,7 @@ TMUX_VERSION_CONTRACT: dict[str, t.Any] = {
         "majorMinor": "the two invariant-culture decimal core components",
         "suffixExamples": {
             "3.7": None,
+            "3.3.7": "7",
             "3.7b": "b",
             "3.0-rc3": "rc3",
             "3.3a-openbsd": "a-openbsd",
@@ -54,7 +56,7 @@ TMUX_VERSION_CONTRACT: dict[str, t.Any] = {
             "03.7",
             "3.07",
             "3.7B",
-            "3.7.1",
+            "3.7.01",
             "3.7-",
             "+3.7",
             "integer component overflow",
@@ -62,9 +64,10 @@ TMUX_VERSION_CONTRACT: dict[str, t.Any] = {
     },
     "ordering": {
         "core": "major then minor, numerically ascending",
-        "sameCore": "next < dev < rcN < final < letter patch",
+        "sameCore": "next < dev < rcN < final < vendor final < numeric micro < letter patch",
         "development": "a missing dev number precedes numeric dev numbers",
         "releaseCandidate": "N compares numerically",
+        "micro": "N compares numerically",
         "patch": "bijective base-26 lowercase ordinal: a=1, z=26, aa=27",
         "vendor": (
             "-openbsd immediately follows its corresponding final or patch release"
@@ -73,6 +76,7 @@ TMUX_VERSION_CONTRACT: dict[str, t.Any] = {
         "examples": [
             "next-3.7 < 3.7-dev < 3.7-dev.0 < 3.7-rc1 < 3.7-rc2",
             "3.7-rc2 < 3.7 < 3.7-openbsd < 3.7a < 3.7a-openbsd < 3.7b",
+            "3.3 < 3.3.1 < 3.3.10 < 3.3a",
             "3.7b < next-3.8 < 3.8",
         ],
         "invalidOperands": (
@@ -371,15 +375,30 @@ def test_io_is_async_and_cancellation_is_last() -> None:
 
 
 def test_process_api_is_windows_annotated_but_portable_api_is_not() -> None:
-    """Mark process entry points without contaminating portable values."""
+    """Keep tmux annotated while the cross-platform psmux facade stays portable."""
     public_api = load_json(csharp_docs_root() / "public-api.json")
     members = public_api["members"]
     for member in members:
         annotations = member.get("platformAnnotations", [])
         if member.get("processBacked"):
-            assert annotations == ['UnsupportedOSPlatform("windows")']
+            if member["declaringType"].startswith("T:LibTmux.Psmux"):
+                assert member["portable"] is True
+                assert not annotations
+            else:
+                assert annotations == ['UnsupportedOSPlatform("windows")']
         if member.get("portable"):
             assert not annotations
+
+    control = next(
+        member
+        for member in members
+        if member["id"]
+        == "M:LibTmux.Server.EnterControlModeAsync(string?,System.Threading.CancellationToken)"
+    )
+    assert control["performsIO"] is True
+    assert control["processBacked"] is True
+    assert control["portable"] is False
+    assert control["platformAnnotations"] == ['UnsupportedOSPlatform("windows")']
 
 
 def test_entities_are_immutable_handles_not_destructive_disposables() -> None:

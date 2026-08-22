@@ -1,5 +1,8 @@
 using System.ComponentModel;
 using System.Runtime.Versioning;
+using System.Text;
+using LibTmux.Internal;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
 namespace LibTmux.Mcp;
@@ -8,6 +11,16 @@ namespace LibTmux.Mcp;
 [UnsupportedOSPlatform("windows")]
 public sealed partial class WriteTools
 {
+    internal const string PasteBufferCleanupFailureDataKey =
+        "LibTmux.Mcp.PasteBufferCleanupFailure";
+    internal const string PasteBufferCleanupBufferDataKey =
+        "LibTmux.Mcp.PasteBufferCleanupBuffer";
+
+    private static readonly TimeSpan PasteBufferCleanupTimeout = TimeSpan.FromSeconds(5);
+    private const int MaximumBatchSteps = 64;
+    private const int MaximumBatchKeyBytes = 65_536;
+    private const int MaximumStepDelayMilliseconds = 2_000;
+
     /// <summary>Sends keys to a pane.</summary>
     /// <param name="keys">The text or key name to send.</param>
     /// <param name="paneId">The pane, or null for the active one.</param>
@@ -22,7 +35,7 @@ public sealed partial class WriteTools
     /// the point: it is for driving a program's interface. A shell command
     /// whose result matters belongs in <c>tmux_run</c>.
     /// </remarks>
-    [McpServerTool(Name = "tmux_send_keys", Destructive = false, OpenWorld = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_send_keys", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description(
         "Send raw keystrokes to a pane and return immediately. Use for driving an "
         + "interactive program — a key in vim, a menu choice, Ctrl-C. Set literal=false "
@@ -71,13 +84,18 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux commands.</param>
     /// <returns>What was sent.</returns>
-    [McpServerTool(Name = "tmux_send_keys_batch", Destructive = false, OpenWorld = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_send_keys_batch", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description(
         "Send several keystrokes to one pane in order, in a single call. Use for a "
         + "short interactive sequence — open a file, move, type, save — instead of "
-        + "one call per key.")]
+        + "one call per key. A batch has at most 64 steps and 64 KiB of UTF-8 text "
+        + "(or the lower server byte limit). Each delay is 0–2000 ms and all delays "
+        + "together must fit the server wait ceiling.")]
     public async Task<ActionResult> SendKeysBatchAsync(
-        [Description("The keystrokes to send, in order.")] IReadOnlyList<KeyStep> steps,
+        [Description(
+            "The keystrokes to send, in order: 1–64 steps, with no null step or keys. "
+            + "Combined text is limited to min(LIBTMUX_MCP_MAX_BYTES, 65536) UTF-8 bytes.")]
+        IReadOnlyList<KeyStep> steps,
         [Description("The pane id, such as %1. Omit for the active pane.")]
         string? paneId = null,
         [Description("The tmux socket to use. Omit for the default server.")]
@@ -85,24 +103,33 @@ public sealed partial class WriteTools
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(steps);
+        ValidateBatch(steps, _policy);
         Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
         Pane pane = await TmuxTargets.PaneAsync(server, paneId, cancellationToken)
             .ConfigureAwait(false);
 
-        foreach (KeyStep step in steps)
+        var sequence = new TmuxMutationSequence(
+            "An earlier key batch step succeeded, but a later step failed. The pane "
+            + "may already have acted on those keys; do not retry the whole batch.");
+        for (int index = 0; index < steps.Count; index++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await pane.SendKeysAsync(
-                    new SendKeysRequest(
-                        text: step.Keys,
-                        enter: step.Enter,
-                        literal: step.Literal),
-                    cancellationToken)
+            KeyStep step = steps[index];
+            await MutateAsync(
+                    sequence,
+                    () => pane.SendKeysAsync(
+                        new SendKeysRequest(
+                            text: step.Keys,
+                            enter: step.Enter,
+                            literal: step.Literal),
+                        cancellationToken),
+                    $"Key batch step {index + 1} may have reached tmux. The pane may "
+                    + "already have acted on it; do not retry the whole batch.")
                 .ConfigureAwait(false);
 
             if (step.DelayMilliseconds is int delay and > 0)
             {
-                await Task.Delay(Math.Min(delay, 2000), cancellationToken).ConfigureAwait(false);
+                await sequence.ObserveAsync(() => Task.Delay(delay, cancellationToken))
+                    .ConfigureAwait(false);
             }
         }
 
@@ -110,6 +137,67 @@ public sealed partial class WriteTools
             $"Sent {steps.Count} steps to {pane.Id}.",
             PaneId: pane.Id.ToString());
     }
+
+    internal static void ValidateBatch(IReadOnlyList<KeyStep> steps, ServerPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(steps);
+        ArgumentNullException.ThrowIfNull(policy);
+        if (steps.Count is 0 or > MaximumBatchSteps)
+        {
+            throw new McpException(
+                $"A key batch must contain between 1 and {MaximumBatchSteps} steps.");
+        }
+
+        int maximumBytes = Math.Min(policy.MaxBytes, MaximumBatchKeyBytes);
+        int totalBytes = 0;
+        long totalDelay = 0;
+        for (int index = 0; index < steps.Count; index++)
+        {
+            KeyStep? step = steps[index];
+            if (step is null)
+            {
+                throw new McpException($"Key batch step {index + 1} is null.");
+            }
+
+            if (step.Keys is null)
+            {
+                throw new McpException($"Key batch step {index + 1} has null keys.");
+            }
+
+            if (step.Keys.Length > maximumBytes - totalBytes)
+            {
+                throw BatchKeysTooLarge(maximumBytes);
+            }
+
+            int bytes = Encoding.UTF8.GetByteCount(step.Keys);
+            if (bytes > maximumBytes - totalBytes)
+            {
+                throw BatchKeysTooLarge(maximumBytes);
+            }
+
+            totalBytes += bytes;
+            int delay = step.DelayMilliseconds ?? 0;
+            if (delay is < 0 or > MaximumStepDelayMilliseconds)
+            {
+                throw new McpException(
+                    $"Key batch step {index + 1} delay must be between 0 and "
+                    + $"{MaximumStepDelayMilliseconds} milliseconds.");
+            }
+
+            totalDelay += delay;
+        }
+
+        long maximumDelay = checked((long)Math.Floor(policy.WaitCeiling.TotalMilliseconds));
+        if (totalDelay > maximumDelay)
+        {
+            throw new McpException(
+                $"Key batch delays total {totalDelay} milliseconds; this server allows "
+                + $"at most {maximumDelay} milliseconds per call.");
+        }
+    }
+
+    private static McpException BatchKeysTooLarge(int maximumBytes) =>
+        new($"Key batch text may use at most {maximumBytes} UTF-8 bytes in one call.");
 
     /// <summary>Pastes text into a pane without the shell reading it as keys.</summary>
     /// <param name="text">The text to paste.</param>
@@ -122,11 +210,12 @@ public sealed partial class WriteTools
     /// Bracketed paste tells the program the text was pasted rather than typed,
     /// which is what stops an editor auto-indenting every line of it.
     /// </remarks>
-    [McpServerTool(Name = "tmux_paste_text", Destructive = false, OpenWorld = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_paste_text", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description(
         "Paste a block of text into a pane through a tmux buffer. Use for multi-line "
         + "text, or anything an editor would mangle if typed — bracketed paste stops "
-        + "auto-indent. The buffer is deleted afterwards.")]
+        + "auto-indent. The tool attempts to delete its temporary buffer afterwards; "
+        + "if cleanup fails, the completed-paste result identifies what remains.")]
     public async Task<ActionResult> PasteTextAsync(
         [Description("The text to paste.")] string text,
         [Description("The pane id, such as %1. Omit for the active pane.")]
@@ -145,33 +234,85 @@ public sealed partial class WriteTools
             .ConfigureAwait(false);
 
         string buffer = $"libtmux_mcp_{Guid.NewGuid():N}"[..24];
-        await server.SetBufferAsync(text, buffer, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        Exception? primaryFailure = null;
+        Exception? cleanupFailure = null;
+        bool bufferMayExist = false;
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await server.SetBufferAsync(text, buffer, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                bufferMayExist = true;
+            }
+            catch (TmuxOperationCanceledException error)
+            {
+                bufferMayExist = error.CommandMayHaveExecuted;
+                throw;
+            }
+            catch (LibTmuxException error)
+            {
+                bufferMayExist = error.Dispatch != TmuxDispatchState.NotDispatched;
+                throw;
+            }
+
             await pane.PasteBufferAsync(
                     new PasteBufferRequest(name: buffer, bracketed: bracketed),
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+        catch (Exception error)
+        {
+            primaryFailure = error;
+            throw;
+        }
         finally
         {
-            // The buffer is this tool's litter, not the user's clipboard
-            // history, so it goes whether the paste worked or not.
-            try
+            if (bufferMayExist)
             {
-                await server.DeleteBufferAsync(buffer, cancellationToken).ConfigureAwait(false);
+                cleanupFailure = await CleanupPasteBufferAsync(server, buffer, primaryFailure)
+                    .ConfigureAwait(false);
             }
-            catch (LibTmuxException)
-            {
-                // Already gone, or the server went away. Neither is worth
-                // replacing the caller's real result with.
-            }
+        }
+
+        if (cleanupFailure is not null)
+        {
+            return new ActionResult(
+                $"Pasted {text.Length} characters into {pane.Id}, but cleanup failed and "
+                + $"temporary buffer {buffer} may remain. Do not retry the paste. Inspect "
+                + "with tmux_list_buffers, then remove it manually with "
+                + $"tmux delete-buffer -b {buffer}.",
+                PaneId: pane.Id.ToString());
         }
 
         return new ActionResult(
             $"Pasted {text.Length} characters into {pane.Id}.",
             PaneId: pane.Id.ToString());
+    }
+
+    private static async Task<Exception?> CleanupPasteBufferAsync(
+        Server server,
+        string buffer,
+        Exception? primaryFailure)
+    {
+        using var cleanup = new CancellationTokenSource(PasteBufferCleanupTimeout);
+        try
+        {
+            await server.DeleteBufferAsync(buffer, cleanup.Token).ConfigureAwait(false);
+            return null;
+        }
+        catch (Exception cleanupFailure)
+        {
+            if (primaryFailure is null)
+            {
+                return cleanupFailure;
+            }
+
+            primaryFailure.Data[PasteBufferCleanupFailureDataKey] = cleanupFailure;
+            primaryFailure.Data[PasteBufferCleanupBufferDataKey] = buffer;
+            return null;
+        }
     }
 
     /// <summary>Clears a pane's screen, and optionally its scrollback.</summary>
@@ -180,7 +321,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux commands.</param>
     /// <returns>What was cleared.</returns>
-    [McpServerTool(Name = "tmux_clear_pane", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_clear_pane", Destructive = true, OpenWorld = false, UseStructuredContent = true)]
     [Description(
         "Clear a pane's visible screen, and optionally its scrollback too. Useful "
         + "before running something whose output you want to read on its own. "
@@ -199,10 +340,26 @@ public sealed partial class WriteTools
         Pane pane = await TmuxTargets.PaneAsync(server, paneId, cancellationToken)
             .ConfigureAwait(false);
 
-        await pane.ClearAsync(cancellationToken).ConfigureAwait(false);
+        var sequence = new TmuxMutationSequence(
+            "The pane was cleared, but clearing its history failed. The screen may "
+            + "already have changed; do not retry the whole operation.");
+        await MutateAsync(
+                sequence,
+                async () =>
+                {
+                    _ = await pane.ClearAsync(cancellationToken).ConfigureAwait(false);
+                },
+                "Clearing the pane may have reached tmux. The screen may already have "
+                + "changed; do not retry until you inspect it.")
+            .ConfigureAwait(false);
         if (includeHistory)
         {
-            await pane.ClearHistoryAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            await MutateAsync(
+                    sequence,
+                    () => pane.ClearHistoryAsync(cancellationToken: cancellationToken),
+                    "Clearing pane history may have reached tmux. The screen may already "
+                    + "have changed; do not retry until you inspect it.")
+                .ConfigureAwait(false);
         }
 
         return new ActionResult(

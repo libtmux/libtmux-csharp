@@ -97,18 +97,47 @@ public sealed class BoundedTextTests
         // byte budget.
         BoundedText fitted = BoundedText.Fit([new string('x', 100), "short"], 10, 20);
 
-        Assert.Equal(["short"], fitted.Lines);
+        Assert.Equal([new string('x', 14), "short"], fitted.Lines);
         Assert.True(fitted.Truncated);
-        Assert.Equal(1, fitted.DroppedLines);
+        Assert.Equal(0, fitted.DroppedLines);
+        Assert.Equal(86, fitted.DroppedBytes);
     }
 
     [Fact]
-    public void The_newest_line_survives_even_when_it_alone_overruns()
+    public void An_oversized_multibyte_line_is_clipped_on_a_character_boundary()
     {
-        BoundedText fitted = BoundedText.Fit(["old", new string('x', 500)], 10, 20);
+        string oversized = string.Concat(Enumerable.Repeat("\U0001f642", 10));
+
+        BoundedText fitted = BoundedText.Fit(["old", oversized], 10, 11);
 
         Assert.Single(fitted.Lines);
-        Assert.Equal(500, fitted.Lines[0].Length);
+        Assert.Equal("\U0001f642\U0001f642", fitted.Lines[0]);
+        Assert.Equal(8, Encoding.UTF8.GetByteCount(string.Join('\n', fitted.Lines)));
+        Assert.Equal(1, fitted.DroppedLines);
+        Assert.Equal(36, fitted.DroppedBytes);
+        Assert.DoesNotContain('\ufffd', fitted.Lines[0]);
+    }
+
+    [Fact]
+    public void Every_result_obeys_the_utf8_byte_ceiling()
+    {
+        BoundedText fitted = BoundedText.Fit(["earlier", "\U0001f642abcdef", "new"], 10, 6);
+
+        Assert.Equal(["ef", "new"], fitted.Lines);
+        Assert.True(Encoding.UTF8.GetByteCount(string.Join('\n', fitted.Lines)) <= 6);
+        Assert.Equal(1, fitted.DroppedLines);
+        Assert.Equal(16, fitted.DroppedBytes);
+    }
+
+    [Fact]
+    public void A_character_that_cannot_fit_is_reported_as_fully_dropped()
+    {
+        BoundedText fitted = BoundedText.Fit(["\U0001f642"], 10, 1);
+
+        Assert.Empty(fitted.Lines);
+        Assert.True(fitted.Truncated);
+        Assert.Equal(1, fitted.DroppedLines);
+        Assert.Equal(4, fitted.DroppedBytes);
     }
 
     [Fact]
@@ -136,7 +165,7 @@ public sealed class BoundedTextTests
         // never printed them.
         string rendered = BoundedText.Fit(["a", "b", "c"], 1, 1000).ToDisplayString();
 
-        Assert.StartsWith("[2 earlier lines", rendered, StringComparison.Ordinal);
+        Assert.StartsWith("[2 complete earlier lines", rendered, StringComparison.Ordinal);
         Assert.EndsWith("c", rendered, StringComparison.Ordinal);
     }
 }

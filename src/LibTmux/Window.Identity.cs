@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides typed window identity.</summary>
+// Provides typed window identity.
 public sealed partial class Window
 {
     private readonly WindowId _id;

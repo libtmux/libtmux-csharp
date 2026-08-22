@@ -28,6 +28,9 @@ internal static class TmuxEnvironmentVariables
     /// <summary>The variable naming the pane a process was spawned in.</summary>
     internal const string PaneVariable = "TMUX_PANE";
 
+    /// <summary>The variable psmux exports with the current session name.</summary>
+    internal const string PsmuxSessionVariable = "PSMUX_SESSION";
+
     /// <summary>Tries to read the tmux server entry from an environment.</summary>
     /// <param name="environment">The environment, or null for the process.</param>
     /// <param name="entry">The parsed entry when present and well formed.</param>
@@ -69,12 +72,40 @@ internal static class TmuxEnvironmentVariables
         out PaneId paneId) =>
         PaneId.TryParse(Read(environment, PaneVariable), out paneId);
 
+    internal static bool HasPsmuxMarker(IReadOnlyDictionary<string, string>? environment) =>
+        environment is null
+            ? System.Environment.GetEnvironmentVariable(PsmuxSessionVariable) is not null
+            : environment.Keys.Any(key => string.Equals(
+                key,
+                PsmuxSessionVariable,
+                StringComparison.OrdinalIgnoreCase));
+
+    internal static bool LooksLikePsmuxServer(IReadOnlyDictionary<string, string>? environment) =>
+        Read(environment, ServerVariable)?.StartsWith("/tmp/psmux-", StringComparison.Ordinal)
+            is true;
+
     private static string? Read(
         IReadOnlyDictionary<string, string>? environment,
-        string name) =>
-        environment is null
-            ? System.Environment.GetEnvironmentVariable(name)
-            : environment.TryGetValue(name, out string? value)
-                ? value
-                : null;
+        string name)
+    {
+        if (environment is null)
+        {
+            return System.Environment.GetEnvironmentVariable(name);
+        }
+
+        if (environment.TryGetValue(name, out string? value))
+        {
+            return value;
+        }
+
+        foreach ((string key, string? candidate) in environment)
+        {
+            if (string.Equals(key, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
 }

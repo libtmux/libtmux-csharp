@@ -224,6 +224,36 @@ public sealed class TmuxProcessTransportTests
     }
 
     [UnixFact]
+    public async Task Cancellation_during_async_preflight_prevents_process_start()
+    {
+        var entered = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = new CancellationTokenSource();
+        var launcher = new QueueProcessLauncher(
+            FakeProcessHandle.Completed(7057, [], [], exitCode: 0));
+        var transport = new TmuxProcessTransport(
+            "tmux",
+            launcher: launcher,
+            beforeStart: async (_, token) =>
+            {
+                entered.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            });
+
+        Task<TmuxCommandResult> execution = transport.ExecuteAsync(
+            ["list-sessions"],
+            cancellation.Token);
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+        cancellation.Cancel();
+
+        OperationCanceledException error = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => execution);
+
+        Assert.Equal(cancellation.Token, error.CancellationToken);
+        Assert.Empty(launcher.StartInfos);
+    }
+
+    [UnixFact]
     public async Task Cancellation_during_argv_setup_still_prevents_process_start()
     {
         using var cancellation = new CancellationTokenSource();
@@ -1330,12 +1360,13 @@ public sealed class TransportPlatformContractTests
     [SuppressMessage(
         "Interoperability",
         "CA1416:Validate platform compatibility",
-        Justification = "This Windows-only test verifies the runtime platform guard.")]
-    public async Task Process_transport_throws_platform_exception_on_windows()
+        Justification = "This Windows-only test verifies process launch is reachable.")]
+    public async Task Process_transport_reaches_process_launch_on_windows()
     {
-        var transport = new TmuxProcessTransport("tmux");
+        string missing = Path.Combine(Path.GetTempPath(), $"missing-tmux-{Guid.NewGuid():N}.exe");
+        var transport = new TmuxProcessTransport(missing);
 
-        await Assert.ThrowsAsync<PlatformNotSupportedException>(
+        await Assert.ThrowsAsync<TmuxCommandNotFoundException>(
             () => transport.ExecuteAsync(
                 ["display-message"],
                 TestContext.Current.CancellationToken));

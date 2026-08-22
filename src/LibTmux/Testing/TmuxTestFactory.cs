@@ -63,8 +63,28 @@ public sealed class TmuxTestFactory
         TmuxTestOptions settings = options ?? TmuxTestOptions.Default;
         TemporaryServerScope scope = await CreateServerAsync(settings, cancellationToken)
             .ConfigureAwait(false);
-        return await CreateSessionAsync(scope.Server, settings, cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            string name = await _names
+                .CreateAvailableSessionNameAsync(
+                    scope.Server,
+                    settings.SessionNamePrefix,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return await TemporarySessionScope
+                .StartAsync(
+                    scope.Server,
+                    new NewSessionRequest(name: name),
+                    scope,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            await TemporaryScopeCleanup.DisposeAfterFailureAsync(scope, error)
+                .ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <summary>Starts a session on a server the caller already has.</summary>
@@ -86,7 +106,10 @@ public sealed class TmuxTestFactory
                 cancellationToken)
             .ConfigureAwait(false);
         return await TemporarySessionScope
-            .StartAsync(server, new NewSessionRequest(name: name), cancellationToken)
+            .StartAsync(
+                server,
+                new NewSessionRequest(name: name),
+                cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -101,8 +124,28 @@ public sealed class TmuxTestFactory
         TmuxTestOptions settings = options ?? TmuxTestOptions.Default;
         TemporarySessionScope session = await CreateSessionAsync(settings, cancellationToken)
             .ConfigureAwait(false);
-        return await CreateWindowAsync(session.Session, settings, cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            string name = await _names
+                .CreateAvailableWindowNameAsync(
+                    session.Session,
+                    settings.SessionNamePrefix,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return await TemporaryWindowScope
+                .StartAsync(
+                    session.Session,
+                    new NewWindowRequest(name: name),
+                    session,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            await TemporaryScopeCleanup.DisposeAfterFailureAsync(session, error)
+                .ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <summary>Starts a window in a session the caller already has.</summary>
@@ -124,7 +167,10 @@ public sealed class TmuxTestFactory
                 cancellationToken)
             .ConfigureAwait(false);
         return await TemporaryWindowScope
-            .StartAsync(session, new NewWindowRequest(name: name), cancellationToken)
+            .StartAsync(
+                session,
+                new NewWindowRequest(name: name),
+                cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 

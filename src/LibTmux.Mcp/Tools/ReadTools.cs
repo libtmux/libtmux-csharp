@@ -12,9 +12,9 @@ namespace LibTmux.Mcp;
 /// tier never reaches the model's list to be called by name.
 /// </para>
 /// <para>
-/// Every tool answers a record rather than prose, and each is annotated
-/// <c>ReadOnly</c> so a client that gates on the hint does not prompt for a
-/// listing.
+/// Shaped tools answer records rather than prose; <c>tmux_display_message</c>
+/// returns the raw format expansion it was asked for. Each tool is annotated
+/// <c>ReadOnly</c> so a client that gates on the hint does not prompt for a listing.
 /// </para>
 /// </remarks>
 [McpServerToolType]

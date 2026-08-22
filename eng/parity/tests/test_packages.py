@@ -28,7 +28,10 @@ SPECIFICATION = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 
-def dependency_group(dependency: str | None) -> str:
+def dependency_group(
+    dependency: str | None,
+    dependency_version: str = "8.0.0",
+) -> str:
     """Return the dependency block a package with that dependency carries.
 
     A tool bundles what it needs under ``tools/`` and declares nothing, so the
@@ -39,7 +42,7 @@ def dependency_group(dependency: str | None) -> str:
     return (
         "    <dependencies>\n"
         '      <group targetFramework="net8.0">\n'
-        f'        <dependency id="{dependency}" version="10.0.10" />\n'
+        f'        <dependency id="{dependency}" version="{dependency_version}" />\n'
         "      </group>\n"
         "    </dependencies>\n"
     )
@@ -139,6 +142,37 @@ def test_an_extra_dependency_is_reported(tmp_path: pathlib.Path) -> None:
     package = build(tmp_path, dependency="Newtonsoft.Json")
 
     assert "LibTmux declares dependency Newtonsoft.Json" in inspect(package)
+
+
+def test_the_net8_logging_floor_cannot_be_bumped_to_net10(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Dependency automation must not undo the net8 consumer contract."""
+    package = tmp_path / "LibTmux.1.0.0.nupkg"
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("icon.png", "png")
+        archive.writestr(
+            "LibTmux.nuspec",
+            SPECIFICATION.format(
+                identifier="LibTmux",
+                dependencies=dependency_group(
+                    "Microsoft.Extensions.Logging.Abstractions",
+                    "10.0.11",
+                ),
+                project_url=PROJECT_URL,
+                repository_url=PROJECT_URL,
+                commit="a" * 40,
+            ),
+        )
+        for framework in ("net8.0", "net10.0"):
+            archive.writestr(f"lib/{framework}/LibTmux.dll", "assembly")
+            archive.writestr(f"lib/{framework}/LibTmux.xml", "<doc />")
+    (tmp_path / "LibTmux.1.0.0.snupkg").write_bytes(b"symbols")
+
+    assert (
+        "LibTmux requires Microsoft.Extensions.Logging.Abstractions 10.0.11 "
+        "for net8.0; expected 8.0.0"
+    ) in inspect(package)
 
 
 def test_missing_symbols_are_reported(tmp_path: pathlib.Path) -> None:

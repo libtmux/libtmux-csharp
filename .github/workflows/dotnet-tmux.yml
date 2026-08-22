@@ -4,6 +4,7 @@
 name: dotnet-tmux
 
 on:
+  workflow_call:
   push:
     branches: [master]
   pull_request:

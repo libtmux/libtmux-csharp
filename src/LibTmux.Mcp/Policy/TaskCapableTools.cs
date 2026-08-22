@@ -30,7 +30,6 @@ internal static class TaskCapableTools
     /// <summary>The tools whose whole job is to wait for something.</summary>
     private static readonly HashSet<string> Waiting = new(StringComparer.Ordinal)
     {
-        "tmux_run",
         "tmux_wait_for_text",
         "tmux_wait_for_channel",
         "tmux_job",

@@ -6,6 +6,8 @@ namespace LibTmux.IntegrationTests.Infrastructure;
 
 internal sealed class RawTmuxTestContext : IAsyncDisposable
 {
+    private const int ExitPollAttempts = 400;
+    private static readonly TimeSpan ExitPollInterval = TimeSpan.FromMilliseconds(25);
     private static readonly TimeSpan CleanupTimeout = TimeSpan.FromSeconds(5);
     private int disposed;
     private int serverProcessId;
@@ -183,6 +185,31 @@ internal sealed class RawTmuxTestContext : IAsyncDisposable
         startInfo.Environment["LANG"] = locale;
         startInfo.Environment["LC_ALL"] = locale;
         startInfo.Environment["TERM"] = "xterm-256color";
+    }
+
+    /// <summary>Waits until the server this context started has really exited.</summary>
+    /// <remarks>
+    /// tmux answers <c>kill-server</c> when the command lands rather than when
+    /// the server goes, so a session created in that window is created on the
+    /// dying server and dies with it, leaving the socket with no server at all.
+    /// The socket file is no signal here: it outlives the server that made it.
+    /// </remarks>
+    internal async Task WaitForServerExitAsync(CancellationToken cancellationToken)
+    {
+        for (int attempt = 0; attempt < ExitPollAttempts; attempt++)
+        {
+            RawTmuxResult probe = await ExecuteAsync(["list-sessions"], cancellationToken);
+            if (probe.ExitCode != 0
+                && (serverProcessId <= 0 || !IsProcessAlive(serverProcessId)))
+            {
+                return;
+            }
+
+            await Task.Delay(ExitPollInterval, cancellationToken);
+        }
+
+        throw new InvalidOperationException(
+            "The tmux test server was still running after kill-server.");
     }
 
     public async ValueTask DisposeAsync()
