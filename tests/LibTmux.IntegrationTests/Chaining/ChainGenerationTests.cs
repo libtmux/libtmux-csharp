@@ -26,9 +26,17 @@ public sealed class ChainGenerationTests
         Pane pane = (await window.GetPanesAsync(token))[0];
 
         // The server this pane was read from goes away, and a new one takes the
-        // same socket and hands out the same IDs.
+        // same socket and hands out the same IDs. The old server has to be gone
+        // first: it unlinks the socket as it exits, which would take the
+        // replacement's socket with it.
         await first.KillAsync(token);
-        await raw.ExecuteAsync(["new-session", "-d", "-s", "replacement"], token);
+        await raw.WaitForServerExitAsync(token);
+        RawTmuxResult replacement = await raw.ExecuteAsync(
+            ["new-session", "-d", "-s", "replacement"],
+            token);
+        Assert.True(
+            replacement.ExitCode == 0,
+            $"the replacement server did not start: {replacement.StandardErrorText}");
 
         // Starting a server and being able to talk to it are not the same
         // instant, and how far apart they are depends on the machine.
