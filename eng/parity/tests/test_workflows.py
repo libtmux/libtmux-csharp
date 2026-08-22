@@ -26,6 +26,8 @@ def verify(root: pathlib.Path) -> list[str]:
 
 
 BUILD = """
+on:
+  workflow_call:
 jobs:
   build:
     steps:
@@ -40,10 +42,14 @@ jobs:
       - run: dotnet run --project tests/LibTmux.PackageConsumer
       - run: dotnet run --project examples/LibTmux.Examples
       - run: dotnet test --project tests/LibTmux.ExampleTests
+      - run: uv run python eng/docs/render_api_reference.py --check
+      - run: uv run python eng/parity/render_public_api.py --check
       - run: uv run python eng/docs/sync_snippets.py --check
 """
 
 MATRIX = """
+on:
+  workflow_call:
 jobs:
   matrix:
     strategy:
@@ -57,13 +63,48 @@ jobs:
         run: dotnet test
 """
 
+RELEASE = """
+jobs:
+  dotnet:
+    uses: ./.github/workflows/dotnet.yml
+  compatibility:
+    uses: ./.github/workflows/dotnet-tmux.yml
+  psmux:
+    runs-on: [self-hosted, Windows, X64, psmux]
+    steps:
+      - run: |
+          $env:NUGET_PACKAGES = 'fresh'
+          dotnet restore LibTmux.slnx
+      - env:
+          ARTIFACT_URL: ${{ vars.PSMUX_ARTIFACT_URL }}
+          SOURCE_URL: ${{ vars.PSMUX_SOURCE_PROVENANCE_URL }}
+          LICENSE_URL: ${{ vars.PSMUX_LICENSE_URL }}
+          WSL_DISTRIBUTION: ${{ vars.PSMUX_WSL_DISTRIBUTION }}
+          WSL_DOTNET_PATH: ${{ vars.PSMUX_WSL_DOTNET_PATH }}
+        run: Invoke-PsmuxSmoke.ps1 -RunWslSmoke -WslDotnetPath /dotnet -WslRepository $env:GITHUB_WORKSPACE 1abd0eaa3de1ed5491a4f744c8b3db492ae9ac94e9e9a8fea9da217c744ba94e
+      - run: echo 'net8.0' 'net10.0'
+  publish:
+    needs: [dotnet, compatibility, psmux]
+    steps:
+      - uses: actions/download-artifact@pinned
+      - env:
+          REF_TYPE: ${{ github.ref_type }}
+        run: dotnet nuget push package.nupkg
+"""
 
-def write(root: pathlib.Path, build: str, matrix: str) -> pathlib.Path:
-    """Lay out a repository holding the two workflows."""
+
+def write(
+    root: pathlib.Path,
+    build: str,
+    matrix: str,
+    release: str = RELEASE,
+) -> pathlib.Path:
+    """Lay out a repository holding the release's workflow set."""
     workflows = root / ".github" / "workflows"
     workflows.mkdir(parents=True)
     (workflows / "dotnet.yml").write_text(build, encoding="utf-8")
     (workflows / "dotnet-tmux.yml").write_text(matrix, encoding="utf-8")
+    (workflows / "release.yml").write_text(release, encoding="utf-8")
     return root
 
 
@@ -115,6 +156,8 @@ def test_skipped_integration_tests_are_reported(tmp_path: pathlib.Path) -> None:
         "dotnet pack",
         "LibTmux.PackageConsumer",
         "LibTmux.ExampleTests",
+        "render_api_reference.py --check",
+        "render_public_api.py --check",
         "sync_snippets.py --check",
     ],
 )
@@ -135,3 +178,86 @@ def test_a_missing_workflow_is_reported(tmp_path: pathlib.Path) -> None:
     (root / ".github" / "workflows" / "dotnet-tmux.yml").unlink()
 
     assert verify(root) == ["missing workflow: dotnet-tmux.yml"]
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "uses: ./.github/workflows/dotnet.yml",
+        "uses: ./.github/workflows/dotnet-tmux.yml",
+        "needs: [dotnet, compatibility, psmux]",
+        "github.ref_type",
+        "actions/download-artifact@",
+        "PSMUX_ARTIFACT_URL",
+        "PSMUX_SOURCE_PROVENANCE_URL",
+        "PSMUX_LICENSE_URL",
+        "PSMUX_WSL_DISTRIBUTION",
+        "PSMUX_WSL_DOTNET_PATH",
+        "runs-on: [self-hosted, Windows, X64, psmux]",
+        "Invoke-PsmuxSmoke.ps1",
+        "-RunWslSmoke",
+        "-WslDotnetPath",
+        "-WslRepository $env:GITHUB_WORKSPACE",
+    ],
+)
+def test_a_dropped_release_gate_is_reported(
+    tmp_path: pathlib.Path,
+    step: str,
+) -> None:
+    """Publishing must consume every same-commit and psmux proof."""
+    root = write(
+        tmp_path,
+        BUILD,
+        MATRIX.format(versions=every_version()),
+        RELEASE.replace(step, "echo skipped"),
+    )
+
+    assert f"release.yml omits {step}" in verify(root)
+
+
+def test_release_cannot_hide_an_existing_version(tmp_path: pathlib.Path) -> None:
+    """NuGet's immutable duplicate must fail rather than look published."""
+    root = write(
+        tmp_path,
+        BUILD,
+        MATRIX.format(versions=every_version()),
+        RELEASE + "\n# --skip-duplicate\n",
+    )
+
+    assert "release.yml can hide an existing immutable package version" in verify(root)
+
+
+def test_release_seeds_its_fresh_cache_before_the_solution_restore(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The packed consumer needs external dependencies in its isolated cache."""
+    root = write(
+        tmp_path,
+        BUILD,
+        MATRIX.format(versions=every_version()),
+        RELEASE.replace(
+            "$env:NUGET_PACKAGES = 'fresh'\n          dotnet restore LibTmux.slnx",
+            "dotnet restore LibTmux.slnx\n          $env:NUGET_PACKAGES = 'fresh'",
+        ),
+    )
+
+    assert (
+        "release.yml isolates NuGet only after restoring dependencies" in verify(root)
+    )
+
+
+@pytest.mark.parametrize("name", ["dotnet.yml", "dotnet-tmux.yml"])
+def test_release_gate_workflows_must_be_callable(
+    tmp_path: pathlib.Path,
+    name: str,
+) -> None:
+    """A same-commit release call needs a workflow_call entry point."""
+    build = BUILD if name != "dotnet.yml" else BUILD.replace("workflow_call:", "manual:")
+    matrix = (
+        MATRIX.format(versions=every_version())
+        if name != "dotnet-tmux.yml"
+        else MATRIX.format(versions=every_version()).replace("workflow_call:", "manual:")
+    )
+    root = write(tmp_path, build, matrix)
+
+    assert f"{name} cannot be called by release.yml" in verify(root)

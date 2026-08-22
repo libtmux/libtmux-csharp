@@ -4,12 +4,8 @@ using Microsoft.Extensions.Logging;
 
 namespace LibTmux;
 
-/// <summary>Renames, refreshes, and tears down a session.</summary>
-/// <remarks>
-/// Handles are immutable, so an operation that changes tmux state returns a
-/// replacement rather than mutating the receiver. A stale handle stays a
-/// truthful record of what was read.
-/// </remarks>
+// Session mutations return replacement handles; stale handles remain immutable
+// observations of what was read.
 public sealed partial class Session
 {
     private const string GroupKillCapability = "kill_session_group";
@@ -72,9 +68,10 @@ public sealed partial class Session
         CancellationToken cancellationToken = default)
     {
         SessionName.Validate(name);
-        await RunAsync(["rename-session", "-t", _id.ToString(), name], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["rename-session", "-t", _id.ToString(), name], cancellationToken),
+                () => RefreshAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Stops this session.</summary>
@@ -153,9 +150,10 @@ public sealed partial class Session
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
-        await RunAsync(["select-window", "-t", Scoped(target)], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["select-window", "-t", Scoped(target)], cancellationToken),
+                () => ActiveWindowAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await ActiveWindowAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Selects the next window.</summary>
@@ -164,9 +162,10 @@ public sealed partial class Session
     [UnsupportedOSPlatform("windows")]
     public async Task<Window> SelectNextWindowAsync(CancellationToken cancellationToken = default)
     {
-        await RunAsync(["next-window", "-t", _id.ToString()], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["next-window", "-t", _id.ToString()], cancellationToken),
+                () => ActiveWindowAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await ActiveWindowAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Selects the previous window.</summary>
@@ -176,9 +175,10 @@ public sealed partial class Session
     public async Task<Window> SelectPreviousWindowAsync(
         CancellationToken cancellationToken = default)
     {
-        await RunAsync(["previous-window", "-t", _id.ToString()], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["previous-window", "-t", _id.ToString()], cancellationToken),
+                () => ActiveWindowAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await ActiveWindowAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Stops one window in this session.</summary>
@@ -198,9 +198,10 @@ public sealed partial class Session
     [UnsupportedOSPlatform("windows")]
     public async Task<Session> SwitchClientAsync(CancellationToken cancellationToken = default)
     {
-        await RunAsync(["switch-client", "-t", _id.ToString()], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["switch-client", "-t", _id.ToString()], cancellationToken),
+                () => RefreshAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Runs a tmux-side filter over this session's windows.</summary>
@@ -259,11 +260,12 @@ public sealed partial class Session
         CancellationToken cancellationToken = default)
     {
         AttachSessionRequest options = request ?? new AttachSessionRequest();
-        await RunAsync(
-                [.. BuildAttachArguments(options, _id.ToString())],
-                cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(
+                    [.. BuildAttachArguments(options, _id.ToString())],
+                    cancellationToken),
+                () => RefreshAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Creates a window in this session.</summary>
@@ -277,22 +279,68 @@ public sealed partial class Session
     {
         NewWindowRequest options = request ?? new NewWindowRequest();
         Server owner = RequireOwner("windows");
-        TmuxCommandResult result = await _commandDispatcher
-            .ExecuteAsync([.. BuildNewWindowArguments(options, _id.ToString())], cancellationToken)
+        bool maySelectExisting = options.SelectExisting
+            && options.Name is not null
+            && options.Index is null
+            && options.TargetWindow is null;
+        string? selectedName = maySelectExisting
+            ? await ExpandWindowNameAsync(options.Name!, cancellationToken).ConfigureAwait(false)
+            : null;
+        var sequence = new TmuxMutationSequence();
+        TmuxCommandResult result = await sequence.MutateAsync(
+                () => _commandDispatcher.ExecuteAsync(
+                    [.. BuildNewWindowArguments(options, _id.ToString())],
+                    cancellationToken),
+                static value => TmuxCommandFailure.ThrowIfFailed(value, "new-window"))
             .ConfigureAwait(false);
-        TmuxCommandFailure.ThrowIfFailed(result, "new-window");
-        if (result.StandardOutputLines.Count == 0
-            || !WindowId.TryParse(result.StandardOutputLines[0], out WindowId created))
+
+        if (result.StandardOutputLines.Count == 0 && selectedName is not null)
         {
-            throw new InvalidDataException("tmux reported no new window identifier.");
+            IReadOnlyList<Window> selectedWindows = await sequence
+                .ObserveAsync(() => GetWindowsAsync(cancellationToken))
+                .ConfigureAwait(false);
+            return sequence.Observe(() =>
+            {
+                Window[] matches =
+                [.. selectedWindows.Where(window =>
+                    string.Equals(window.Name, selectedName, StringComparison.Ordinal))];
+                return matches.Length == 1
+                    ? matches[0]
+                    : throw new InvalidDataException(
+                        $"tmux did not report exactly one selected window named '{selectedName}'.");
+            });
         }
 
-        IReadOnlyList<Window> windows = await owner.GetWindowsAsync(cancellationToken)
+        WindowId created = sequence.Observe(() =>
+            result.StandardOutputLines.Count > 0
+                && WindowId.TryParse(result.StandardOutputLines[0], out WindowId parsed)
+                    ? parsed
+                    : throw new InvalidDataException("tmux reported no new window identifier."));
+
+        IReadOnlyList<Window> windows = await sequence
+            .ObserveAsync(() => owner.GetWindowsAsync(cancellationToken))
             .ConfigureAwait(false);
-        return windows.FirstOrDefault(window => window.Id == created)
-            ?? throw new TmuxObjectNotFoundException(
-                $"tmux did not report the created window '{created}'.",
-                created.ToString());
+        return sequence.Observe(() =>
+            windows.FirstOrDefault(window => window.Id == created)
+                ?? throw new TmuxObjectNotFoundException(
+                    $"tmux did not report the created window '{created}'.",
+                    created.ToString()));
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private async Task<string> ExpandWindowNameAsync(
+        string name,
+        CancellationToken cancellationToken)
+    {
+        TmuxCommandResult result = await _commandDispatcher.ExecuteAsync(
+                ["display-message", "-p", "-t", _id.ToString(), "--", name],
+                cancellationToken)
+            .ConfigureAwait(false);
+        TmuxCommandFailure.ThrowIfFailed(result, "display-message");
+        return result.StandardOutputLines.Count == 1
+            ? result.StandardOutputLines[0]
+            : throw new InvalidDataException(
+                "tmux did not report exactly one expanded window name.");
     }
 
     internal static IEnumerable<string> BuildAttachArguments(
@@ -429,10 +477,8 @@ public sealed partial class Session
                 _id.ToString());
     }
 
-    // tmux resolves a bare window name against the caller's current session, so
-    // every target is anchored here. Anchoring is unconditional because tmux
-    // accepts ':' inside a window name: treating one as "already qualified"
-    // sends "a:b" and tmux then looks for window b in a session named a.
+    // Always anchor: tmux resolves bare names in the current session, while ':'
+    // may be part of a window name rather than an already-qualified target.
     private string Scoped(string target) => $"{_id}:{target}";
 
     [UnsupportedOSPlatform("windows")]

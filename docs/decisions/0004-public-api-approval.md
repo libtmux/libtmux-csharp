@@ -58,10 +58,11 @@ Raw execution returns an immutable `TmuxCommandResult` with logical arguments,
 exit code, raw standard-output and standard-error bytes, and normalized line
 views. Nonzero tmux exit is inspectable data at the raw boundary.
 
-Process-backed entry points carry
-`[UnsupportedOSPlatform("windows")]` and perform a runtime platform guard.
-Portable IDs, snapshots, query translation and interpretation, and JSON remain
-available on Windows.
+Process-backed entry points carry `[UnsupportedOSPlatform("windows")]`.
+The separate `Psmux*` query facade is analyzer-clean because it exposes only
+the pinned-client, bounded preview; it does not make the ordinary tmux entity
+surface Windows-compatible. Portable IDs, snapshots, query translation and
+interpretation, and JSON remain available on Windows.
 
 ### Hierarchy, identity, and ownership
 

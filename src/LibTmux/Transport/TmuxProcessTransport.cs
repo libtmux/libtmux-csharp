@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.Versioning;
 
 namespace LibTmux.Internal;
 
@@ -33,19 +32,21 @@ internal sealed class TmuxProcessTransport
     private readonly TmuxTransportLimits _limits;
     private readonly ITmuxProcessLauncher _launcher;
     private readonly TimeProvider _timeProvider;
-
+    private readonly Func<ProcessStartInfo, CancellationToken, ValueTask>? _beforeStart;
     internal TmuxProcessTransport(
         string executablePath,
         IReadOnlyList<string>? prefixArguments = null,
         TmuxTransportLimits? limits = null,
         Func<ProcessStartInfo, Process>? launcher = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Func<ProcessStartInfo, CancellationToken, ValueTask>? beforeStart = null)
         : this(
             executablePath,
             launcher is null ? new SystemProcessLauncher() : new DelegateProcessLauncher(launcher),
             prefixArguments,
             limits,
-            timeProvider)
+            timeProvider,
+            beforeStart)
     {
     }
 
@@ -54,7 +55,8 @@ internal sealed class TmuxProcessTransport
         ITmuxProcessLauncher launcher,
         IReadOnlyList<string>? prefixArguments = null,
         TmuxTransportLimits? limits = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Func<ProcessStartInfo, CancellationToken, ValueTask>? beforeStart = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         _executablePath = executablePath;
@@ -62,20 +64,18 @@ internal sealed class TmuxProcessTransport
         _limits = limits ?? new TmuxTransportLimits();
         _launcher = launcher ?? throw new ArgumentNullException(nameof(launcher));
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _beforeStart = beforeStart;
     }
 
-    [UnsupportedOSPlatform("windows")]
     internal Task<TmuxCommandResult> ExecuteAsync(
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync(TmuxCommandRequest.Single(arguments), cancellationToken);
 
-    [UnsupportedOSPlatform("windows")]
     internal async Task<TmuxCommandResult> ExecuteAsync(
         TmuxCommandRequest request,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         IReadOnlyList<string> encodedArguments = request.EncodeArguments();
@@ -92,7 +92,17 @@ internal sealed class TmuxProcessTransport
         ITmuxProcessHandle process;
         try
         {
+            if (_beforeStart is not null)
+            {
+                await _beforeStart(startInfo, cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
             process = _launcher.Start(startInfo);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Win32Exception error) when (error.NativeErrorCode is 2 or 3)
         {
@@ -511,18 +521,6 @@ internal sealed class TmuxProcessTransport
         {
             process.Dispose();
             return ValueTask.CompletedTask;
-        }
-    }
-}
-
-internal static class PlatformGuard
-{
-    internal static void ThrowIfWindows()
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            throw new PlatformNotSupportedException(
-                "Process-backed LibTmux operations are not supported on Windows.");
         }
     }
 }

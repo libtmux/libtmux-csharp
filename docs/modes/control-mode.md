@@ -45,6 +45,14 @@ and the stream looks mysteriously quiet.
 The stream ends with `TmuxExitEvent` and then completes, so an `await foreach`
 is released rather than hanging when the server goes away.
 
+Notifications use a bounded, non-blocking buffer so a slow observer cannot
+stall command replies or the control reader. If the buffer fills, the oldest
+events are discarded and a `TmuxEventsDroppedEvent` appears immediately before
+the next retained event. `Count` is the loss since the previous marker and
+`TotalDropped` is the lifetime total. Treat the marker as cache invalidation:
+re-read any state that depends on notifications. Command replies travel through
+a separate queue and are not dropped by this buffer.
+
 `SendAsync` is safe to call concurrently: tmux answers in the order it was
 asked, and each caller gets its own answer.
 

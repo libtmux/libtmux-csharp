@@ -3,14 +3,14 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides server connection identity and typed lookup.</summary>
+// Provides server connection identity and typed lookup.
 public sealed partial class Server
 {
     private readonly TmuxConnection? _connection;
     private readonly ServerGeneration? _generation;
     private readonly string? _rawVersion;
 
-    private Server(
+    internal Server(
         TmuxConnection connection,
         ServerGeneration? generation,
         string? rawVersion)
@@ -46,17 +46,13 @@ public sealed partial class Server
     [UnsupportedOSPlatform("windows")]
     public static Task<Server> ConnectAsync(
         ServerConnectionOptions? options = null,
-        CancellationToken cancellationToken = default)
-    {
-        PlatformGuard.ThrowIfWindows();
-        return Open(options).ConnectAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        Open(options).ConnectAsync(cancellationToken);
 
     /// <summary>Materializes this connection and returns its immutable replacement.</summary>
     [UnsupportedOSPlatform("windows")]
     public async Task<Server> ConnectAsync(CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         if (_connection is null)
         {
             throw new InvalidOperationException("This server has no connection identity.");
@@ -67,9 +63,26 @@ public sealed partial class Server
             return this;
         }
 
+        return await RediscoverCurrentGenerationAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private async Task<Server> RediscoverCurrentGenerationAsync(
+        CancellationToken cancellationToken)
+    {
+        if (_connection is null)
+        {
+            throw new InvalidOperationException("This server has no connection identity.");
+        }
+
         (ServerGeneration generation, string rawVersion) = await _connection
             .DiscoverAsync(cancellationToken)
             .ConfigureAwait(false);
+        if (_generation is ServerGeneration existing && existing == generation)
+        {
+            return this;
+        }
+
         var materialized = new Server(_connection, generation, rawVersion);
         if (ConnectionOptions.InitializeAsync is not null)
         {
@@ -86,7 +99,6 @@ public sealed partial class Server
         SessionId id,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         TmuxConnection connection = RequireMaterializedConnection();
         (ServerGeneration Generation, SessionId Id)? identity = await connection
             .FindSessionAsync(id, cancellationToken)
@@ -107,7 +119,6 @@ public sealed partial class Server
         WindowId id,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         TmuxConnection connection = RequireMaterializedConnection();
         (ServerGeneration Generation, WindowId Id)? identity = await connection
             .FindWindowAsync(id, cancellationToken)
@@ -128,7 +139,6 @@ public sealed partial class Server
         PaneId id,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         TmuxConnection connection = RequireMaterializedConnection();
         (ServerGeneration Generation, PaneId Id)? identity = await connection
             .FindPaneAsync(id, cancellationToken)

@@ -443,6 +443,56 @@ LibTmux.PromptType.Command = 0 -> LibTmux.PromptType
 LibTmux.PromptType.Search = 1 -> LibTmux.PromptType
 LibTmux.PromptType.Target = 2 -> LibTmux.PromptType
 LibTmux.PromptType.WindowTarget = 3 -> LibTmux.PromptType
+LibTmux.PsmuxCaptureOptions
+LibTmux.PsmuxCaptureOptions.EndLine.get -> LibTmux.CapturePanePosition?
+LibTmux.PsmuxCaptureOptions.EscapeSequences.get -> bool
+LibTmux.PsmuxCaptureOptions.JoinWrappedLines.get -> bool
+LibTmux.PsmuxCaptureOptions.PsmuxCaptureOptions(LibTmux.CapturePanePosition? startLine = null, LibTmux.CapturePanePosition? endLine = null, bool escapeSequences = false, bool joinWrappedLines = false) -> void
+LibTmux.PsmuxCaptureOptions.StartLine.get -> LibTmux.CapturePanePosition?
+LibTmux.PsmuxConnectionOptions
+LibTmux.PsmuxConnectionOptions.DataDirectory.get -> string!
+LibTmux.PsmuxConnectionOptions.ExecutablePath.get -> string!
+LibTmux.PsmuxConnectionOptions.ExpectedBinarySha256.get -> string!
+LibTmux.PsmuxConnectionOptions.Logger.get -> Microsoft.Extensions.Logging.ILogger?
+LibTmux.PsmuxConnectionOptions.NamespaceName.get -> string!
+LibTmux.PsmuxConnectionOptions.PsmuxConnectionOptions(string! executablePath, string! expectedBinarySha256, string! dataDirectory, string! namespaceName, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+LibTmux.PsmuxPane
+LibTmux.PsmuxPane.CaptureAsync(LibTmux.PsmuxCaptureOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+LibTmux.PsmuxPane.Height.get -> int
+LibTmux.PsmuxPane.Id.get -> LibTmux.PaneId
+LibTmux.PsmuxPane.Index.get -> int
+LibTmux.PsmuxPane.Server.get -> LibTmux.PsmuxServer!
+LibTmux.PsmuxPane.SessionId.get -> LibTmux.SessionId
+LibTmux.PsmuxPane.Title.get -> string?
+LibTmux.PsmuxPane.Width.get -> int
+LibTmux.PsmuxPane.WindowId.get -> LibTmux.WindowId
+LibTmux.PsmuxServer
+LibTmux.PsmuxServer.ConnectionOptions.get -> LibTmux.PsmuxConnectionOptions!
+LibTmux.PsmuxServer.GetPanesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<LibTmux.PsmuxPane!>!>!
+LibTmux.PsmuxServer.GetSessionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<LibTmux.PsmuxSession!>!
+LibTmux.PsmuxServer.GetWindowsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<LibTmux.PsmuxWindow!>!>!
+LibTmux.PsmuxServer.RefreshAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<LibTmux.PsmuxServer!>!
+LibTmux.PsmuxServer.Version.get -> LibTmux.TmuxVersion
+LibTmux.PsmuxSession
+LibTmux.PsmuxSession.Attached.get -> bool
+LibTmux.PsmuxSession.GetPanesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<LibTmux.PsmuxPane!>!>!
+LibTmux.PsmuxSession.GetWindowsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<LibTmux.PsmuxWindow!>!>!
+LibTmux.PsmuxSession.Id.get -> LibTmux.SessionId
+LibTmux.PsmuxSession.Name.get -> string!
+LibTmux.PsmuxSession.Server.get -> LibTmux.PsmuxServer!
+LibTmux.PsmuxWindow
+LibTmux.PsmuxWindow.GetPanesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<LibTmux.PsmuxPane!>!>!
+LibTmux.PsmuxWindow.Height.get -> int
+LibTmux.PsmuxWindow.Id.get -> LibTmux.WindowId
+LibTmux.PsmuxWindow.Index.get -> int
+LibTmux.PsmuxWindow.Name.get -> string!
+LibTmux.PsmuxWindow.Server.get -> LibTmux.PsmuxServer!
+LibTmux.PsmuxWindow.SessionId.get -> LibTmux.SessionId
+LibTmux.PsmuxWindow.Width.get -> int
+const LibTmux.PsmuxServer.SupportedBinarySha256 = "1abd0eaa3de1ed5491a4f744c8b3db492ae9ac94e9e9a8fea9da217c744ba94e" -> string!
+const LibTmux.PsmuxServer.SupportedCommit = "aa26cd39edcfab03e718f94ea21bb47e8c5b85e8" -> string!
+const LibTmux.PsmuxServer.SupportedImplementationBanner = "psmux 3.3.7 (aa26cd3 2026-08-17)" -> string!
+static LibTmux.PsmuxServer.ConnectAsync(LibTmux.PsmuxConnectionOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<LibTmux.PsmuxServer!>!
 LibTmux.Query.AndNode
 LibTmux.Query.AndNode.AndNode(System.Collections.Generic.IReadOnlyList<LibTmux.Query.QueryNode!>! operands) -> void
 LibTmux.Query.AndNode.Equals(LibTmux.Query.AndNode? other) -> bool
@@ -1032,6 +1082,14 @@ LibTmux.TmuxEnvironmentEntry.Value.get -> string?
 LibTmux.TmuxEvent
 LibTmux.TmuxEvent.TmuxEvent() -> void
 LibTmux.TmuxEvent.TmuxEvent(LibTmux.TmuxEvent! original) -> void
+LibTmux.TmuxEventsDroppedEvent
+LibTmux.TmuxEventsDroppedEvent.Count.get -> long
+LibTmux.TmuxEventsDroppedEvent.Count.init -> void
+LibTmux.TmuxEventsDroppedEvent.Deconstruct(out long Count, out long TotalDropped) -> void
+LibTmux.TmuxEventsDroppedEvent.Equals(LibTmux.TmuxEventsDroppedEvent? other) -> bool
+LibTmux.TmuxEventsDroppedEvent.TmuxEventsDroppedEvent(long Count, long TotalDropped) -> void
+LibTmux.TmuxEventsDroppedEvent.TotalDropped.get -> long
+LibTmux.TmuxEventsDroppedEvent.TotalDropped.init -> void
 LibTmux.TmuxExitEvent
 LibTmux.TmuxExitEvent.Deconstruct(out string? Reason) -> void
 LibTmux.TmuxExitEvent.Equals(LibTmux.TmuxExitEvent? other) -> bool
@@ -1501,6 +1559,10 @@ override LibTmux.TmuxEnvironmentEntry.ToString() -> string!
 override LibTmux.TmuxEvent.Equals(object? obj) -> bool
 override LibTmux.TmuxEvent.GetHashCode() -> int
 override LibTmux.TmuxEvent.ToString() -> string!
+override LibTmux.TmuxEventsDroppedEvent.<Clone>$() -> LibTmux.TmuxEventsDroppedEvent!
+override LibTmux.TmuxEventsDroppedEvent.Equals(object? obj) -> bool
+override LibTmux.TmuxEventsDroppedEvent.GetHashCode() -> int
+override LibTmux.TmuxEventsDroppedEvent.ToString() -> string!
 override LibTmux.TmuxExitEvent.<Clone>$() -> LibTmux.TmuxExitEvent!
 override LibTmux.TmuxExitEvent.Equals(object? obj) -> bool
 override LibTmux.TmuxExitEvent.GetHashCode() -> int
@@ -1571,6 +1633,7 @@ override sealed LibTmux.Query.StringConstant.Equals(LibTmux.Query.QueryConstant?
 override sealed LibTmux.Query.StringNode.Equals(LibTmux.Query.QueryNode? other) -> bool
 override sealed LibTmux.Query.TypedIdConstant.Equals(LibTmux.Query.QueryConstant? other) -> bool
 override sealed LibTmux.TmuxExitEvent.Equals(LibTmux.TmuxEvent? other) -> bool
+override sealed LibTmux.TmuxEventsDroppedEvent.Equals(LibTmux.TmuxEvent? other) -> bool
 override sealed LibTmux.TmuxNotificationEvent.Equals(LibTmux.TmuxEvent? other) -> bool
 override sealed LibTmux.TmuxOutputEvent.Equals(LibTmux.TmuxEvent? other) -> bool
 static LibTmux.AttachSessionRequest.operator !=(LibTmux.AttachSessionRequest? left, LibTmux.AttachSessionRequest? right) -> bool
@@ -1828,6 +1891,8 @@ static LibTmux.TmuxEnvironmentEntry.operator !=(LibTmux.TmuxEnvironmentEntry? le
 static LibTmux.TmuxEnvironmentEntry.operator ==(LibTmux.TmuxEnvironmentEntry? left, LibTmux.TmuxEnvironmentEntry? right) -> bool
 static LibTmux.TmuxEvent.operator !=(LibTmux.TmuxEvent? left, LibTmux.TmuxEvent? right) -> bool
 static LibTmux.TmuxEvent.operator ==(LibTmux.TmuxEvent? left, LibTmux.TmuxEvent? right) -> bool
+static LibTmux.TmuxEventsDroppedEvent.operator !=(LibTmux.TmuxEventsDroppedEvent? left, LibTmux.TmuxEventsDroppedEvent? right) -> bool
+static LibTmux.TmuxEventsDroppedEvent.operator ==(LibTmux.TmuxEventsDroppedEvent? left, LibTmux.TmuxEventsDroppedEvent? right) -> bool
 static LibTmux.TmuxExitEvent.operator !=(LibTmux.TmuxExitEvent? left, LibTmux.TmuxExitEvent? right) -> bool
 static LibTmux.TmuxExitEvent.operator ==(LibTmux.TmuxExitEvent? left, LibTmux.TmuxExitEvent? right) -> bool
 static LibTmux.TmuxHook.operator !=(LibTmux.TmuxHook? left, LibTmux.TmuxHook? right) -> bool

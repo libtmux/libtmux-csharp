@@ -35,13 +35,16 @@ environment, script a workspace, harness a TUI in tests, or give an assistant
 hands on a terminal.
 
 **Look elsewhere if you want** a terminal emulator (this drives tmux, it does
-not draw), a Windows-native solution (tmux is Unix only), or a process
-launcher — `Process.Start` is right there.
+not draw), unrestricted Windows parity, or a process launcher — `Process.Start`
+is right there. Native Windows has a bounded, query-only
+[`Psmux*` preview](docs/psmux.md).
 
 **What you get that a shell wrapper does not:** typed entities with real IDs,
 one dispatch model per workload (below), a version model that tells you when a
 flag does not exist on the tmux you are on rather than failing oddly, and
-documented examples that are executed against live tmux in CI.
+documented ordinary-tmux examples that are executed against live tmux in CI.
+The psmux preview has a separate manual native/WSL harness whose runtime
+verification remains a release gate.
 
 ## Packages
 
@@ -261,23 +264,26 @@ $ dotnet tool install --global LibTmux.Mcp --prerelease
 { "mcpServers": { "tmux": { "command": "libtmux-mcp" } } }
 ```
 
-It exposes 42 tools across three safety tiers, six `tmux://` resources and four
-workflow prompts — [the full reference](docs/mcp/tools.md) is generated from the
-server itself. Pass a socket name as its first argument to drive a server other
-than the ambient one, which is what a sandbox wants.
+It exposes 42 tools across three safety tiers, four fixed `tmux://` resources,
+two resource templates and four workflow prompts — [the full
+reference](docs/mcp/tools.md) is generated from the server itself. Pass a socket
+name as its first argument to drive a server other than the ambient one, which
+is what a sandbox wants.
 
 What it is built around is that an assistant should never get stuck and never
-waste context. Nothing polls: `tmux_run` returns the shell's real exit status,
+waste context. `tmux_run` returns the shell's real exit status,
 `tmux_start_job` hands back a handle for work that takes minutes, and
-`tmux_wait_for_text` sleeps on tmux's own control-mode stream until the pane
-prints. Nothing returns unbounded output: every capture keeps the newest lines
-and reports what it dropped. `LIBTMUX_SAFETY` decides which tier is registered,
-and a tool above it never reaches the model's list.
+`tmux_wait_for_text` normally wakes from tmux's control-mode stream, with a
+bounded polling fallback when that stream cannot start. Nothing returns
+unbounded output: every capture keeps the newest lines and reports what it
+dropped. `LIBTMUX_SAFETY` decides which tier is registered, and a tool above it
+never reaches the model's list.
 [Full instructions](src/LibTmux.Mcp/README.md).
 
 ## Documentation
 
 - [Choosing a mode](docs/modes/matrix.md) — the three dispatch modes, measured
+- [Windows psmux preview](docs/psmux.md) — test setup, bounded scope, and known gaps
 - [API reference](docs/api/README.md) — rendered from the doc comments
 - [tmux MCP tools](docs/mcp/tools.md) — every tool, tier and resource, generated
 - [Public API](docs/public-api.md) — the reviewed, approved surface
@@ -292,8 +298,8 @@ and a tool above it never reaches the model's list.
 |---|---|
 | tmux | 3.2a, 3.3a, 3.4, 3.5, 3.6, 3.7a, 3.7b |
 | .NET | net8.0, net10.0 |
-| OS | Linux, macOS. Windows is unsupported — tmux does not run there |
-| Trimming | trim- and AOT-safe, proven by publishing and running it |
+| OS | Linux, macOS. The bounded [`Psmux*` native-Windows and WSL query preview](docs/psmux.md) is experimental; its release gate runs both paths on net8.0 and net10.0 |
+| Trimming / NativeAOT | `LibTmux` core is analyzer-gated and its smoke app is published and run for `linux-x64` on net8.0 and net10.0. That proof does not cover the other packages, macOS, or native Windows/psmux |
 
 ## License
 

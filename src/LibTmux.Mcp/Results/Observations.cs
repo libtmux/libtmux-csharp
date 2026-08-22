@@ -97,10 +97,16 @@ public sealed record WaitResult(
 /// <param name="ExitStatus">
 /// The shell's exit status, or null when the command did not finish in time.
 /// </param>
-/// <param name="TimedOut">Whether the wait ran out before the command finished.</param>
+/// <param name="TimedOut">
+/// Whether waiting stopped before completion. The shell command may still be
+/// running; inspect the pane and do not retry it. Use <c>tmux_start_job</c> when
+/// work must remain recoverable after the wait.
+/// </param>
 /// <param name="Output">What the command printed, within the budget.</param>
 /// <param name="ElapsedSeconds">How long it took.</param>
 /// <param name="EffectiveTimeoutSeconds">The timeout actually used, after the server's ceiling.</param>
+/// <param name="LinesMissed">Whether scrollback dropped output before it could be read.</param>
+/// <param name="AnchorLost">Whether the pre-command output position could no longer be found.</param>
 /// <remarks>
 /// The command runs in a subshell, so a <c>cd</c> or an <c>export</c> in it
 /// does not survive into the next call.
@@ -111,7 +117,9 @@ public sealed record RunResult(
     bool TimedOut,
     BoundedText Output,
     double ElapsedSeconds,
-    double EffectiveTimeoutSeconds);
+    double EffectiveTimeoutSeconds,
+    bool LinesMissed = false,
+    bool AnchorLost = false);
 
 /// <summary>One pane whose text matched a search.</summary>
 /// <param name="PaneId">The pane that matched.</param>

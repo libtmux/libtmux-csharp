@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Opens a live control client on this server.</summary>
+// Opens a live control client on this server.
 public sealed partial class Server
 {
     /// <summary>Starts a tmux control client and keeps it running.</summary>
@@ -26,7 +26,6 @@ public sealed partial class Server
         string? target = null,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         TmuxConnection connection = _connection
             ?? throw new InvalidOperationException("The server handle has no connection.");
 
@@ -34,6 +33,11 @@ public sealed partial class Server
         // the moment it is started. Discovering first turns "no server" into
         // the ordinary connection error rather than a client that dies at once.
         await ConnectAsync(cancellationToken).ConfigureAwait(false);
+        if (connection.IsPsmux)
+        {
+            throw new NotSupportedException(
+                "psmux control mode does not provide the attach readiness framing LibTmux requires.");
+        }
 
         ControlModeSession session = ControlModeSession.Start(
             connection.Options.TmuxBinaryPath,
@@ -45,7 +49,23 @@ public sealed partial class Server
 
         // Attaching is asynchronous, and a caller who sends a command before
         // tmux has answered its own attach would be handed that answer.
-        await session.WaitForReadyAsync(cancellationToken).ConfigureAwait(false);
-        return session;
+        try
+        {
+            await session.WaitForReadyAsync(cancellationToken).ConfigureAwait(false);
+            return session;
+        }
+        catch (Exception startupFailure)
+        {
+            try
+            {
+                await session.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception cleanupFailure)
+            {
+                startupFailure.Data["LibTmux.ControlModeCleanupFailure"] = cleanupFailure;
+            }
+
+            throw;
+        }
     }
 }

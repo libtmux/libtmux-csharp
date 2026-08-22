@@ -49,8 +49,9 @@ build and learn whether it passed. Watch a dev server come up. Find which of
 eleven panes is showing the stack trace. Lay out a workspace and drive it.
 
 The design goal is that an assistant never gets **stuck** and never **wastes
-context**: no tool polls, no tool returns unbounded output, and no failure
-comes back as "an error occurred".
+context**: waits are event-driven when control mode is available and use a
+bounded polling fallback otherwise; no tool returns unbounded output, and no
+failure comes back as "an error occurred".
 
 ## Waiting, not polling
 
@@ -61,17 +62,29 @@ cover the cases, and the server's instructions steer between them:
 |---|---|---|
 | Run a command, know if it worked | `tmux_run` | Waits, returns the shell's **real exit status** |
 | The same, but it takes minutes | `tmux_start_job` → `tmux_job` | Returns a handle at once; collect later |
-| Output you did **not** start | `tmux_wait_for_text` | Wakes on the pane printing, not on a timer |
+| Output you did **not** start | `tmux_wait_for_text` | Normally wakes from pane output; bounded polling is the fallback |
 | Watch a pane across turns | `tmux_tail_pane` | Answers only what is **new** since its cursor |
 
-A client that speaks the [Tasks extension](https://modelcontextprotocol.io) can
-start `tmux_run`, `tmux_wait_for_text`, `tmux_wait_for_channel` or `tmux_job`
-as a task and collect the result later — the protocol's own version of what
-`tmux_start_job` does by hand. It is offered, never required, so a client
-without it keeps the blocking call it had. A listing stays a plain call: making
-it a task would cost a round trip to collect an answer that was already there.
+A job handle stays bound to the exact socket, tmux process, and pane that
+started it. Collection and cancellation use that recorded endpoint; command
+text is not retained or returned because shell commands often contain secrets.
+Collection advances only after its complete MCP response fits the byte ceiling,
+so retrying a rejected call does not lose output. A cancelled job retains its
+capacity slot until the tmux watcher ends. Starting refuses before sending the
+command if its durable handle cannot fit the response ceiling.
 
-Nothing here sleeps in a loop. A wait subscribes to tmux's own
+A client that speaks the [Tasks extension](https://modelcontextprotocol.io) can
+start `tmux_wait_for_text`, `tmux_wait_for_channel` or `tmux_job` as a task and
+collect the result later. It is offered, never required, so a client without it
+keeps the blocking call it had. Use `tmux_start_job` for a command that must be
+recoverable across calls: `tmux_run` stays synchronous because an SDK task has
+no durable tmux job handle if its client disconnects. Listings also stay plain
+calls; making one a task would add a round trip to an answer already available.
+The in-memory task store admits at most 8 active executions and retains at most
+256 results for 15 minutes. Cancellation keeps its active slot until the
+background execution actually stops.
+
+Normally a wait does not sleep in a loop. It subscribes to tmux's own
 [control mode](https://github.com/tmux/tmux/wiki/Control-Mode), so tmux reports
 pane output as it happens and the wait is released the moment there is
 something to look at.
@@ -108,10 +121,14 @@ Console.WriteLine($"exit {result.ExitStatus}, timed out: {result.TimedOut}");
 ```
 <!-- endsnippet -->
 
+If `TimedOut` is true, the shell command may still be running. Inspect the pane
+and do not call `tmux_run` again; use `tmux_start_job` for work that needs a
+durable handle beyond one wait.
+
 ## Nothing returns unbounded output
 
-Every content-bearing result is cut to a budget, keeps the **newest** lines,
-and says what it dropped:
+Every serialized tool result has a hard byte ceiling. Terminal-text results
+keep the **newest** lines and say what they dropped:
 
 ```json
 {
@@ -171,6 +188,11 @@ Console.WriteLine($"{next.Content.Lines.Count} new lines");
 ```
 <!-- endsnippet -->
 
+A cursor is opaque, authenticated, and bound to the exact socket, tmux server
+generation, and pane that issued it. It cannot be moved between panes or
+servers, and restarting the MCP server expires it; omit an expired cursor to
+establish a new position.
+
 To offer these beside your own tools rather than as a separate process:
 
 <!-- snippet: HostTheToolsYourself usings: LibTmux, LibTmux.Mcp, Microsoft.Extensions.DependencyInjection -->
@@ -222,11 +244,21 @@ An unreadable value is clamped and logged rather than refused — except
 `LIBTMUX_SAFETY`, where anything unrecognised falls to `readonly`, because a
 typo must never widen what the server offers.
 
+The byte ceiling covers serialized tool and resource results, including text,
+structured content, and metadata. Content tools truncate within it and report
+the loss; a result that still cannot fit is replaced by a small error that says
+how to narrow the call or raise the ceiling. Oversized resource reads fail with
+the same guidance. `tmux_search_panes` also caps its pattern at 4096 UTF-8 bytes
+before compiling it or contacting tmux. Pane waits accept at most 32 patterns,
+4096 bytes each and 16384 bytes together; channel names share the 4096-byte
+input bound.
+
 ## Resources and prompts
 
-Six resources expose the hierarchy without a tool call — `tmux://hierarchy`,
-`tmux://sessions`, `tmux://sessions/{id}/panes`, `tmux://panes/{id}/content`,
-`tmux://self`, `tmux://servers`. A client can pin or refresh one on its own
+Four fixed resources expose the hierarchy without a tool call:
+`tmux://hierarchy`, `tmux://sessions`, `tmux://self`, and `tmux://servers`.
+Two resource templates address `tmux://sessions/{id}/panes` and
+`tmux://panes/{id}/content`. A client can pin or refresh one on its own
 initiative; one nobody reads costs nothing.
 
 A client that subscribes to `tmux://hierarchy`, `tmux://sessions` or
@@ -238,6 +270,10 @@ hierarchy and not every byte a pane prints.
 
 Both subscription shapes are served: `resources/subscribe`, and the
 `subscriptions/listen` stream that replaced it in the 2026-07-28 revision.
+Duplicate resource URIs are one subscription, and one server admits at most
+eight concurrent listen streams; cancel an existing stream before opening a
+ninth. Legacy duplicate subscribe requests are likewise one subscription and
+one unsubscribe removes it.
 The newer one is answered by this server rather than by the SDK's built-in
 handling, because that grants the subscription without telling the application
 — which would leave a client subscribed to a watcher nobody started, waiting

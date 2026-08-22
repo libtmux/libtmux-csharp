@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides typed pane identity.</summary>
+// Provides typed pane identity.
 public sealed partial class Pane
 {
     private readonly PaneId _id;

@@ -10,6 +10,8 @@ namespace LibTmux.Mcp;
 [UnsupportedOSPlatform("windows")]
 public sealed partial class ReadTools
 {
+    private const int MaximumSearchPatternBytes = 4_096;
+
     /// <summary>Reads a pane's content and screen state together.</summary>
     /// <param name="paneId">The pane, or null for the active one.</param>
     /// <param name="maxLines">The most lines to answer, or null for the server default.</param>
@@ -37,16 +39,23 @@ public sealed partial class ReadTools
         PaneRead read = await PaneReader.ReadVisibleAsync(pane, null, cancellationToken)
             .ConfigureAwait(false);
 
-        return new PaneSnapshot(
-            Pane: PaneInfo.From(pane, TmuxTargets.CallerPaneId()),
-            Content: BoundedText.Fit(
-                PaneText.Scrub(read.Lines, pane.Width),
-                maxLines ?? _policy.MaxLines,
-                _policy.MaxBytes),
-            CursorX: await TmuxTargets.DisplayNumberAsync(pane, "#{cursor_x}", cancellationToken)
-                .ConfigureAwait(false),
-            CursorY: read.State.CursorY,
-            AlternateScreen: read.State.AlternateScreen);
+        PaneInfo paneInfo = PaneInfo.From(pane, TmuxTargets.CallerPaneId());
+        int? cursorX = await TmuxTargets.DisplayNumberAsync(
+                pane,
+                "#{cursor_x}",
+                cancellationToken)
+            .ConfigureAwait(false);
+        return StructuredTextResultBudget.Fit(
+            PaneText.Scrub(read.Lines, pane.Width),
+            maxLines ?? _policy.MaxLines,
+            _policy.MaxBytes,
+            content => new PaneSnapshot(
+                paneInfo,
+                content,
+                cursorX,
+                read.State.CursorY,
+                read.State.AlternateScreen),
+            "pane snapshot");
     }
 
     /// <summary>Reads what a pane is showing.</summary>
@@ -88,17 +97,18 @@ public sealed partial class ReadTools
             .ConfigureAwait(false);
 
         CapturePaneRequest request = new(
-            startLine: includeHistory ? new CapturePanePosition(-32768) : null,
+            startLine: includeHistory ? CapturePanePosition.BeginningOfHistory : null,
             joinWrappedLines: joinWrappedLines);
         IReadOnlyList<string> lines = await pane.CaptureAsync(request, cancellationToken)
             .ConfigureAwait(false);
 
-        return new CaptureResult(
-            pane.Id.ToString(),
-            BoundedText.Fit(
-                PaneText.Scrub(lines, pane.Width),
-                maxLines ?? _policy.MaxLines,
-                _policy.MaxBytes));
+        string id = pane.Id.ToString();
+        return StructuredTextResultBudget.Fit(
+            PaneText.Scrub(lines, pane.Width),
+            maxLines ?? _policy.MaxLines,
+            _policy.MaxBytes,
+            content => new CaptureResult(id, content),
+            "pane capture");
     }
 
     /// <summary>Reads what a pane has printed since the last read.</summary>
@@ -130,7 +140,7 @@ public sealed partial class ReadTools
             .ConfigureAwait(false);
         string id = pane.Id.ToString();
 
-        TailCursor? previous = TailCursor.Decode(cursor);
+        TailCursor? previous = TailCursor.Decode(cursor, pane);
         PaneRead read = previous is null
             ? await PaneReader.ReadVisibleAsync(pane, null, cancellationToken).ConfigureAwait(false)
             : await PaneReader.ReadSinceAsync(pane, previous, cancellationToken).ConfigureAwait(false);
@@ -139,15 +149,18 @@ public sealed partial class ReadTools
         // budget on a screenful they did not ask for.
         IReadOnlyList<string> lines = previous is null ? [] : read.Lines;
 
-        return new TailResult(
-            PaneId: id,
-            Content: BoundedText.Fit(
-                PaneText.Scrub(lines, pane.Width),
-                maxLines ?? _policy.MaxLines,
-                _policy.MaxBytes),
-            Cursor: TailCursor.Build(id, read.State, read.CursorRows).Encode(),
-            LinesMissed: read.LinesMissed,
-            AnchorLost: previous is not null && read.AnchorLost);
+        string nextCursor = TailCursor.Build(pane, read.State, read.CursorRows).Encode();
+        return StructuredTextResultBudget.Fit(
+            PaneText.Scrub(lines, pane.Width),
+            maxLines ?? _policy.MaxLines,
+            _policy.MaxBytes,
+            content => new TailResult(
+                id,
+                content,
+                nextCursor,
+                read.LinesMissed,
+                previous is not null && read.AnchorLost),
+            "pane tail");
     }
 
     /// <summary>Searches what panes are showing.</summary>
@@ -166,7 +179,8 @@ public sealed partial class ReadTools
         + "question about what a pane CONTAINS — the tmux_list_* tools only see names "
         + "and sizes.")]
     public async Task<SearchResult> SearchPanesAsync(
-        [Description("A .NET regular expression to look for.")] string pattern,
+        [Description("A .NET regular expression to look for, at most 4096 UTF-8 bytes.")]
+        string pattern,
         [Description("A session id such as $0, or its name. Omit to search every session.")]
         string? session = null,
         [Description("Search scrollback as well as the visible screen. Slower.")]
@@ -179,6 +193,9 @@ public sealed partial class ReadTools
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pattern);
+        ValidateSearchMatchLimit(maxMatchesPerPane, _policy.MaxLines);
+        ValidateSearchPatternBudget(pattern, _policy.MaxBytes);
+
         Regex regex = CompilePattern(pattern, ignoreCase);
 
         Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
@@ -190,10 +207,15 @@ public sealed partial class ReadTools
                 .ConfigureAwait(false);
 
         CapturePaneRequest request = new(
-            startLine: includeHistory ? new CapturePanePosition(-32768) : null,
+            startLine: includeHistory ? CapturePanePosition.BeginningOfHistory : null,
             joinWrappedLines: true);
 
-        List<PaneMatch> hits = [];
+        var budget = new SearchResultBudget(
+            pattern,
+            panes.Count,
+            _policy.MaxLines,
+            _policy.MaxBytes);
+        int panesSearched = 0;
         bool truncated = false;
         foreach (Pane pane in panes)
         {
@@ -210,35 +232,26 @@ public sealed partial class ReadTools
                 continue;
             }
 
-            List<MatchedLine> matched = [];
+            panesSearched++;
             int visibleTop = lines.Count - pane.Height;
-            for (int index = 0; index < lines.Count; index++)
+            SearchPaneBudgetOutcome outcome = AddSearchMatches(
+                budget,
+                pane.Id.ToString(),
+                pane.Window.Id.ToString(),
+                pane.Session.Id.ToString(),
+                lines,
+                Math.Max(visibleTop, 0),
+                regex,
+                maxMatchesPerPane,
+                cancellationToken);
+            truncated |= outcome != SearchPaneBudgetOutcome.Complete;
+            if (outcome == SearchPaneBudgetOutcome.GlobalLimit)
             {
-                if (!regex.IsMatch(lines[index]))
-                {
-                    continue;
-                }
-
-                if (matched.Count >= maxMatchesPerPane)
-                {
-                    truncated = true;
-                    break;
-                }
-
-                matched.Add(new MatchedLine(index - Math.Max(visibleTop, 0), lines[index]));
-            }
-
-            if (matched.Count > 0)
-            {
-                hits.Add(new PaneMatch(
-                    pane.Id.ToString(),
-                    pane.Window.Id.ToString(),
-                    pane.Session.Id.ToString(),
-                    matched));
+                break;
             }
         }
 
-        return new SearchResult(pattern, panes.Count, hits, truncated);
+        return budget.Build(panesSearched, truncated);
     }
 
     /// <summary>Compiles a caller's pattern, refusing one that cannot be run safely.</summary>
@@ -260,4 +273,113 @@ public sealed partial class ReadTools
             throw new McpException($"'{pattern}' is not a valid regular expression: {error.Message}");
         }
     }
+
+    /// <summary>Validates a per-pane match budget against the server-wide ceiling.</summary>
+    internal static void ValidateSearchMatchLimit(int requested, int maximum)
+    {
+        if (requested < 1 || requested > maximum)
+        {
+            throw new McpException(
+                $"maxMatchesPerPane must be between 1 and {maximum}, inclusive.");
+        }
+    }
+
+    /// <summary>Rejects a pattern too large to compile or report within policy.</summary>
+    internal static void ValidateSearchPatternBudget(string pattern, int resultMaxBytes)
+    {
+        int patternMaxBytes = Math.Min(MaximumSearchPatternBytes, resultMaxBytes);
+        int patternBytes = System.Text.Encoding.UTF8.GetByteCount(pattern);
+        if (patternBytes > patternMaxBytes)
+        {
+            throw new McpException(
+                $"pattern is {patternBytes} UTF-8 bytes; the limit is {patternMaxBytes}. "
+                + "Use a shorter regular expression.");
+        }
+
+        _ = new SearchResultBudget(pattern, int.MaxValue, 1, resultMaxBytes);
+    }
+
+    /// <summary>Adds one pane's matches and distinguishes its local cap from exhaustion.</summary>
+    internal static SearchPaneBudgetOutcome AddSearchMatches(
+        SearchResultBudget budget,
+        string paneId,
+        string windowId,
+        string sessionId,
+        IReadOnlyList<string> lines,
+        int visibleTop,
+        Regex regex,
+        int maxMatchesPerPane,
+        CancellationToken cancellationToken = default)
+    {
+        List<MatchedLine> matched = [];
+        SearchPaneBudgetOutcome outcome = SearchPaneBudgetOutcome.Complete;
+        for (int index = 0; index < lines.Count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            bool matches;
+            try
+            {
+                matches = regex.IsMatch(lines[index]);
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                throw new McpException(
+                    $"The pattern '{regex}' took too long to match. Simplify it — "
+                    + "nested quantifiers such as (a+)+ backtrack badly on terminal text.");
+            }
+
+            if (!matches)
+            {
+                continue;
+            }
+
+            if (matched.Count >= maxMatchesPerPane)
+            {
+                outcome = SearchPaneBudgetOutcome.PerPaneLimit;
+                break;
+            }
+
+            SearchMatchBudgetOutcome added = budget.TryAdd(
+                paneId,
+                windowId,
+                sessionId,
+                matched,
+                new MatchedLine(index - visibleTop, lines[index]));
+            if (added == SearchMatchBudgetOutcome.GlobalLimit)
+            {
+                outcome = SearchPaneBudgetOutcome.GlobalLimit;
+                break;
+            }
+
+            if (added == SearchMatchBudgetOutcome.PaneCannotFit)
+            {
+                outcome = SearchPaneBudgetOutcome.OversizedMatchSkipped;
+                break;
+            }
+
+            if (added == SearchMatchBudgetOutcome.ItemTooLarge)
+            {
+                outcome = SearchPaneBudgetOutcome.OversizedMatchSkipped;
+            }
+        }
+
+        budget.Commit(paneId, windowId, sessionId, matched);
+        return outcome;
+    }
+}
+
+/// <summary>Why adding one pane's search matches stopped.</summary>
+internal enum SearchPaneBudgetOutcome
+{
+    /// <summary>Every matching line fit.</summary>
+    Complete = 0,
+
+    /// <summary>This pane reached the caller's local cap.</summary>
+    PerPaneLimit = 1,
+
+    /// <summary>The server-wide line budget was exhausted.</summary>
+    GlobalLimit = 2,
+
+    /// <summary>At least one matching line was too large for the remaining budget.</summary>
+    OversizedMatchSkipped = 3,
 }

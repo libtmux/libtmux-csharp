@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Text;
 using System.Text.RegularExpressions;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -40,15 +41,17 @@ public sealed partial class ReadTools
         string? paneId = null,
         [Description(
             "Regular expressions to wait for. Omit or pass an empty list to return as "
-            + "soon as the pane prints anything new.")]
+            + "soon as the pane prints anything new. Across both pattern lists: at most "
+            + "32 entries and 16384 UTF-8 bytes; each entry is at most 4096 bytes.")]
         IReadOnlyList<string>? patterns = null,
         [Description(
             "Regular expressions meaning the thing you are waiting for will never "
-            + "come, such as an error line. Matching one ends the wait as 'stopped'.")]
+            + "come, such as an error line. Matching one ends the wait as 'stopped'. "
+            + "It shares the patterns count and byte limits.")]
         IReadOnlyList<string>? stopPatterns = null,
         [Description(
             "Seconds to wait. Lowered to the server's ceiling; read "
-            + "effective_timeout_seconds for the value actually used.")]
+            + "effectiveTimeoutSeconds for the value actually used.")]
         double? timeoutSeconds = null,
         [Description("Ignore case when matching.")] bool ignoreCase = true,
         [Description("The tmux socket to read. Omit for the default server.")]
@@ -56,13 +59,13 @@ public sealed partial class ReadTools
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        ValidateWaitPatterns(patterns, stopPatterns, _policy.MaxBytes);
+        Regex[] wanted = Compile(patterns, ignoreCase);
+        Regex[] stops = Compile(stopPatterns, ignoreCase);
         Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
         Pane pane = await TmuxTargets.PaneAsync(server, paneId, cancellationToken)
             .ConfigureAwait(false);
         string id = pane.Id.ToString();
-
-        Regex[] wanted = Compile(patterns, ignoreCase);
-        Regex[] stops = Compile(stopPatterns, ignoreCase);
         TimeSpan budget = _policy.EffectiveTimeout(
             timeoutSeconds is double seconds ? TimeSpan.FromSeconds(seconds) : null);
 
@@ -75,7 +78,7 @@ public sealed partial class ReadTools
 
         PaneRead first = await PaneReader.ReadVisibleAsync(pane, null, cancellationToken)
             .ConfigureAwait(false);
-        TailCursor cursor = TailCursor.Build(id, first.State, first.CursorRows);
+        TailCursor cursor = TailCursor.Build(pane, first.State, first.CursorRows);
         bool alternate = first.State.AlternateScreen;
 
         while (true)
@@ -96,15 +99,15 @@ public sealed partial class ReadTools
 
             // Taken before the read, so output arriving during the read wakes
             // the next wait instead of being slept through.
-            object? signal = _activity.CaptureSignal(id);
+            object? signal = _activity.CaptureSignal(pane);
 
             PaneRead read = await PaneReader.ReadSinceAsync(pane, cursor, cancellationToken)
                 .ConfigureAwait(false);
-            cursor = TailCursor.Build(id, read.State, read.CursorRows);
+            cursor = TailCursor.Build(pane, read.State, read.CursorRows);
 
             if (read.Lines.Count > 0)
             {
-                if (Match(stops, read.Lines) is string stopped)
+                if (Match(stops, read.Lines, cancellationToken) is string stopped)
                 {
                     return await FinishAsync(
                             pane,
@@ -130,7 +133,7 @@ public sealed partial class ReadTools
                         .ConfigureAwait(false);
                 }
 
-                if (Match(wanted, read.Lines) is string hit)
+                if (Match(wanted, read.Lines, cancellationToken) is string hit)
                 {
                     return await FinishAsync(
                             pane,
@@ -209,7 +212,7 @@ public sealed partial class ReadTools
         + "signals it. For an ordinary command whose completion you want, tmux_run "
         + "already does this and also reports the exit status.")]
     public async Task<ActionResult> WaitForChannelAsync(
-        [Description("The channel name to wait on.")] string channel,
+        [Description("The channel name to wait on, at most 4096 UTF-8 bytes.")] string channel,
         [Description("Seconds to wait. Lowered to the server's ceiling.")]
         double? timeoutSeconds = null,
         [Description("The tmux socket to read. Omit for the default server.")]
@@ -217,6 +220,7 @@ public sealed partial class ReadTools
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(channel);
+        ValidateChannel(channel, _policy.MaxBytes);
         Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
         TimeSpan budget = _policy.EffectiveTimeout(
             timeoutSeconds is double seconds ? TimeSpan.FromSeconds(seconds) : null);
@@ -267,12 +271,105 @@ public sealed partial class ReadTools
                 .Where(each => !string.IsNullOrEmpty(each))
                 .Select(each => CompilePattern(each, ignoreCase))];
 
-    private static string? Match(Regex[] patterns, IReadOnlyList<string> lines)
+    internal static void ValidateWaitPatterns(
+        IReadOnlyList<string>? patterns,
+        IReadOnlyList<string>? stopPatterns,
+        int resultMaxBytes)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(resultMaxBytes);
+        long count = (patterns?.Count ?? 0L) + (stopPatterns?.Count ?? 0L);
+        if (count > MaximumWaitPatterns)
+        {
+            throw new McpException(
+                $"A pane wait accepts at most {MaximumWaitPatterns} patterns across both lists.");
+        }
+
+        int totalBytes = 0;
+        foreach (IReadOnlyList<string>? list in new[] { patterns, stopPatterns })
+        {
+            if (list is null)
+            {
+                continue;
+            }
+
+            foreach (string? pattern in list)
+            {
+                if (string.IsNullOrEmpty(pattern))
+                {
+                    continue;
+                }
+
+                if (pattern.Length > MaximumWaitPatternBytes)
+                {
+                    throw PatternBudgetError();
+                }
+
+                int bytes = Encoding.UTF8.GetByteCount(pattern);
+                if (bytes > MaximumWaitPatternBytes
+                    || bytes > MaximumWaitPatternBytesTotal - totalBytes)
+                {
+                    throw PatternBudgetError();
+                }
+
+                totalBytes += bytes;
+                var probe = new WaitResult(
+                    "%18446744073709551615",
+                    WaitOutcome.Matched,
+                    pattern,
+                    BoundedText.Empty,
+                    double.MaxValue,
+                    double.MaxValue);
+                if (Utf8JsonBudget.GetStructuredToolResultByteCount(probe, ToolJson.Options)
+                    > resultMaxBytes)
+                {
+                    throw new McpException(
+                        "A wait pattern cannot fit in the configured result byte ceiling. "
+                        + $"Use a shorter pattern or raise {ServerPolicy.MaxBytesVariable}.");
+                }
+            }
+        }
+
+        static McpException PatternBudgetError() => new(
+            $"Pane-wait patterns may use at most {MaximumWaitPatternBytes} UTF-8 bytes each "
+            + $"and {MaximumWaitPatternBytesTotal} bytes across both lists.");
+    }
+
+    internal static void ValidateChannel(string channel, int resultMaxBytes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(channel);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(resultMaxBytes);
+        if (channel.Length > MaximumChannelBytes
+            || Encoding.UTF8.GetByteCount(channel) > MaximumChannelBytes)
+        {
+            throw new McpException(
+                $"A wait channel may use at most {MaximumChannelBytes} UTF-8 bytes.");
+        }
+
+        ActionResult success = new($"Channel '{channel}' was signalled.");
+        ActionResult timeout = new(
+            $"Channel '{channel}' was not signalled within "
+            + $"{600d:0.#}s. Nothing was changed; call again to keep waiting.");
+        if (Utf8JsonBudget.GetStructuredToolResultByteCount(success, ToolJson.Options)
+                > resultMaxBytes
+            || Utf8JsonBudget.GetStructuredToolResultByteCount(timeout, ToolJson.Options)
+                > resultMaxBytes)
+        {
+            throw new McpException(
+                "The wait channel cannot fit in the configured result byte ceiling. "
+                + $"Use a shorter channel or raise {ServerPolicy.MaxBytesVariable}.");
+        }
+    }
+
+    internal static string? Match(
+        Regex[] patterns,
+        IReadOnlyList<string> lines,
+        CancellationToken cancellationToken = default)
     {
         foreach (Regex pattern in patterns)
         {
             foreach (string line in lines)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     if (pattern.IsMatch(line))
@@ -303,13 +400,19 @@ public sealed partial class ReadTools
     {
         IReadOnlyList<string> tail = await PaneReader.CaptureAsync(pane, null, cancellationToken)
             .ConfigureAwait(false);
-        return new WaitResult(
-            PaneId: paneId,
-            Outcome: outcome,
-            MatchedPattern: matched,
-            Tail: BoundedText.Fit(PaneText.Scrub(tail, pane.Width), TailLines, _policy.MaxBytes),
-            ElapsedSeconds: Math.Round(elapsed.Elapsed.TotalSeconds, 3),
-            EffectiveTimeoutSeconds: budget.TotalSeconds);
+        double elapsedSeconds = Math.Round(elapsed.Elapsed.TotalSeconds, 3);
+        return StructuredTextResultBudget.Fit(
+            PaneText.Scrub(tail, pane.Width),
+            TailLines,
+            _policy.MaxBytes,
+            content => new WaitResult(
+                paneId,
+                outcome,
+                matched,
+                content,
+                elapsedSeconds,
+                budget.TotalSeconds),
+            "pane wait");
     }
 
     /// <summary>How much of the pane a wait reports back when it ends.</summary>
@@ -318,4 +421,8 @@ public sealed partial class ReadTools
     /// wants the pane can read it; a caller who does not should not pay for it.
     /// </remarks>
     private const int TailLines = 20;
+    private const int MaximumWaitPatterns = 32;
+    private const int MaximumWaitPatternBytes = 4_096;
+    private const int MaximumWaitPatternBytesTotal = 16_384;
+    private const int MaximumChannelBytes = 4_096;
 }

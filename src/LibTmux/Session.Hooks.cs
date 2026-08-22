@@ -2,7 +2,7 @@ using System.Runtime.Versioning;
 
 namespace LibTmux;
 
-/// <summary>Reaches this session's hooks.</summary>
+// Reaches this session's hooks.
 public sealed partial class Session
 {
     private TmuxHooks? _hooks;

@@ -4,7 +4,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Resolves a pane from tmux's exported environment.</summary>
+// Resolves a pane from tmux's exported environment.
 public sealed partial class Pane
 {
     /// <summary>Returns the pane this process was spawned in.</summary>

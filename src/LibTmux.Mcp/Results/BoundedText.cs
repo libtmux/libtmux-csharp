@@ -5,8 +5,8 @@ namespace LibTmux.Mcp;
 /// <summary>Terminal text cut to fit a budget, with what was cut reported.</summary>
 /// <param name="Lines">The text that fits, oldest first.</param>
 /// <param name="Truncated">Whether anything was dropped to make it fit.</param>
-/// <param name="DroppedLines">How many lines were dropped from the start.</param>
-/// <param name="DroppedBytes">How many UTF-8 bytes were dropped from the start.</param>
+/// <param name="DroppedLines">How many complete lines were dropped from the start.</param>
+/// <param name="DroppedBytes">The exact number of UTF-8 bytes dropped from the start.</param>
 /// <remarks>
 /// Dropping is always from the oldest end. A terminal's newest line is the one
 /// that says what happened, so a budget that discarded it would answer the
@@ -33,41 +33,61 @@ public sealed record BoundedText(
         ArgumentNullException.ThrowIfNull(lines);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBytes);
 
-        int firstKept = 0;
+        if (lines.Count == 0)
+        {
+            return Empty;
+        }
+
+        int firstEligible = 0;
         if (maxLines is int lineBudget)
         {
-            firstKept = Math.Max(0, lines.Count - Math.Max(lineBudget, 0));
+            firstEligible = Math.Max(0, lines.Count - Math.Max(lineBudget, 0));
         }
 
         // A joined capture can hold one logical line far wider than the pane,
-        // so the byte budget has to be applied after the line budget rather
-        // than assumed to follow from it. The newest line is kept even when it
-        // alone overruns: answering with nothing is never the better answer.
-        int bytes = 0;
+        // so apply the byte ceiling to the final newline-joined representation.
+        int retainedBytes = 0;
         int start = lines.Count;
-        for (int index = lines.Count - 1; index >= firstKept; index--)
+        string? clippedFirstLine = null;
+        for (int index = lines.Count - 1; index >= firstEligible; index--)
         {
-            int lineBytes = Encoding.UTF8.GetByteCount(lines[index]) + 1;
-            if (start < lines.Count && bytes + lineBytes > maxBytes)
+            int separatorBytes = start < lines.Count ? 1 : 0;
+            int lineBytes = Encoding.UTF8.GetByteCount(lines[index]);
+            if (lineBytes <= maxBytes - retainedBytes - separatorBytes)
             {
-                break;
+                retainedBytes = checked(retainedBytes + separatorBytes + lineBytes);
+                start = index;
+                continue;
             }
 
-            bytes += lineBytes;
-            start = index;
+            int remaining = maxBytes - retainedBytes - separatorBytes;
+            if (remaining > 0)
+            {
+                string suffix = Utf8Suffix(lines[index], remaining);
+                if (suffix.Length > 0)
+                {
+                    clippedFirstLine = suffix;
+                    retainedBytes = checked(
+                        retainedBytes
+                        + separatorBytes
+                        + Encoding.UTF8.GetByteCount(clippedFirstLine));
+                    start = index;
+                }
+            }
+
+            break;
         }
 
-        start = Math.Max(firstKept, start);
-        if (start <= 0)
+        int droppedLines = start;
+        bool clipped = clippedFirstLine is not null;
+        bool truncated = droppedLines > 0 || clipped;
+        if (!truncated)
         {
             return new BoundedText(lines, false, 0, 0);
         }
 
-        int droppedBytes = 0;
-        for (int index = 0; index < start; index++)
-        {
-            droppedBytes += Encoding.UTF8.GetByteCount(lines[index]) + 1;
-        }
+        int totalBytes = JoinedUtf8ByteCount(lines);
+        int droppedBytes = checked(totalBytes - retainedBytes);
 
         string[] kept = new string[lines.Count - start];
         for (int index = 0; index < kept.Length; index++)
@@ -75,7 +95,12 @@ public sealed record BoundedText(
             kept[index] = lines[start + index];
         }
 
-        return new BoundedText(kept, true, start, droppedBytes);
+        if (clipped)
+        {
+            kept[0] = clippedFirstLine!;
+        }
+
+        return new BoundedText(kept, true, droppedLines, droppedBytes);
     }
 
     /// <summary>Renders the text as one block, noting any loss at the top.</summary>
@@ -88,7 +113,50 @@ public sealed record BoundedText(
     {
         string body = string.Join('\n', Lines);
         return Truncated
-            ? $"[{DroppedLines} earlier lines ({DroppedBytes} bytes) omitted to fit the budget]\n{body}"
+            ? $"[{DroppedLines} complete earlier lines and {DroppedBytes} UTF-8 bytes "
+                + $"omitted from the start to fit the budget]\n{body}"
             : body;
+    }
+
+    private static int JoinedUtf8ByteCount(IReadOnlyList<string> lines)
+    {
+        int bytes = 0;
+        for (int index = 0; index < lines.Count; index++)
+        {
+            bytes = checked(bytes + Encoding.UTF8.GetByteCount(lines[index]));
+            if (index > 0)
+            {
+                bytes = checked(bytes + 1);
+            }
+        }
+
+        return bytes;
+    }
+
+    private static string Utf8Suffix(string line, int byteBudget)
+    {
+        int start = line.Length;
+        int bytes = 0;
+        while (start > 0)
+        {
+            int previous = start - 1;
+            if (previous > 0
+                && char.IsLowSurrogate(line[previous])
+                && char.IsHighSurrogate(line[previous - 1]))
+            {
+                previous--;
+            }
+
+            int runeBytes = Encoding.UTF8.GetByteCount(line.AsSpan(previous, start - previous));
+            if (runeBytes > byteBudget - bytes)
+            {
+                break;
+            }
+
+            bytes += runeBytes;
+            start = previous;
+        }
+
+        return line[start..];
     }
 }

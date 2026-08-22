@@ -83,7 +83,8 @@ public static class ServerInstructions
         "Drives tmux: terminal sessions, windows and panes on this machine. "
         + "Hierarchy is Server > Session > Window > Pane. Target by id — %1 is a pane, "
         + "@1 a window, $1 a session — because ids survive renames and layout changes. "
-        + "Every tool takes socket_name; tmux_list_servers finds the sockets.";
+        + "Tools that address tmux take socketName; tmux_list_servers discovers sockets, "
+        + "and tmux_list_jobs spans the jobs recorded by this MCP process.";
 
     private const string Scope =
         "USE FOR: tmux panes, windows, sessions, splits, scrollback, copy mode, "
@@ -105,9 +106,9 @@ public static class ServerInstructions
         + "tmux_tail_pane, passing back its cursor.";
 
     private const string Budget =
-        "COST: capture tools keep the NEWEST lines and report what they dropped; "
-        + "if content_truncated is set, lines are missing, not absent. Prefer "
-        + "tmux_tail_pane over re-capturing a pane you are watching.";
+        "COST: terminal text keeps the NEWEST lines and reports what was dropped. "
+        + "Check content.truncated, output.truncated, or tail.truncated; true means "
+        + "lines are missing, not absent. Prefer tmux_tail_pane while watching.";
 
     private const string Gaps =
         "ABSENT ON PURPOSE: no hook writing (a hook outlives this conversation — put "

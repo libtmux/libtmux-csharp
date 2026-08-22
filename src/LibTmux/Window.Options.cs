@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Reaches this window's option table.</summary>
+// Reaches this window's option table.
 public sealed partial class Window
 {
     private TmuxOptions? _options;

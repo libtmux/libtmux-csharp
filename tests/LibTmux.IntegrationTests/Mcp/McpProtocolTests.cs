@@ -38,11 +38,21 @@ public sealed class McpProtocolTests
 
         Assert.True(listing.ProtocolTool.Annotations?.ReadOnlyHint);
 
-        // A mutating tool has to say it is not destructive, because the spec
-        // default for destructiveHint is true and a client that gates on it
-        // would otherwise prompt before a split.
+        // The MCP spec defines destructive=false as additive-only. Every
+        // mutating tmux tool can replace state or run caller-supplied input.
+        Assert.All(
+            tools.Where(tool => tool.ProtocolTool.Annotations?.ReadOnlyHint != true),
+            tool => Assert.True(
+                tool.ProtocolTool.Annotations?.DestructiveHint,
+                $"{tool.Name} can change non-additive state but is not marked destructive"));
+
         McpClientTool split = tools.Single(tool => tool.Name == "tmux_split_pane");
-        Assert.False(split.ProtocolTool.Annotations?.DestructiveHint ?? true);
+        Assert.True(split.ProtocolTool.Annotations?.DestructiveHint);
+        Assert.True(split.ProtocolTool.Annotations?.OpenWorldHint);
+        Assert.True(tools.Single(tool => tool.Name == "tmux_create_session")
+            .ProtocolTool.Annotations?.OpenWorldHint);
+        Assert.True(tools.Single(tool => tool.Name == "tmux_create_window")
+            .ProtocolTool.Annotations?.OpenWorldHint);
     }
 
     [UnixFact]
@@ -87,6 +97,36 @@ public sealed class McpProtocolTests
 
         Assert.NotEqual(true, listed.IsError);
         Assert.NotNull(listed.StructuredContent);
+    }
+
+    [UnixFact]
+    public async Task Nullable_session_fields_still_satisfy_the_advertised_output_schema()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ProtocolHarness harness = await ProtocolHarness.StartAsync(token);
+
+        await harness.Client.CallToolAsync(
+            "tmux_create_session",
+            new Dictionary<string, object?> { ["name"] = "schema" },
+            cancellationToken: token);
+
+        CallToolResult listed = await harness.Client.CallToolAsync(
+            "tmux_list_sessions",
+            cancellationToken: token);
+        CallToolResult hierarchy = await harness.Client.CallToolAsync(
+            "tmux_hierarchy",
+            cancellationToken: token);
+
+        Assert.NotEqual(true, listed.IsError);
+        Assert.NotEqual(true, hierarchy.IsError);
+
+        JsonElement listedSession = listed.StructuredContent!.Value[0];
+        JsonElement hierarchySession = hierarchy.StructuredContent!.Value
+            .GetProperty("sessions")[0];
+        Assert.True(listedSession.TryGetProperty("width", out _));
+        Assert.True(listedSession.TryGetProperty("height", out _));
+        Assert.True(hierarchySession.TryGetProperty("width", out _));
+        Assert.True(hierarchySession.TryGetProperty("height", out _));
     }
 
     [UnixFact]
@@ -222,26 +262,32 @@ public sealed class McpProtocolTests
         // awaited, and cancelled to end the subscription.
         using CancellationTokenSource listening = CancellationTokenSource
             .CreateLinkedTokenSource(token);
-        Task stream = harness.Client.SendRequestAsync(
-            new JsonRpcRequest
-            {
-                Method = RequestMethods.SubscriptionsListen,
-                Params = JsonSerializer.SerializeToNode(
-                    new SubscriptionsListenRequestParams
+        JsonRpcRequest listenRequest = new()
+        {
+            Method = RequestMethods.SubscriptionsListen,
+            Params = JsonSerializer.SerializeToNode(
+                new SubscriptionsListenRequestParams
+                {
+                    Notifications = new SubscriptionsListenNotifications
                     {
-                        Notifications = new SubscriptionsListenNotifications
-                        {
-                            ResourceSubscriptions = ["tmux://hierarchy"],
-                        },
+                        ResourceSubscriptions = ["tmux://hierarchy"],
                     },
-                    McpJsonUtilities.DefaultOptions),
-            },
-            listening.Token);
+                },
+                McpJsonUtilities.DefaultOptions),
+        };
+        Task stream = harness.Client.SendRequestAsync(listenRequest, listening.Token);
 
-        Assert.True(
-            await Task.WhenAny(acknowledged.Task, Task.Delay(TimeSpan.FromSeconds(15), token))
-                == acknowledged.Task,
-            "the server never acknowledged the subscription");
+        Task acknowledgementDeadline = Task.Delay(TimeSpan.FromSeconds(15), token);
+        Task acknowledgementOutcome = await Task.WhenAny(
+            acknowledged.Task,
+            stream,
+            acknowledgementDeadline);
+        if (acknowledgementOutcome == stream)
+        {
+            await stream;
+        }
+
+        Assert.Same(acknowledged.Task, acknowledgementOutcome);
 
         // A window appearing is a structural change, which is what tmux
         // reports to a control client without being asked.
@@ -262,9 +308,63 @@ public sealed class McpProtocolTests
 
         // Tagged with the stream it belongs to, which is what lets a client
         // sharing one channel tell two subscriptions apart.
-        Assert.NotNull(
-            Assert.IsType<JsonObject>(parameters)["_meta"]?
-                ["io.modelcontextprotocol/subscriptionId"]);
+        JsonNode subscriptionId = Assert.IsType<JsonObject>(parameters)["_meta"]?
+            ["io.modelcontextprotocol/subscriptionId"]
+            ?? throw new Xunit.Sdk.XunitException("the event has no subscription id");
+        _ = subscriptionId.GetValue<long>();
+
+        await listening.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => stream);
+    }
+
+    [UnixFact]
+    public async Task A_subscription_acknowledgement_preserves_a_string_request_id()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ProtocolHarness harness = await ProtocolHarness.StartAsync(token);
+        TaskCompletionSource<JsonNode?> acknowledged = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await using IAsyncDisposable ack = harness.Client.RegisterNotificationHandler(
+            NotificationMethods.SubscriptionsAcknowledgedNotification,
+            (notification, _) =>
+            {
+                acknowledged.TrySetResult(notification.Params);
+                return default;
+            });
+        using CancellationTokenSource listening = CancellationTokenSource
+            .CreateLinkedTokenSource(token);
+        const string expectedId = "listen-string-id";
+        Task stream = harness.Client.SendRequestAsync(
+            new JsonRpcRequest
+            {
+                Id = new RequestId(expectedId),
+                Method = RequestMethods.SubscriptionsListen,
+                Params = JsonSerializer.SerializeToNode(
+                    new SubscriptionsListenRequestParams
+                    {
+                        Notifications = new SubscriptionsListenNotifications(),
+                    },
+                    McpJsonUtilities.DefaultOptions),
+            },
+            listening.Token);
+
+        Task acknowledgementDeadline = Task.Delay(TimeSpan.FromSeconds(15), token);
+        Task acknowledgementOutcome = await Task.WhenAny(
+            acknowledged.Task,
+            stream,
+            acknowledgementDeadline);
+        if (acknowledgementOutcome == stream)
+        {
+            await stream;
+        }
+
+        Assert.Same(acknowledged.Task, acknowledgementOutcome);
+        JsonNode? parameters = await acknowledged.Task;
+        JsonNode subscriptionId = Assert.IsType<JsonObject>(parameters)["_meta"]?
+            ["io.modelcontextprotocol/subscriptionId"]
+            ?? throw new Xunit.Sdk.XunitException("the acknowledgement has no subscription id");
+        Assert.Equal(expectedId, subscriptionId.GetValue<string>());
 
         await listening.CancelAsync();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => stream);
@@ -282,23 +382,64 @@ public sealed class McpProtocolTests
             cancellationToken: token);
         string pane = made.StructuredContent!.Value.GetProperty("paneId").GetString()!;
 
-        // Started, not awaited: the point of a task is that the caller gets a
-        // handle back before the work is done.
+        CallToolResult started = await harness.Client.CallToolAsync(
+            "tmux_start_job",
+            new Dictionary<string, object?>
+            {
+                ["command"] = "echo TASKED && exit 7",
+                ["paneId"] = pane,
+            },
+            cancellationToken: token);
+        string jobId = started.StructuredContent!.Value
+            .GetProperty("jobId")
+            .GetString()!;
+
         CallToolResult finished = await harness.Client.CallToolWithPollingAsync(
             new CallToolRequestParams
             {
-                Name = "tmux_run",
+                Name = "tmux_job",
                 Arguments = new Dictionary<string, JsonElement>
                 {
-                    ["command"] = JsonSerializer.SerializeToElement("echo TASKED && exit 7"),
-                    ["paneId"] = JsonSerializer.SerializeToElement(pane),
-                    ["timeoutSeconds"] = JsonSerializer.SerializeToElement(20),
+                    ["jobId"] = JsonSerializer.SerializeToElement(jobId),
+                    ["waitSeconds"] = JsonSerializer.SerializeToElement(20),
                 },
             },
             cancellationToken: token);
 
         Assert.NotEqual(true, finished.IsError);
-        Assert.Equal(7, finished.StructuredContent!.Value.GetProperty("exitStatus").GetInt32());
+        Assert.Equal(
+            7,
+            finished.StructuredContent!.Value
+                .GetProperty("job")
+                .GetProperty("exitStatus")
+                .GetInt32());
+    }
+
+    [UnixFact]
+    public async Task Run_stays_synchronous_when_a_client_requests_a_task()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using ProtocolHarness harness = await ProtocolHarness.StartAsync(token);
+        CallToolResult made = await harness.Client.CallToolAsync(
+            "tmux_create_session",
+            new Dictionary<string, object?> { ["name"] = "run-sync" },
+            cancellationToken: token);
+        string pane = made.StructuredContent!.Value.GetProperty("paneId").GetString()!;
+
+        ResultOrCreatedTask<CallToolResult> answered = await harness.Client.CallToolAsTaskAsync(
+            new CallToolRequestParams
+            {
+                Name = "tmux_run",
+                Arguments = new Dictionary<string, JsonElement>
+                {
+                    ["command"] = JsonSerializer.SerializeToElement("exit 0"),
+                    ["paneId"] = JsonSerializer.SerializeToElement(pane),
+                },
+            },
+            cancellationToken: token);
+
+        Assert.False(answered.IsTask);
+        Assert.NotNull(answered.Result);
     }
 
     [UnixFact]

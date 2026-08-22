@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
 
@@ -13,8 +12,8 @@ namespace LibTmux.Mcp;
 /// of being re-listed on a timer in case something moved.
 /// </para>
 /// <para>
-/// One control client for the whole server, started only once somebody
-/// subscribes, and stopped when the last subscriber goes. It attaches with
+/// One control client per exact server generation, started only once somebody
+/// subscribes, and stopped when its last subscriber goes. It attaches with
 /// <c>no-output</c> as well as <c>ignore-size</c>: this one wants to hear about
 /// the hierarchy and not about every byte a pane prints, and tmux will keep
 /// the pane traffic out of the stream if asked.
@@ -45,16 +44,34 @@ public sealed class HierarchyWatcher : IAsyncDisposable
         "client-detached",
     };
 
-    private readonly ConcurrentDictionary<string, byte> _subscribed = new(StringComparer.Ordinal);
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly object _endpointsGate = new();
+    private readonly Dictionary<HierarchyWatchKey, HierarchyEndpointWatch> _endpoints = [];
     private readonly ILogger? _logger;
-    private IControlModeSession? _session;
-    private Task? _pump;
-    private Func<IReadOnlyList<string>, Task>? _announce;
+    private readonly Func<TimeSpan, CancellationToken, Task> _delay;
+    private readonly Func<CancellationToken, Task>? _beforeRecoveryOutcome;
+    private readonly Action<bool>? _recoveryOutcomeObserved;
+    private Task? _disposeTask;
+    private bool _disposed;
 
     /// <summary>Initializes the watcher.</summary>
     /// <param name="logger">Records why a control client could not start.</param>
-    public HierarchyWatcher(ILogger? logger = null) => _logger = logger;
+    public HierarchyWatcher(ILogger? logger = null)
+        : this(logger, static (delay, token) => Task.Delay(delay, token), null, null)
+    {
+    }
+
+    internal HierarchyWatcher(
+        ILogger? logger,
+        Func<TimeSpan, CancellationToken, Task> delay,
+        Func<CancellationToken, Task>? beforeRecoveryOutcome = null,
+        Action<bool>? recoveryOutcomeObserved = null)
+    {
+        ArgumentNullException.ThrowIfNull(delay);
+        _logger = logger;
+        _delay = delay;
+        _beforeRecoveryOutcome = beforeRecoveryOutcome;
+        _recoveryOutcomeObserved = recoveryOutcomeObserved;
+    }
 
     /// <summary>Gets the resource URIs this watcher will notify about.</summary>
     /// <remarks>
@@ -70,12 +87,24 @@ public sealed class HierarchyWatcher : IAsyncDisposable
     ];
 
     /// <inheritdoc />
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        _subscribed.Clear();
-        await StopAsync().ConfigureAwait(false);
-        _gate.Dispose();
+        lock (_endpointsGate)
+        {
+            if (_disposeTask is null)
+            {
+                _disposed = true;
+                HierarchyEndpointWatch[] endpoints = [.. _endpoints.Values];
+                _endpoints.Clear();
+                _disposeTask = DisposeEndpointsAsync(endpoints);
+            }
+
+            return new ValueTask(_disposeTask);
+        }
     }
+
+    private static Task DisposeEndpointsAsync(HierarchyEndpointWatch[] endpoints) =>
+        Task.WhenAll(endpoints.Select(endpoint => endpoint.DisposeAsync().AsTask()));
 
     /// <summary>Starts reporting changes to one resource.</summary>
     /// <param name="uri">The resource the client subscribed to.</param>
@@ -93,119 +122,97 @@ public sealed class HierarchyWatcher : IAsyncDisposable
         Server tmux,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-        ArgumentNullException.ThrowIfNull(announce);
-        ArgumentNullException.ThrowIfNull(tmux);
-
-        _announce = announce;
-        _subscribed[uri] = 0;
-        await EnsureStartedAsync(tmux, cancellationToken).ConfigureAwait(false);
+        await SubscribeAsync(uri, announce, announce, tmux, cancellationToken)
+            .ConfigureAwait(false);
     }
+
+    /// <summary>Starts one independently owned subscription.</summary>
+    internal async Task SubscribeAsync(
+        string uri,
+        object subscriberKey,
+        Func<IReadOnlyList<string>, Task> announce,
+        Server tmux,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(tmux);
+        Server materialized = tmux.IsMaterialized
+            ? tmux
+            : await tmux.ConnectAsync(cancellationToken).ConfigureAwait(false);
+        HierarchyWatchKey key = HierarchyWatchKey.From(materialized);
+        await SubscribeAsync(
+                uri,
+                subscriberKey,
+                announce,
+                key,
+                token => materialized.EnterControlModeAsync(cancellationToken: token),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Starts one subscription with a supplied control-client factory.</summary>
+    internal async Task SubscribeAsync(
+        string uri,
+        object subscriberKey,
+        Func<IReadOnlyList<string>, Task> announce,
+        Func<CancellationToken, Task<IControlModeSession>> startSession,
+        CancellationToken cancellationToken) =>
+        await SubscribeAsync(
+                uri,
+                subscriberKey,
+                announce,
+                HierarchyWatchKey.ForTest("default", new ServerGeneration(1, 1)),
+                startSession,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    /// <summary>Starts a test subscription for an exact endpoint generation.</summary>
+    internal async Task SubscribeAsync(
+        string uri,
+        object subscriberKey,
+        Func<IReadOnlyList<string>, Task> announce,
+        string endpointFingerprint,
+        ServerGeneration generation,
+        Func<CancellationToken, Task<IControlModeSession>> startSession,
+        CancellationToken cancellationToken) =>
+        await SubscribeAsync(
+                uri,
+                subscriberKey,
+                announce,
+                HierarchyWatchKey.ForTest(endpointFingerprint, generation),
+                startSession,
+                cancellationToken)
+            .ConfigureAwait(false);
 
     /// <summary>Stops reporting changes to one resource.</summary>
     /// <param name="uri">The resource the client unsubscribed from.</param>
     public async Task UnsubscribeAsync(string uri)
     {
         ArgumentNullException.ThrowIfNull(uri);
-        _subscribed.TryRemove(uri, out _);
-        if (_subscribed.IsEmpty)
+        foreach (HierarchyEndpointWatch endpoint in SnapshotEndpoints())
         {
-            await StopAsync().ConfigureAwait(false);
-        }
-    }
-
-    private async Task EnsureStartedAsync(Server tmux, CancellationToken cancellationToken)
-    {
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (_session is not null)
+            if (!endpoint.TryRemoveAnyReference(uri))
             {
-                return;
+                continue;
             }
 
-            IControlModeSession session = await tmux
-                .EnterControlModeAsync(cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-            await session
-                .SendAsync("refresh-client -f ignore-size,no-output", cancellationToken)
-                .ConfigureAwait(false);
-
-            _session = session;
-            _pump = PumpAsync(session);
-        }
-        catch (LibTmuxException error)
-        {
-            // Without a control client there are no notifications, and a client
-            // that subscribed simply never hears one. Reading still works, so
-            // this costs freshness rather than function.
-            if (_logger is not null)
-            {
-                Log.ControlClientUnavailable(_logger, error, "hierarchy");
-            }
-        }
-        finally
-        {
-            _gate.Release();
-        }
-    }
-
-    private async Task StopAsync()
-    {
-        IControlModeSession? session = Interlocked.Exchange(ref _session, null);
-        if (session is not null)
-        {
-            await session.DisposeAsync().ConfigureAwait(false);
-        }
-
-        if (_pump is Task pump)
-        {
-            await pump.ConfigureAwait(false);
-            _pump = null;
-        }
-    }
-
-    private async Task PumpAsync(IControlModeSession session)
-    {
-        try
-        {
-            await foreach (TmuxEvent observed in session.Events.ConfigureAwait(false))
-            {
-                if (observed is TmuxNotificationEvent notification
-                    && Structural.Contains(notification.Name))
-                {
-                    await NotifyAsync().ConfigureAwait(false);
-                }
-            }
-        }
-        catch (Exception error) when (error is LibTmuxException or OperationCanceledException)
-        {
-            // The client going away is how this ends.
-        }
-    }
-
-    private async Task NotifyAsync()
-    {
-        if (_announce is not Func<IReadOnlyList<string>, Task> announce)
-        {
+            await RetireIfUnusedAsync(endpoint).ConfigureAwait(false);
             return;
         }
+    }
 
-        string[] changed = [.. _subscribed.Keys];
-        if (changed.Length == 0)
+    /// <summary>Stops one independently owned subscription.</summary>
+    internal async Task UnsubscribeAsync(string uri, object subscriberKey)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        ArgumentNullException.ThrowIfNull(subscriberKey);
+        foreach (HierarchyEndpointWatch endpoint in SnapshotEndpoints())
         {
-            return;
-        }
+            if (!endpoint.TryRemoveReference(uri, subscriberKey))
+            {
+                continue;
+            }
 
-        try
-        {
-            await announce(changed).ConfigureAwait(false);
-        }
-        catch (Exception error) when (error is IOException or ObjectDisposedException
-            or InvalidOperationException)
-        {
-            // The client hung up. Nothing here is worth failing over, and the
-            // subscription dies with the session anyway.
+            await RetireIfUnusedAsync(endpoint).ConfigureAwait(false);
         }
     }
 
@@ -213,4 +220,127 @@ public sealed class HierarchyWatcher : IAsyncDisposable
     /// <param name="name">The notification name, without its leading percent.</param>
     /// <returns><see langword="true" /> when subscribers should be told.</returns>
     internal static bool IsStructural(string name) => Structural.Contains(name);
+
+    /// <summary>Answers whether an event requires invalidating the hierarchy.</summary>
+    internal static bool InvalidatesHierarchy(TmuxEvent observed) =>
+        observed is TmuxEventsDroppedEvent
+        || observed is TmuxNotificationEvent notification && IsStructural(notification.Name);
+
+    private async Task SubscribeAsync(
+        string uri,
+        object subscriberKey,
+        Func<IReadOnlyList<string>, Task> announce,
+        HierarchyWatchKey key,
+        Func<CancellationToken, Task<IControlModeSession>> startSession,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        ArgumentNullException.ThrowIfNull(subscriberKey);
+        ArgumentNullException.ThrowIfNull(announce);
+        ArgumentNullException.ThrowIfNull(startSession);
+
+        HierarchyEndpointWatch endpoint;
+        bool added = false;
+        while (true)
+        {
+            lock (_endpointsGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (!_endpoints.TryGetValue(key, out endpoint!))
+                {
+                    endpoint = new HierarchyEndpointWatch(
+                        key,
+                        _logger,
+                        _delay,
+                        _beforeRecoveryOutcome,
+                        _recoveryOutcomeObserved);
+                    _endpoints.Add(key, endpoint);
+                }
+            }
+
+            await endpoint.EnterSubscriptionAsync(cancellationToken).ConfigureAwait(false);
+            bool acquired = false;
+            try
+            {
+                lock (_endpointsGate)
+                {
+                    ObjectDisposedException.ThrowIf(_disposed, this);
+                    if (_endpoints.TryGetValue(key, out HierarchyEndpointWatch? current)
+                        && ReferenceEquals(current, endpoint))
+                    {
+                        acquired = endpoint.TryAddReference(
+                            uri,
+                            subscriberKey,
+                            announce,
+                            out added);
+                        if (!acquired)
+                        {
+                            _endpoints.Remove(key);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                if (!acquired)
+                {
+                    endpoint.ExitSubscription();
+                }
+            }
+
+            if (acquired)
+            {
+                break;
+            }
+        }
+
+        try
+        {
+            await endpoint.EnsureStartedAsync(startSession, cancellationToken)
+                .ConfigureAwait(false);
+            lock (_endpointsGate)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+            }
+        }
+        catch
+        {
+            if (added)
+            {
+                endpoint.TryRemoveReference(uri, subscriberKey);
+            }
+
+            await RetireIfUnusedAsync(endpoint).ConfigureAwait(false);
+            throw;
+        }
+        finally
+        {
+            endpoint.ExitSubscription();
+        }
+    }
+
+    private HierarchyEndpointWatch[] SnapshotEndpoints()
+    {
+        lock (_endpointsGate)
+        {
+            return [.. _endpoints.Values];
+        }
+    }
+
+    private async Task RetireIfUnusedAsync(HierarchyEndpointWatch endpoint)
+    {
+        if (!await endpoint.StopIfUnusedAsync().ConfigureAwait(false))
+        {
+            return;
+        }
+
+        lock (_endpointsGate)
+        {
+            if (_endpoints.TryGetValue(endpoint.Key, out HierarchyEndpointWatch? current)
+                && ReferenceEquals(current, endpoint))
+            {
+                _endpoints.Remove(endpoint.Key);
+            }
+        }
+    }
 }

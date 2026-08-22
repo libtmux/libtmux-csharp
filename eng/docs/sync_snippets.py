@@ -1,8 +1,9 @@
 """Materialize example regions into the documents that publish them.
 
-Every published block is a ``#region`` inside a method that runs against live
-tmux in CI. This copies the region in; ``--check`` fails on drift instead of
-writing, which is what CI runs.
+Every published block is a ``#region`` inside a compiled example method. The
+ordinary tmux suite runs its examples live in CI; platform previews can require
+their documented manual harness. This copies the region in; ``--check`` fails
+on drift instead of writing, which is what CI runs.
 
 The copy is materialized rather than transcluded because these are package
 READMEs, and nuget.org renders the markdown it is given without resolving
@@ -39,6 +40,7 @@ DOCUMENTS = (
     "docs/modes/control-mode.md",
     "docs/modes/chaining.md",
     "docs/modes/matrix.md",
+    "docs/psmux.md",
 )
 
 REGION = re.compile(

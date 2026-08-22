@@ -101,9 +101,8 @@ public sealed class DestructiveTools
         Session target = await TmuxTargets.SessionAsync(server, session, cancellationToken)
             .ConfigureAwait(false);
         string id = target.Id.ToString();
-        string name = target.Name;
         await target.KillAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        return new ActionResult($"Killed session {id} ({name}).");
+        return new ActionResult($"Killed session {id}.");
     }
 
     /// <summary>Kills the whole server.</summary>
@@ -131,7 +130,6 @@ public sealed class DestructiveTools
             .ConfigureAwait(false);
         await server.KillAsync(cancellationToken).ConfigureAwait(false);
         return new ActionResult(
-            $"Killed the tmux server on socket '{socketName ?? _connection.DefaultSocketName ?? "default"}' "
-            + $"and the {sessions.Count} session(s) it held.");
+            $"Killed the tmux server and the {sessions.Count} session(s) it held.");
     }
 }

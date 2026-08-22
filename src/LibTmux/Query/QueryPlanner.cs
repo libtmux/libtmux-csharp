@@ -2,13 +2,8 @@ using System.Runtime.Versioning;
 
 namespace LibTmux;
 
-/// <summary>Runs tmux-side filters and returns the surviving objects.</summary>
-/// <remarks>
-/// These take a raw tmux filter rather than a translated document: tmux
-/// evaluates the text, so the closed field catalog does not apply and a
-/// malformed token yields no rows. Unlike the lenient listings, a failed
-/// search throws rather than returning nothing.
-/// </remarks>
+// Raw tmux filters bypass the closed field catalog; malformed filters yield no
+// rows, while command failures propagate.
 public sealed partial class Server
 {
     /// <summary>Runs a tmux-side filter over every session.</summary>

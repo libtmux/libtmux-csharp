@@ -1,7 +1,37 @@
 using System.Collections.ObjectModel;
+using LibTmux.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace LibTmux;
+
+internal sealed class PsmuxPreviewOptions : IEquatable<PsmuxPreviewOptions>
+{
+    internal PsmuxPreviewOptions(string expectedBinarySha256, string dataDirectory)
+    {
+        ExpectedBinarySha256 = PsmuxCompatibility.ValidateExpectedBinarySha256(
+            expectedBinarySha256,
+            nameof(expectedBinarySha256));
+        DataDirectory = PsmuxCompatibility.NormalizeDataDirectory(
+            dataDirectory,
+            nameof(dataDirectory));
+    }
+
+    internal string ExpectedBinarySha256 { get; }
+
+    internal string DataDirectory { get; }
+
+    public bool Equals(PsmuxPreviewOptions? other) =>
+        other is not null
+        && string.Equals(
+            ExpectedBinarySha256,
+            other.ExpectedBinarySha256,
+            StringComparison.Ordinal)
+        && string.Equals(DataDirectory, other.DataDirectory, StringComparison.Ordinal);
+
+    public override bool Equals(object? obj) => Equals(obj as PsmuxPreviewOptions);
+
+    public override int GetHashCode() => HashCode.Combine(ExpectedBinarySha256, DataDirectory);
+}
 
 /// <summary>Configures a tmux server connection without mutating process-wide state.</summary>
 public sealed record ServerConnectionOptions
@@ -17,6 +47,31 @@ public sealed record ServerConnectionOptions
         Func<Server, CancellationToken, ValueTask>? initializeAsync = null,
         IReadOnlyDictionary<string, string?>? childEnvironment = null,
         ILogger? logger = null)
+        : this(
+            tmuxBinaryPath,
+            socketName,
+            socketPath,
+            socketNameFactory,
+            configurationFile,
+            colorMode,
+            initializeAsync,
+            childEnvironment,
+            logger,
+            psmuxPreview: null)
+    {
+    }
+
+    private ServerConnectionOptions(
+        string tmuxBinaryPath,
+        string? socketName,
+        string? socketPath,
+        Func<string>? socketNameFactory,
+        string? configurationFile,
+        TmuxColorMode colorMode,
+        Func<Server, CancellationToken, ValueTask>? initializeAsync,
+        IReadOnlyDictionary<string, string?>? childEnvironment,
+        ILogger? logger,
+        PsmuxPreviewOptions? psmuxPreview)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tmuxBinaryPath);
         if (socketName is not null)
@@ -64,6 +119,49 @@ public sealed record ServerConnectionOptions
             }
         }
 
+        if (psmuxPreview is not null)
+        {
+            if (!Path.IsPathFullyQualified(tmuxBinaryPath))
+            {
+                throw new ArgumentException(
+                    "The psmux preview requires a fully qualified executable path.",
+                    nameof(tmuxBinaryPath));
+            }
+
+            if (socketName is null && socketNameFactory is null)
+            {
+                throw new ArgumentException(
+                    "The psmux preview requires an explicit socket name or socket-name factory.",
+                    nameof(socketName));
+            }
+
+            string[] reservedVariables =
+            [
+                "LIBTMUX_SOCKET_NAME",
+                "LIBTMUX_SOCKET_PATH",
+                "TMUX",
+                "PSMUX_ACTIVE",
+                "PSMUX_CLIENT_LAST_SESSION",
+                "PSMUX_CONFIG_FILE",
+                "PSMUX_DATA_DIR",
+                "PSMUX_DEFAULT_SESSION",
+                "PSMUX_SESSION",
+                "PSMUX_SESSION_NAME",
+                "PSMUX_SWITCH_TO",
+                "PSMUX_TARGET_FULL",
+                "PSMUX_TARGET_SESSION",
+            ];
+            if (childEnvironmentCopy is not null
+                && childEnvironmentCopy.Keys.Any(key => reservedVariables.Contains(
+                    key,
+                    StringComparer.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException(
+                    "The psmux preview owns its routing environment variables.",
+                    nameof(childEnvironment));
+            }
+        }
+
         TmuxBinaryPath = tmuxBinaryPath;
         SocketName = socketName;
         SocketPath = socketPath;
@@ -75,10 +173,29 @@ public sealed record ServerConnectionOptions
             ? null
             : new ReadOnlyDictionary<string, string?>(childEnvironmentCopy);
         Logger = logger;
+        PsmuxPreview = psmuxPreview;
     }
 
     /// <summary>Gets conventional connection defaults.</summary>
     public static ServerConnectionOptions Default { get; } = new();
+
+    internal static ServerConnectionOptions ForPsmux(PsmuxConnectionOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return new ServerConnectionOptions(
+            tmuxBinaryPath: options.ExecutablePath,
+            socketName: options.NamespaceName,
+            socketPath: null,
+            socketNameFactory: null,
+            configurationFile: null,
+            colorMode: TmuxColorMode.Default,
+            initializeAsync: null,
+            childEnvironment: null,
+            logger: options.Logger,
+            psmuxPreview: new PsmuxPreviewOptions(
+                options.ExpectedBinarySha256,
+                options.DataDirectory));
+    }
 
     /// <summary>Gets the tmux executable path.</summary>
     public string TmuxBinaryPath { get; }
@@ -106,4 +223,6 @@ public sealed record ServerConnectionOptions
 
     /// <summary>Gets the connection logger.</summary>
     public ILogger? Logger { get; }
+
+    internal PsmuxPreviewOptions? PsmuxPreview { get; }
 }

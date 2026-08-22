@@ -93,9 +93,16 @@ public sealed class TmuxEnvironment
         TmuxCommandResult result = await RunAsync(arguments, cancellationToken)
             .ConfigureAwait(false);
 
-        // A name tmux does not hold is an ordinary answer rather than a
-        // failure, and so is a hidden one, which succeeds and says nothing.
-        return result.ExitCode == 0 && result.StandardOutputLines.Count > 0
+        if (NamesMissingVariable(result, name))
+        {
+            return null;
+        }
+
+        TmuxCommandFailure.ThrowIfFailed(result, "show-environment");
+
+        // A hidden name succeeds and says nothing; only that and the exact
+        // missing-variable result are ordinary absence answers.
+        return result.StandardOutputLines.Count > 0
             ? Read(result.StandardOutputLines[0])
             : null;
     }
@@ -129,14 +136,22 @@ public sealed class TmuxEnvironment
 
         arguments.Add(name);
         arguments.Add(value);
-        TmuxCommandResult result = await RunAsync(arguments, cancellationToken)
+        var sequence = new TmuxMutationSequence();
+        _ = await sequence.MutateAsync(
+                () => RunAsync(arguments, cancellationToken),
+                static value => TmuxCommandFailure.ThrowIfFailed(value, "set-environment"))
             .ConfigureAwait(false);
-        TmuxCommandFailure.ThrowIfFailed(result, "set-environment");
 
-        // A hidden variable cannot be read back, and a format is expanded
-        // before it lands, so what is reported is asked for rather than echoed.
-        return await GetAsync(name, cancellationToken).ConfigureAwait(false)
-            ?? new TmuxEnvironmentEntry(name, hidden ? null : value, false);
+        // A hidden variable cannot be read back; visible values are returned
+        // exactly as tmux stored them, including any format expansion.
+        TmuxEnvironmentEntry? stored = await sequence
+            .ObserveAsync(() => GetAsync(name, cancellationToken))
+            .ConfigureAwait(false);
+        return sequence.Observe(() =>
+            stored ?? (hidden
+                ? new TmuxEnvironmentEntry(name, null, false)
+                : throw new InvalidDataException(
+                    $"tmux did not report the stored environment variable '{name}'.")));
     }
 
     /// <summary>Marks a variable removed for the panes tmux spawns.</summary>
@@ -193,6 +208,15 @@ public sealed class TmuxEnvironment
             ? new TmuxEnvironmentEntry(line[..separator], line[(separator + 1)..], false)
             : new TmuxEnvironmentEntry(line, null, false);
     }
+
+    private static bool NamesMissingVariable(TmuxCommandResult result, string name) =>
+        result.ExitCode == 1
+        && result.StandardOutputLines.Count == 0
+        && result.StandardErrorLines.Count == 1
+        && string.Equals(
+            result.StandardErrorLines[0],
+            $"unknown variable: {name}",
+            StringComparison.Ordinal);
 
     private List<string> Build(string subcommand)
     {

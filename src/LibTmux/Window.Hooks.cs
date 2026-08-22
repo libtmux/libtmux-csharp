@@ -2,7 +2,7 @@ using System.Runtime.Versioning;
 
 namespace LibTmux;
 
-/// <summary>Reaches this window's hooks.</summary>
+// Reaches this window's hooks.
 public sealed partial class Window
 {
     private TmuxHooks? _hooks;

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LibTmux;
 
-/// <summary>Lists and administers the clients attached to a server.</summary>
+// Lists and administers the clients attached to a server.
 public sealed partial class Server
 {
     private const string ClipboardQueryCapability = "refresh_client_clipboard_query";

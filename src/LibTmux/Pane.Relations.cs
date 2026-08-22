@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides pane hierarchy relations captured with the pane.</summary>
+// Provides pane hierarchy relations captured with the pane.
 public sealed partial class Pane
 {
     private readonly Server? _owner;

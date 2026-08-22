@@ -62,33 +62,19 @@ internal static class PaneReader
 
             IReadOnlyList<string> lines = await CaptureAsync(pane, null, cancellationToken)
                 .ConfigureAwait(false);
-            IReadOnlyList<string> cursorRows = await CaptureCursorRowsAsync(
-                    pane,
-                    before,
-                    cancellationToken)
-                .ConfigureAwait(false);
             PaneGridState after = await RequireStateAsync(pane, cancellationToken)
                 .ConfigureAwait(false);
 
             if (before == after)
             {
+                IReadOnlyList<string> cursorRows = CursorRowsFromCapture(lines, 0, after);
                 return new PaneRead(after, lines, cursorRows, false, baselinePid is not null);
             }
         }
 
-        // A pane printing without pause never gives two matching samples. The
-        // last read is still usable text; what it is not is a position anything
-        // later can be measured from, so the caller is told the anchor is gone.
-        PaneGridState settled = await RequireStateAsync(pane, cancellationToken)
-            .ConfigureAwait(false);
-        IReadOnlyList<string> busy = await CaptureAsync(pane, null, cancellationToken)
-            .ConfigureAwait(false);
-        IReadOnlyList<string> busyCursor = await CaptureCursorRowsAsync(
-                pane,
-                settled,
-                cancellationToken)
-            .ConfigureAwait(false);
-        return new PaneRead(settled, busy, busyCursor, false, true);
+        throw new McpException(
+            $"Pane {pane.Id} changed during every snapshot attempt. Try again when "
+            + "its output is less busy.");
     }
 
     /// <summary>Reads what a pane has printed since a cursor was issued.</summary>
@@ -115,18 +101,16 @@ internal static class PaneReader
             }
 
             bool trimRisk = TrimRisk(cursor, before);
-            int start = cursor.AnchorAbsolute - before.HistorySize;
-            IReadOnlyList<string> rows = trimRisk
+            int previousStart = cursor.AnchorAbsolute - before.HistorySize;
+            int captureStart = trimRisk
+                ? -before.HistorySize
+                : Math.Min(previousStart, before.CursorY);
+            IReadOnlyList<string> capturedRows = trimRisk
                 ? await CaptureAsync(pane, int.MinValue, cancellationToken).ConfigureAwait(false)
-                : start >= before.PaneHeight
+                : captureStart >= before.PaneHeight
                     ? []
-                    : await CaptureAsync(pane, start, cancellationToken).ConfigureAwait(false);
+                    : await CaptureAsync(pane, captureStart, cancellationToken).ConfigureAwait(false);
 
-            IReadOnlyList<string> cursorRows = await CaptureCursorRowsAsync(
-                    pane,
-                    before,
-                    cancellationToken)
-                .ConfigureAwait(false);
             PaneGridState after = await RequireStateAsync(pane, cancellationToken)
                 .ConfigureAwait(false);
             RaiseIfPaneReplaced(pane, after, cursor);
@@ -136,9 +120,10 @@ internal static class PaneReader
                 continue;
             }
 
+            int previousOffset;
             if (trimRisk)
             {
-                int? match = FindUniqueAnchor(rows, cursor);
+                int? match = FindUniqueAnchor(capturedRows, cursor, cancellationToken);
                 if (match is null)
                 {
                     PaneRead missed = await ReadVisibleAsync(pane, cursor.PanePid, cancellationToken)
@@ -146,10 +131,22 @@ internal static class PaneReader
                     return missed with { LinesMissed = true, AnchorLost = true };
                 }
 
-                rows = [.. rows.Skip(match.Value)];
+                previousOffset = match.Value;
+            }
+            else
+            {
+                previousOffset = checked(previousStart - captureStart);
             }
 
-            return new PaneRead(after, DropAlreadySeen(rows, cursor), cursorRows, false, false);
+            int cursorOffset = checked(after.CursorY - captureStart);
+            List<string> reported = ReportRows(
+                capturedRows,
+                previousOffset,
+                cursorOffset,
+                cursor);
+            IReadOnlyList<string> cursorRows = RowsFromOffset(capturedRows, cursorOffset);
+
+            return new PaneRead(after, reported, cursorRows, false, false);
         }
 
         PaneRead busy = await ReadVisibleAsync(pane, cursor.PanePid, cancellationToken)
@@ -174,23 +171,50 @@ internal static class PaneReader
         CapturePaneRequest? request = start switch
         {
             null => null,
-            int.MinValue => new CapturePaneRequest(startLine: new CapturePanePosition(-32768)),
+            int.MinValue => new CapturePaneRequest(
+                startLine: CapturePanePosition.BeginningOfHistory),
             int value => new CapturePaneRequest(startLine: new CapturePanePosition(value)),
         };
         return await pane.CaptureAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<IReadOnlyList<string>> CaptureCursorRowsAsync(
-        Pane pane,
-        PaneGridState state,
-        CancellationToken cancellationToken)
+    private static IReadOnlyList<string> CursorRowsFromCapture(
+        IReadOnlyList<string> rows,
+        int captureStart,
+        PaneGridState state)
     {
         if (state.CursorY >= state.PaneHeight)
         {
             return [];
         }
 
-        return await CaptureAsync(pane, state.CursorY, cancellationToken).ConfigureAwait(false);
+        long offset = (long)state.CursorY - captureStart;
+        return offset is >= 0 and <= int.MaxValue
+            ? RowsFromOffset(rows, (int)offset)
+            : [];
+    }
+
+    private static IReadOnlyList<string> RowsFromOffset(
+        IReadOnlyList<string> rows,
+        int offset) =>
+        offset >= 0 && offset < rows.Count ? [.. rows.Skip(offset)] : [];
+
+    private static List<string> ReportRows(
+        IReadOnlyList<string> capturedRows,
+        int previousOffset,
+        int cursorOffset,
+        TailCursor cursor)
+    {
+        IReadOnlyList<string> previousRows = RowsFromOffset(capturedRows, previousOffset);
+        List<string> reported = DropAlreadySeen(previousRows, cursor);
+        if (cursorOffset < previousOffset)
+        {
+            reported.InsertRange(
+                0,
+                capturedRows.Skip(cursorOffset).Take(previousOffset - cursorOffset));
+        }
+
+        return reported;
     }
 
     private static async Task<PaneGridState> RequireStateAsync(
@@ -247,36 +271,35 @@ internal static class PaneReader
         return cursor.HistorySize >= floor || state.HistorySize >= floor;
     }
 
-    private static int? FindUniqueAnchor(IReadOnlyList<string> rows, TailCursor cursor)
+    internal static int? FindUniqueAnchor(
+        IReadOnlyList<string> rows,
+        TailCursor cursor,
+        CancellationToken cancellationToken)
     {
         if (cursor.AnchorHash is null)
         {
             return null;
         }
 
-        string[] fingerprint = [cursor.AnchorHash, .. cursor.BelowHashes];
-        if (rows.Count < fingerprint.Length)
+        int fingerprintLength = checked(cursor.BelowCount + 1);
+        if (rows.Count < fingerprintLength)
         {
             return null;
         }
 
         int? match = null;
-        for (int index = 0; index + fingerprint.Length <= rows.Count; index++)
+        for (int index = 0; index + fingerprintLength <= rows.Count; index++)
         {
-            bool same = true;
-            for (int offset = 0; offset < fingerprint.Length; offset++)
-            {
-                if (!string.Equals(
-                    TailCursor.HashLine(rows[index + offset]),
-                    fingerprint[offset],
-                    StringComparison.Ordinal))
-                {
-                    same = false;
-                    break;
-                }
-            }
-
-            if (!same)
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!string.Equals(
+                    TailCursor.HashLine(rows[index]),
+                    cursor.AnchorHash,
+                    StringComparison.Ordinal)
+                || (cursor.BelowCount > 0
+                    && !string.Equals(
+                        TailCursor.HashRows(rows, index + 1, cursor.BelowCount),
+                        cursor.BelowHash,
+                        StringComparison.Ordinal)))
             {
                 continue;
             }
@@ -313,18 +336,17 @@ internal static class PaneReader
         }
 
         index = 1;
-        int matched = 0;
-        while (matched < cursor.BelowHashes.Count
-            && index + matched < rows.Count
+        if (cursor.SuffixCount > 0
+            && rows.Count - index >= cursor.SuffixCount
             && string.Equals(
-                TailCursor.HashLine(rows[index + matched]),
-                cursor.BelowHashes[matched],
+                TailCursor.HashRows(rows, index, cursor.SuffixCount),
+                cursor.SuffixHash,
                 StringComparison.Ordinal))
         {
-            matched++;
+            index += cursor.SuffixCount;
         }
 
-        for (int row = index + matched; row < rows.Count; row++)
+        for (int row = index; row < rows.Count; row++)
         {
             kept.Add(rows[row]);
         }

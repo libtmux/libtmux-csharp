@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides raw command execution for a tmux window.</summary>
+// Provides raw command execution for a tmux window.
 public sealed partial class Window
 {
     private readonly TmuxCommandDispatcher _commandDispatcher;
@@ -24,7 +24,6 @@ public sealed partial class Window
         string? targetOverride = null,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         return TargetedCommandArguments.ExecuteAsync(
             _commandDispatcher,
             arguments,
