@@ -53,6 +53,32 @@ the next retained event. `Count` is the loss since the previous marker and
 re-read any state that depends on notifications. Command replies travel through
 a separate queue and are not dropped by this buffer.
 
+The marker arrives in sequence, where the discarded events would have been:
+
+<!-- snippet: NoticeDroppedEvents -->
+```csharp
+await using IControlModeSession control = await server.EnterControlModeAsync(cancellationToken: ct);
+
+await control.SendAsync("new-window -d -n build", ct);
+
+await foreach (TmuxEvent observed in control.Events.WithCancellation(ct))
+{
+    if (observed is TmuxEventsDroppedEvent dropped)
+    {
+        // Anything cached from this stream is now a guess, so the
+        // marker is a signal to re-read rather than to log.
+        Console.WriteLine($"missed {dropped.Count}, {dropped.TotalDropped} in total");
+        continue;
+    }
+
+    if (observed is TmuxNotificationEvent { Name: "window-add" })
+    {
+        break;
+    }
+}
+```
+<!-- endsnippet -->
+
 `SendAsync` is safe to call concurrently: tmux answers in the order it was
 asked, and each caller gets its own answer.
 

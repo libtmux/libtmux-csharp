@@ -25,4 +25,31 @@ public static class ControlMode
         }
         #endregion
     }
+
+    /// <summary>Reads the marker that says the event buffer discarded events.</summary>
+    [Example("React to a control stream that fell behind")]
+    public static async Task NoticeDroppedEvents(Server server, CancellationToken ct)
+    {
+        #region NoticeDroppedEvents
+        await using IControlModeSession control = await server.EnterControlModeAsync(cancellationToken: ct);
+
+        await control.SendAsync("new-window -d -n build", ct);
+
+        await foreach (TmuxEvent observed in control.Events.WithCancellation(ct))
+        {
+            if (observed is TmuxEventsDroppedEvent dropped)
+            {
+                // Anything cached from this stream is now a guess, so the
+                // marker is a signal to re-read rather than to log.
+                Console.WriteLine($"missed {dropped.Count}, {dropped.TotalDropped} in total");
+                continue;
+            }
+
+            if (observed is TmuxNotificationEvent { Name: "window-add" })
+            {
+                break;
+            }
+        }
+        #endregion
+    }
 }
