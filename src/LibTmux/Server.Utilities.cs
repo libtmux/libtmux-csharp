@@ -18,13 +18,8 @@ public enum ShowMessagesMode
     Terminals,
 }
 
-/// <summary>Keys, prompts, menus, buffers, and shell automation.</summary>
-/// <remarks>
-/// These are the tmux commands that belong to the server rather than to
-/// anything inside it. Several grew flags over the supported range: where a
-/// flag is missing the request is still sent once without it and a warning
-/// says so, and where a whole command is missing nothing is sent at all.
-/// </remarks>
+// Server utilities omit unsupported commands and warn when optional flags must
+// be downgraded.
 public sealed partial class Server
 {
     /// <summary>Binds a key to a tmux command.</summary>

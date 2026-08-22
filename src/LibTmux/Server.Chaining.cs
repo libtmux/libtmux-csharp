@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Starts a chain of commands on this server.</summary>
+// Starts a chain of commands on this server.
 public sealed partial class Server
 {
     /// <summary>Begins a chain that runs its commands in one tmux invocation.</summary>

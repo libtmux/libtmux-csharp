@@ -30,15 +30,15 @@ public sealed class ExampleCase
 
     private MethodInfo Method { get; }
 
-    /// <summary>Finds every example in this assembly, in a stable order.</summary>
-    /// <returns>The examples, ordered by topic and then by name.</returns>
+    /// <summary>Finds the ordinary tmux examples, in a stable order.</summary>
+    /// <returns>The default-suite examples, ordered by topic and then by name.</returns>
     public static IReadOnlyList<ExampleCase> Discover() =>
     [
         .. typeof(ExampleCase).Assembly
             .GetTypes()
             .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
             .Select(method => (Method: method, Example: method.GetCustomAttribute<ExampleAttribute>()))
-            .Where(found => found.Example is not null)
+            .Where(found => found.Example?.RunsInDefaultSuite is true)
             .Select(found => Create(found.Method, found.Example!))
             .OrderBy(example => example.Topic, StringComparer.Ordinal)
             .ThenBy(example => example.Id, StringComparer.Ordinal),

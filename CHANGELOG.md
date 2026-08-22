@@ -8,6 +8,46 @@ Versions follow [Semantic Versioning](https://semver.org). During alpha the
 public API can change in any release with no deprecation period — pin an exact
 version.
 
+## [Unreleased]
+
+### Added
+
+- **An experimental query-only psmux preview for native Windows and WSL
+  interop.** A separate
+  analyzer-clean API reads one isolated session, its windows and panes, and pane
+  text without exposing tmux lifecycle, mutation, chaining, control mode, or
+  MCP behavior that psmux cannot preserve. The client commit, clean banner, and
+  executable SHA-256 are pinned; publishing that exact artifact and completing
+  native/WSL runtime verification remain release prerequisites. The PowerShell
+  harness owns a fresh data directory and refuses ambiguous cleanup. See [the
+  exact trust and compatibility boundary](docs/psmux.md).
+- **Explicit control-stream loss reporting.** A bounded event reader now gets a
+  `TmuxEventsDroppedEvent` with per-report and cumulative counts instead of
+  silently missing notifications when it falls behind.
+
+### Changed
+
+- Generated API reference pages now contain only the public LibTmux surface,
+  use each partial type's canonical summary, and are checked in CI alongside
+  the public API, capability, snippet, and MCP catalogs.
+- MCP tail cursors are authenticated, constant-size, and bound to the exact
+  endpoint, server generation, and pane. Search and every serialized tool
+  result now obey hard global line and UTF-8 byte ceilings.
+- MCP Tasks admit at most eight active executions, retain a bounded result set,
+  and apply only to waits and job collection. `tmux_run` is synchronous again;
+  work that must survive a client disconnect uses `tmux_start_job` and
+  `tmux_job` instead.
+
+### Fixed
+
+- Control clients clean up a failed or cancelled attach without replacing its
+  primary error. MCP hierarchy and pane-activity streams keep independent
+  subscribers, recover after a stream ends, and preserve nullable structured
+  fields required by their advertised schemas.
+- MCP background jobs retain their originating endpoint and generation, cap
+  concurrent state, clean up failed starts, serialize collection, and drain
+  watcher tasks during disposal instead of leaking or cross-routing work.
+
 ## [0.0.0-alpha.8] — 2026-08-22
 
 No behaviour change. `git diff v0.0.0-alpha.7..v0.0.0-alpha.8 -- src/` touches
@@ -60,12 +100,13 @@ IntelliSense text, and the page on nuget.org.
 ### Changed
 
 - **`LibTmux.Mcp` is a different server.** It offered five tools; it now offers
-  42, across three safety tiers, with six `tmux://` resources and four workflow
-  prompts. Every tool answers a typed record with a JSON output schema rather
-  than prose, so a client destructures a result instead of parsing one. The
-  tool names all changed — `list_tmux` and friends are gone in favour of
-  `tmux_hierarchy`, `tmux_run` and the rest. [The reference](docs/mcp/tools.md)
-  is generated from the server, so it cannot describe a surface that is absent.
+  42, across three safety tiers, with four fixed `tmux://` resources, two
+  resource templates and four workflow prompts. Every shaped tool answers a
+  typed record with a JSON output schema; `tmux_display_message` returns the raw
+  expanded format text it was asked for. The tool names all changed —
+  `list_tmux` and friends are gone in favour of `tmux_hierarchy`, `tmux_run` and
+  the rest. [The reference](docs/mcp/tools.md) is generated from the server, so
+  it cannot describe a surface that is absent.
 
 ### Added
 
@@ -268,6 +309,7 @@ it is: a published version can never be deleted from nuget.org, only unlisted.
 - `LibTmux.Workspace` — sessions from tmuxp workspace files.
 - `LibTmux.Mcp` — a Model Context Protocol server, installed as a .NET tool.
 
+[Unreleased]: https://github.com/libtmux/libtmux-dotnet/compare/v0.0.0-alpha.8...HEAD
 [0.0.0-alpha.8]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.8
 [0.0.0-alpha.7]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.7
 [0.0.0-alpha.6]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.6

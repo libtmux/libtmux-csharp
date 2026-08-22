@@ -26,6 +26,15 @@ public sealed record TmuxNotificationEvent(
     string Name,
     IReadOnlyList<string> Arguments) : TmuxEvent;
 
+/// <summary>Reports notifications discarded because the bounded event buffer was full.</summary>
+/// <param name="Count">The events discarded since the previous loss report.</param>
+/// <param name="TotalDropped">The events discarded over this control client's lifetime.</param>
+/// <remarks>
+/// LibTmux synthesizes this event before the next retained event. Command
+/// replies use a separate queue and are never discarded by this buffer.
+/// </remarks>
+public sealed record TmuxEventsDroppedEvent(long Count, long TotalDropped) : TmuxEvent;
+
 /// <summary>The control client ended.</summary>
 /// <param name="Reason">
 /// Why tmux said it ended, when it said anything. It is silent for an ordinary

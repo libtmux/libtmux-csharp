@@ -7,7 +7,7 @@ namespace LibTmux.ExampleTests;
 [CollectionDefinition("Examples", DisableParallelization = true)]
 public sealed class OneExampleAtATime;
 
-/// <summary>Runs every documented example against live tmux, one test each.</summary>
+/// <summary>Runs every ordinary tmux example against live tmux, one test each.</summary>
 [Collection("Examples")]
 [UnsupportedOSPlatform("windows")]
 public sealed class ExampleSuite

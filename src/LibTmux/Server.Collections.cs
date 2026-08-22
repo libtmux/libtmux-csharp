@@ -2,13 +2,8 @@ using System.Runtime.Versioning;
 
 namespace LibTmux;
 
-/// <summary>Reads server-wide collections of tmux objects.</summary>
-/// <remarks>
-/// Leniency differs per accessor and is not a style choice. Session listings
-/// answer "what is there", so any failure reads as nothing there. Window and
-/// pane listings answer a narrower question, so only an absent daemon or
-/// socket reads as empty and a real tmux error still surfaces.
-/// </remarks>
+// Session listings preserve historical any-failure leniency; window and pane
+// listings tolerate only a missing daemon or socket.
 public sealed partial class Server
 {
     /// <summary>Reads every session on this server.</summary>
@@ -22,6 +17,16 @@ public sealed partial class Server
             [],
             static (owner, row) => RelationReader.ToSession(owner, row),
             LenientListPolicy.AnyFailure,
+            cancellationToken);
+
+    [UnsupportedOSPlatform("windows")]
+    internal Task<IReadOnlyList<Session>> GetSessionsStrictAsync(
+        CancellationToken cancellationToken = default) =>
+        ListAsync(
+            "list-sessions",
+            [],
+            static (owner, row) => RelationReader.ToSession(owner, row),
+            LenientListPolicy.None,
             cancellationToken);
 
     /// <summary>Reads every session with at least one attached client.</summary>
@@ -60,6 +65,16 @@ public sealed partial class Server
             LenientListPolicy.MissingDaemonOrSocket,
             cancellationToken);
 
+    [UnsupportedOSPlatform("windows")]
+    internal Task<IReadOnlyList<Window>> GetWindowsStrictAsync(
+        CancellationToken cancellationToken = default) =>
+        ListAsync(
+            "list-windows",
+            ["-a"],
+            static (owner, row) => RelationReader.ToWindow(owner, row),
+            LenientListPolicy.None,
+            cancellationToken);
+
     /// <summary>Reads every pane on this server.</summary>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>The panes, empty when no daemon or socket is present.</returns>
@@ -71,6 +86,16 @@ public sealed partial class Server
             ["-a"],
             static (owner, row) => RelationReader.ToPane(owner, row),
             LenientListPolicy.MissingDaemonOrSocket,
+            cancellationToken);
+
+    [UnsupportedOSPlatform("windows")]
+    internal Task<IReadOnlyList<Pane>> GetPanesStrictAsync(
+        CancellationToken cancellationToken = default) =>
+        ListAsync(
+            "list-panes",
+            ["-a"],
+            static (owner, row) => RelationReader.ToPane(owner, row),
+            LenientListPolicy.None,
             cancellationToken);
 
     [UnsupportedOSPlatform("windows")]
@@ -112,16 +137,25 @@ public sealed partial class Server
     private sealed class LenientListPolicy
     {
         private readonly bool _anyFailure;
+        private readonly bool _missingDaemonOrSocket;
 
-        private LenientListPolicy(bool anyFailure) => _anyFailure = anyFailure;
+        private LenientListPolicy(bool anyFailure, bool missingDaemonOrSocket)
+        {
+            _anyFailure = anyFailure;
+            _missingDaemonOrSocket = missingDaemonOrSocket;
+        }
 
-        internal static LenientListPolicy AnyFailure { get; } = new(anyFailure: true);
+        internal static LenientListPolicy AnyFailure { get; } =
+            new(anyFailure: true, missingDaemonOrSocket: true);
 
         internal static LenientListPolicy MissingDaemonOrSocket { get; } =
-            new(anyFailure: false);
+            new(anyFailure: false, missingDaemonOrSocket: true);
+
+        internal static LenientListPolicy None { get; } =
+            new(anyFailure: false, missingDaemonOrSocket: false);
 
         internal bool Tolerates(LibTmuxException error) =>
-            _anyFailure || IsMissingDaemonOrSocket(error);
+            _anyFailure || (_missingDaemonOrSocket && IsMissingDaemonOrSocket(error));
 
         private static bool IsMissingDaemonOrSocket(LibTmuxException error) =>
             error is TmuxCommandNotFoundException

@@ -16,7 +16,7 @@ public sealed partial class ReadTools
     [Description(
         "Read every tmux session, window and pane at once. Start here when you do not "
         + "know what exists. Each entity names its parent, and the pane marked "
-        + "is_caller is the one this server runs in. For one level only, the "
+        + "isCaller is the one this server runs in. For one level only, the "
         + "tmux_list_* tools are cheaper.")]
     public async Task<HierarchyView> HierarchyAsync(
         [Description("The tmux socket to read. Omit for the default server.")]
@@ -137,7 +137,7 @@ public sealed partial class ReadTools
     [McpServerTool(Name = "tmux_list_panes", ReadOnly = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description(
         "List tmux panes, optionally within one session or window. Filter for "
-        + "is_caller=true to answer 'which pane am I in?'. This reads sizes and "
+        + "isCaller=true to answer 'which pane am I in?'. This reads sizes and "
         + "running commands, not terminal text — for that use tmux_search_panes.")]
     public async Task<IReadOnlyList<PaneInfo>> ListPanesAsync(
         [Description("A session id such as $0, or its name. Omit for every session.")]

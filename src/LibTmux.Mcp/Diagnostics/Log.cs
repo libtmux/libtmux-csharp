@@ -63,4 +63,32 @@ internal static partial class Log
         Level = LogLevel.Warning,
         Message = "Tool {Tool} failed.")]
     internal static partial void ToolFailed(ILogger logger, Exception error, string tool);
+
+    [LoggerMessage(
+        EventId = 8,
+        Level = LogLevel.Debug,
+        Message = "Control client for socket {Socket} could not be cleaned up.")]
+    internal static partial void ControlClientCleanupFailed(
+        ILogger logger,
+        Exception error,
+        string? socket);
+
+    [LoggerMessage(
+        EventId = 9,
+        Level = LogLevel.Warning,
+        Message = "Background job {JobId} in pane {PaneId} could no longer be watched.")]
+    internal static partial void JobWatcherFailed(
+        ILogger logger,
+        Exception error,
+        string jobId,
+        string paneId);
+
+    [LoggerMessage(
+        EventId = 10,
+        Level = LogLevel.Debug,
+        Message = "Hierarchy subscriber callback for endpoint {Endpoint} failed.")]
+    internal static partial void HierarchySubscriberFailed(
+        ILogger logger,
+        Exception error,
+        string endpoint);
 }

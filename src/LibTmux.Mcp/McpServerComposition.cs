@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Extensions.Tasks;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -47,6 +48,8 @@ public static class McpServerComposition
         services.AddSingleton<WriteTools>();
         services.AddSingleton<DestructiveTools>();
         services.AddSingleton<HierarchyResources>();
+        var taskStore = new BoundedMcpTaskStore();
+        services.AddSingleton(_ => new SubscriptionAdmission());
 
         IMcpServerBuilder builder = services
             .AddMcpServer(options =>
@@ -58,10 +61,15 @@ public static class McpServerComposition
                 };
                 options.ServerInstructions = ServerInstructions.Compose(policy, callerPaneId);
             })
-            .WithTools<ReadTools>()
+            .WithTools<ReadTools>(ToolJson.Options)
             .WithResources<HierarchyResources>()
             .WithPrompts<RecipePrompts>()
-            .WithRequestFilters(filters => filters.AddCallToolFilter(ToolFailureFilter.Create()))
+            .WithRequestFilters(filters =>
+            {
+                filters.AddCallToolFilter(next =>
+                    ToolResponseBudgetFilter.Create(policy)(ToolFailureFilter.Create()(next)));
+                filters.AddReadResourceFilter(ResourceResponseBudgetFilter.Create(policy));
+            })
 
             // A subscription is what turns the hierarchy from something a
             // client re-reads on a timer into something that tells it when to.
@@ -76,6 +84,7 @@ public static class McpServerComposition
                     await scope.GetRequiredService<HierarchyWatcher>()
                         .SubscribeAsync(
                             uri,
+                            notify,
                             async changed =>
                             {
                                 foreach (string each in changed)
@@ -101,37 +110,36 @@ public static class McpServerComposition
                     && context.Services is IServiceProvider scope)
                 {
                     await scope.GetRequiredService<HierarchyWatcher>()
-                        .UnsubscribeAsync(uri)
+                        .UnsubscribeAsync(uri, context.Server)
                         .ConfigureAwait(false);
                 }
 
                 return new EmptyResult();
             })
 
-            // The revision that replaced resources/subscribe answers listen
-            // itself, granting the subscription without telling the
-            // application — so a client on a current revision would subscribe
-            // and hear nothing. Owning the stream is what closes that.
+            // The current revision grants listen without notifying the application;
+            // owning the stream is what starts the watcher that emits its events.
             .WithSubscriptionsListenHandler(SubscriptionStream.Create())
 
-            // The protocol's own answer to a call that waits. A client that
-            // declares the extension gets a handle back at once and collects
-            // later; one that has not keeps the blocking call it had.
+            // Task-capable clients may collect a wait later; other clients block.
             .WithTasks(
-                new InMemoryMcpTaskStore(),
+                taskStore,
                 tasks => tasks.ExecutionModeSelector = TaskCapableTools.Select);
+
+        services.AddSingleton<IConfigureOptions<McpServerOptions>>(
+            new BoundedMcpTaskCancellationOptions(taskStore));
 
         // Registration, not filtering. A tool the operator's tier does not
         // allow never reaches the model's list, so it cannot be called by name,
         // guessed at, or argued for.
         if (policy.Allows(SafetyTier.Mutating))
         {
-            builder.WithTools<WriteTools>();
+            builder.WithTools<WriteTools>(ToolJson.Options);
         }
 
         if (policy.Allows(SafetyTier.Destructive))
         {
-            builder.WithTools<DestructiveTools>();
+            builder.WithTools<DestructiveTools>(ToolJson.Options);
         }
 
         return builder;

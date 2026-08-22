@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides raw command execution for a tmux server endpoint.</summary>
+// Provides raw command execution for a tmux server endpoint.
 public sealed partial class Server
 {
     private readonly TmuxCommandDispatcher _commandDispatcher;
@@ -18,9 +18,6 @@ public sealed partial class Server
     [UnsupportedOSPlatform("windows")]
     public Task<TmuxCommandResult> ExecuteCommandAsync(
         IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken = default)
-    {
-        PlatformGuard.ThrowIfWindows();
-        return _commandDispatcher.ExecuteAsync(arguments, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        _commandDispatcher.ExecuteAsync(arguments, cancellationToken);
 }

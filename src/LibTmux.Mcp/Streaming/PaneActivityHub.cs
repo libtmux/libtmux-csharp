@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
 
@@ -32,29 +33,37 @@ public sealed class PaneActivityHub : IAsyncDisposable
     /// <summary>How long a poll-based wait sleeps between reads.</summary>
     internal static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(60);
 
-    private readonly ConcurrentDictionary<string, SessionWatch> _watches = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, PaneSignal> _signals = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<SessionWatchKey, SessionWatch> _watches = [];
     private readonly ILogger? _logger;
+    private readonly Func<Pane, CancellationToken, Task<IControlModeSession>>? _startPaneSession;
     private bool _disposed;
 
     /// <summary>Initializes the hub.</summary>
     /// <param name="logger">Records why a control client could not start.</param>
     public PaneActivityHub(ILogger? logger = null) => _logger = logger;
 
+    internal PaneActivityHub(
+        Func<Pane, CancellationToken, Task<IControlModeSession>> startPaneSession,
+        ILogger? logger = null)
+    {
+        ArgumentNullException.ThrowIfNull(startPaneSession);
+        _startPaneSession = startPaneSession;
+        _logger = logger;
+    }
+
     /// <summary>Gets whether any session is currently watched through control mode.</summary>
-    public bool IsStreaming => !_watches.IsEmpty;
+    public bool IsStreaming => _watches.Values.Any(watch => watch.IsStreaming);
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        _disposed = true;
-        foreach (KeyValuePair<string, SessionWatch> entry in _watches)
+        Volatile.Write(ref _disposed, true);
+        foreach (KeyValuePair<SessionWatchKey, SessionWatch> entry in _watches)
         {
             await entry.Value.DisposeAsync().ConfigureAwait(false);
         }
 
         _watches.Clear();
-        _signals.Clear();
     }
 
     /// <summary>Watches a pane's session for as long as the result is held.</summary>
@@ -68,26 +77,104 @@ public sealed class PaneActivityHub : IAsyncDisposable
     public async Task<IAsyncDisposable> WatchAsync(Pane pane, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(pane);
-        if (_disposed)
-        {
-            return NullLease.Instance;
-        }
-
-        string sessionId = pane.Session.Id.ToString();
-        SessionWatch watch = _watches.GetOrAdd(
-            sessionId,
-            key => new SessionWatch(key, this));
-
-        bool started = await watch.EnsureStartedAsync(pane.Server, cancellationToken)
+        SessionWatchKey key = SessionWatchKey.From(pane);
+        return await WatchAsync(
+                key,
+                token => StartPaneSessionAsync(pane, key.SessionId, token),
+                cancellationToken)
             .ConfigureAwait(false);
-        if (!started)
+    }
+
+    private async Task<IControlModeSession> StartPaneSessionAsync(
+        Pane pane,
+        string sessionId,
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            _watches.TryRemove(sessionId, out _);
-            return NullLease.Instance;
+            return _startPaneSession is null
+                ? await pane.Server
+                    .EnterControlModeAsync(sessionId, cancellationToken)
+                    .ConfigureAwait(false)
+                : await _startPaneSession(pane, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is Win32Exception
+            or IOException
+            or InvalidDataException
+            or InvalidOperationException
+            or NotSupportedException)
+        {
+            throw new TmuxTransportException(
+                "The tmux control client could not attach; polling will be used instead.",
+                [],
+                TmuxDispatchState.NotDispatched,
+                error);
+        }
+    }
+
+    /// <summary>Watches a session with a supplied control-client factory.</summary>
+    internal async Task<IAsyncDisposable> WatchAsync(
+        string sessionId,
+        Func<CancellationToken, Task<IControlModeSession>> startSession,
+        CancellationToken cancellationToken) =>
+        await WatchAsync(
+                SessionWatchKey.ForTest("default", sessionId),
+                startSession,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    internal async Task<IAsyncDisposable> WatchAsync(
+        string endpointId,
+        string sessionId,
+        Func<CancellationToken, Task<IControlModeSession>> startSession,
+        CancellationToken cancellationToken) =>
+        await WatchAsync(
+                SessionWatchKey.ForTest(endpointId, sessionId),
+                startSession,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    private async Task<IAsyncDisposable> WatchAsync(
+        SessionWatchKey key,
+        Func<CancellationToken, Task<IControlModeSession>> startSession,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(key.SessionId);
+        ArgumentNullException.ThrowIfNull(startSession);
+        while (!Volatile.Read(ref _disposed))
+        {
+            SessionWatch watch = _watches.GetOrAdd(
+                key,
+                static (created, hub) => new SessionWatch(created, hub),
+                this);
+
+            LeaseAcquisition acquired = await watch
+                .AcquireAsync(startSession, cancellationToken)
+                .ConfigureAwait(false);
+            if (acquired.Lease is not null)
+            {
+                if (Volatile.Read(ref _disposed))
+                {
+                    await acquired.Lease.DisposeAsync().ConfigureAwait(false);
+                    return NullLease.Instance;
+                }
+
+                return acquired.Lease;
+            }
+
+            RemoveWatch(key, watch);
+            if (!acquired.Retry)
+            {
+                return NullLease.Instance;
+            }
         }
 
-        return watch.Lease();
+        return NullLease.Instance;
     }
+
+    private void RemoveWatch(SessionWatchKey key, SessionWatch watch) =>
+        ((ICollection<KeyValuePair<SessionWatchKey, SessionWatch>>)_watches)
+            .Remove(new KeyValuePair<SessionWatchKey, SessionWatch>(key, watch));
 
     /// <summary>Waits until a pane prints something, or the time runs out.</summary>
     /// <param name="paneId">The pane to wait on.</param>
@@ -106,7 +193,7 @@ public sealed class PaneActivityHub : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(paneId);
-        if (_disposed || timeout <= TimeSpan.Zero)
+        if (Volatile.Read(ref _disposed) || timeout <= TimeSpan.Zero)
         {
             return false;
         }
@@ -120,15 +207,15 @@ public sealed class PaneActivityHub : IAsyncDisposable
             return false;
         }
 
-        Task expiry = Task.Delay(timeout, cancellationToken);
-        Task finished = await Task.WhenAny(wake, expiry).ConfigureAwait(false);
-        if (finished == expiry)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            await wake.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (TimeoutException)
+        {
             return false;
         }
-
-        return true;
     }
 
     /// <summary>Takes the token that a later wait on this pane will wake from.</summary>
@@ -142,18 +229,28 @@ public sealed class PaneActivityHub : IAsyncDisposable
     public object? CaptureSignal(string paneId)
     {
         ArgumentNullException.ThrowIfNull(paneId);
-        return IsStreaming
-            ? _signals.GetOrAdd(paneId, _ => new PaneSignal()).Current
-            : null;
+        SessionWatch[] streaming = [.. _watches.Values
+            .Where(watch => watch.IsStreaming)
+            .Take(2)];
+        return streaming.Length == 1 ? streaming[0].CaptureSignal(paneId) : null;
     }
 
-    private void OnPaneOutput(string paneId)
+    /// <summary>Takes the exact endpoint/session token for a pane about to be read.</summary>
+    /// <param name="pane">The pane about to be read.</param>
+    /// <returns>The token, or null when that pane's session is not streaming.</returns>
+    public object? CaptureSignal(Pane pane)
     {
-        if (_signals.TryGetValue(paneId, out PaneSignal? signal))
-        {
-            signal.Fire();
-        }
+        ArgumentNullException.ThrowIfNull(pane);
+        return CaptureSignal(SessionWatchKey.From(pane), pane.Id.ToString());
     }
+
+    internal Task? CaptureSignal(string endpointId, string sessionId, string paneId) =>
+        CaptureSignal(SessionWatchKey.ForTest(endpointId, sessionId), paneId);
+
+    private Task? CaptureSignal(SessionWatchKey key, string paneId) =>
+        _watches.TryGetValue(key, out SessionWatch? watch)
+            ? watch.CaptureSignal(paneId)
+            : null;
 
     /// <summary>One pane's "something happened" bell.</summary>
     /// <remarks>
@@ -176,48 +273,93 @@ public sealed class PaneActivityHub : IAsyncDisposable
     }
 
     /// <summary>One session's control client, and how many waits need it.</summary>
-    private sealed class SessionWatch(string sessionId, PaneActivityHub hub) : IAsyncDisposable
+    private sealed class SessionWatch(SessionWatchKey key, PaneActivityHub hub) : IAsyncDisposable
     {
         private readonly SemaphoreSlim _gate = new(1, 1);
-        private IControlModeSession? _session;
-        private Task? _pump;
+        private readonly Dictionary<string, PaneSignal> _signals = new(StringComparer.Ordinal);
+        private readonly object _signalGate = new();
+        private WatchRun? _run;
+        private bool _retired;
         private int _leases;
 
-        internal async Task<bool> EnsureStartedAsync(
-            Server server,
+        internal bool IsStreaming
+        {
+            get
+            {
+                WatchRun? run = Volatile.Read(ref _run);
+                return run is not null
+                    && Volatile.Read(ref run.Ended) == 0
+                    && run.Session.IsRunning;
+            }
+        }
+
+        internal async Task<LeaseAcquisition> AcquireAsync(
+            Func<CancellationToken, Task<IControlModeSession>> startSession,
             CancellationToken cancellationToken)
         {
             await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            IControlModeSession? starting = null;
             try
             {
-                if (_session is not null)
+                if (_retired)
                 {
-                    return true;
+                    return LeaseAcquisition.RetryRequired;
                 }
 
-                IControlModeSession session = await server
-                    .EnterControlModeAsync(sessionId, cancellationToken)
+                if (_run is WatchRun current)
+                {
+                    if (Volatile.Read(ref current.Ended) == 0 && current.Session.IsRunning)
+                    {
+                        _leases = checked(_leases + 1);
+                        return new LeaseAcquisition(new Release(this), Retry: false);
+                    }
+
+                    Volatile.Write(ref current.Ended, 1);
+                    _run = null;
+                    StopSignaling();
+                    await ObserveCleanupAsync(current).ConfigureAwait(false);
+                }
+
+                starting = await startSession(cancellationToken).ConfigureAwait(false);
+
+                // A listening client must ignore size or it can shrink the session's windows.
+                // The flag is available throughout the supported tmux range.
+                await starting.SendAsync("refresh-client -f ignore-size", cancellationToken)
                     .ConfigureAwait(false);
 
-                // A client with a size would drag the session's windows down to
-                // it. This one exists to listen, so it opts out of the size
-                // calculation entirely rather than relying on never having sent
-                // one. The flag has been available since tmux 3.2.
-                await session.SendAsync("refresh-client -f ignore-size", cancellationToken)
-                    .ConfigureAwait(false);
-
-                _session = session;
-                _pump = PumpAsync(session);
-                return true;
+                WatchRun run = new(starting);
+                _run = run;
+                run.Pump = PumpAsync(run);
+                starting = null;
+                _leases = checked(_leases + 1);
+                return new LeaseAcquisition(new Release(this), Retry: false);
             }
-            catch (LibTmuxException error)
+            catch (Exception startupFailure)
             {
+                if (starting is not null)
+                {
+                    try
+                    {
+                        await starting.DisposeAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception cleanupFailure)
+                    {
+                        startupFailure.Data["LibTmux.ControlModeCleanupFailure"] = cleanupFailure;
+                    }
+                }
+
+                if (startupFailure is not LibTmuxException error)
+                {
+                    throw;
+                }
+
                 if (hub._logger is not null)
                 {
-                    Log.ControlClientUnavailable(hub._logger, error, sessionId);
+                    Log.ControlClientUnavailable(hub._logger, error, key.SessionId);
                 }
 
-                return false;
+                _retired = true;
+                return LeaseAcquisition.Unavailable;
             }
             finally
             {
@@ -225,41 +367,43 @@ public sealed class PaneActivityHub : IAsyncDisposable
             }
         }
 
-        internal IAsyncDisposable Lease()
-        {
-            Interlocked.Increment(ref _leases);
-            return new Release(this);
-        }
-
         public async ValueTask DisposeAsync()
         {
-            IControlModeSession? session = Interlocked.Exchange(ref _session, null);
-            if (session is not null)
+            await _gate.WaitAsync().ConfigureAwait(false);
+            WatchRun? run;
+            try
             {
-                await session.DisposeAsync().ConfigureAwait(false);
+                _retired = true;
+                run = _run;
+                _run = null;
+            }
+            finally
+            {
+                _gate.Release();
             }
 
-            if (_pump is Task pump)
+            if (run is not null)
             {
-                await pump.ConfigureAwait(false);
+                StopSignaling();
+                await DisposeRunAsync(run).ConfigureAwait(false);
+                await run.Pump.ConfigureAwait(false);
             }
 
-            _gate.Dispose();
         }
 
-        private async Task PumpAsync(IControlModeSession session)
+        private async Task PumpAsync(WatchRun run)
         {
             try
             {
-                await foreach (TmuxEvent observed in session.Events.ConfigureAwait(false))
+                await foreach (TmuxEvent observed in run.Session.Events.ConfigureAwait(false))
                 {
                     switch (observed)
                     {
                         case TmuxOutputEvent output:
-                            hub.OnPaneOutput(output.PaneId);
+                            OnPaneOutput(output.PaneId);
                             break;
                         case TmuxExitEvent exit when hub._logger is not null:
-                            Log.ControlClientEnded(hub._logger, sessionId, exit.Reason);
+                            Log.ControlClientEnded(hub._logger, key.SessionId, exit.Reason);
                             break;
                         default:
                             break;
@@ -272,17 +416,140 @@ public sealed class PaneActivityHub : IAsyncDisposable
                 // their own timeout, which is why losing the stream degrades
                 // cost rather than correctness.
             }
+            finally
+            {
+                await MarkEndedAsync(run).ConfigureAwait(false);
+                await ObserveCleanupAsync(run).ConfigureAwait(false);
+            }
+        }
+
+        private async Task MarkEndedAsync(WatchRun run)
+        {
+            await _gate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                Volatile.Write(ref run.Ended, 1);
+                StopSignaling();
+            }
+            finally
+            {
+                _gate.Release();
+            }
+        }
+
+        private async Task ObserveCleanupAsync(WatchRun run)
+        {
+            try
+            {
+                await DisposeRunAsync(run).ConfigureAwait(false);
+            }
+            catch (Exception error)
+            {
+                if (hub._logger is not null
+                    && Interlocked.Exchange(ref run.CleanupReported, 1) == 0)
+                {
+                    Log.ControlClientCleanupFailed(hub._logger, error, key.SessionId);
+                }
+            }
+        }
+
+        private static async Task DisposeRunAsync(WatchRun run)
+        {
+            if (Interlocked.CompareExchange(ref run.DisposalStarted, 1, 0) != 0)
+            {
+                await run.Disposal.Task.ConfigureAwait(false);
+                return;
+            }
+
+            try
+            {
+                await run.Session.DisposeAsync().ConfigureAwait(false);
+                run.Disposal.TrySetResult();
+            }
+            catch (Exception error)
+            {
+                run.Disposal.TrySetException(error);
+                _ = run.Disposal.Task.Exception;
+                throw;
+            }
         }
 
         private async ValueTask ReleaseOneAsync()
         {
-            if (Interlocked.Decrement(ref _leases) > 0)
+            await _gate.WaitAsync().ConfigureAwait(false);
+            WatchRun? run = null;
+            try
             {
-                return;
+                if (_retired)
+                {
+                    return;
+                }
+
+                _leases--;
+                if (_leases > 0)
+                {
+                    return;
+                }
+
+                _retired = true;
+                run = _run;
+                _run = null;
+            }
+            finally
+            {
+                _gate.Release();
             }
 
-            hub._watches.TryRemove(sessionId, out _);
-            await DisposeAsync().ConfigureAwait(false);
+            hub.RemoveWatch(key, this);
+            if (run is not null)
+            {
+                StopSignaling();
+                await DisposeRunAsync(run).ConfigureAwait(false);
+                await run.Pump.ConfigureAwait(false);
+            }
+        }
+
+        internal Task? CaptureSignal(string paneId)
+        {
+            lock (_signalGate)
+            {
+                if (!IsStreaming)
+                {
+                    return null;
+                }
+
+                if (!_signals.TryGetValue(paneId, out PaneSignal? signal))
+                {
+                    signal = new PaneSignal();
+                    _signals.Add(paneId, signal);
+                }
+
+                return signal.Current;
+            }
+        }
+
+        private void OnPaneOutput(string paneId)
+        {
+            lock (_signalGate)
+            {
+                if (_signals.TryGetValue(paneId, out PaneSignal? signal))
+                {
+                    signal.Fire();
+                }
+            }
+        }
+
+        private void StopSignaling()
+        {
+            lock (_signalGate)
+            {
+                foreach (PaneSignal signal in _signals.Values)
+                {
+                    signal.Fire();
+                }
+
+                _signals.Clear();
+            }
         }
 
         private sealed class Release(SessionWatch watch) : IAsyncDisposable
@@ -294,6 +561,20 @@ public sealed class PaneActivityHub : IAsyncDisposable
                     ? watch.ReleaseOneAsync()
                     : ValueTask.CompletedTask;
         }
+
+        private sealed class WatchRun(IControlModeSession session)
+        {
+            internal IControlModeSession Session { get; } = session;
+
+            internal Task Pump { get; set; } = Task.CompletedTask;
+
+            internal TaskCompletionSource Disposal { get; } = new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+            internal int Ended;
+            internal int DisposalStarted;
+            internal int CleanupReported;
+        }
     }
 
     private sealed class NullLease : IAsyncDisposable
@@ -301,5 +582,25 @@ public sealed class PaneActivityHub : IAsyncDisposable
         internal static NullLease Instance { get; } = new();
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private readonly record struct LeaseAcquisition(IAsyncDisposable? Lease, bool Retry)
+    {
+        internal static LeaseAcquisition RetryRequired { get; } = new(null, Retry: true);
+
+        internal static LeaseAcquisition Unavailable { get; } = new(null, Retry: false);
+    }
+
+    private readonly record struct SessionWatchKey(
+        Server? Server,
+        ServerGeneration? Generation,
+        string? TestEndpoint,
+        string SessionId)
+    {
+        internal static SessionWatchKey From(Pane pane) =>
+            new(pane.Server, pane.Generation, TestEndpoint: null, pane.Session.Id.ToString());
+
+        internal static SessionWatchKey ForTest(string endpointId, string sessionId) =>
+            new(Server: null, Generation: null, endpointId, sessionId);
     }
 }

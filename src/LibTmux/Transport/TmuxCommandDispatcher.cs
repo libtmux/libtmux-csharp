@@ -44,7 +44,6 @@ internal sealed class TmuxCommandDispatcher
         IReadOnlyList<IReadOnlyList<string>> commands,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         ArgumentNullException.ThrowIfNull(commands);
         if (_executeGroup is null)
         {
@@ -71,7 +70,6 @@ internal sealed class TmuxCommandDispatcher
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         ValidateArguments(arguments);
         string[] copy = [.. arguments];
         TmuxCommandResult result = await _execute(copy, cancellationToken).ConfigureAwait(false);

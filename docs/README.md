@@ -1,11 +1,12 @@
 # LibTmux
 
-> **Alpha.** The behaviour here is proven against tmux 3.2a through 3.7b on
-> every commit; the shape of the API is what is not settled yet.
+> **Alpha.** Ordinary tmux behavior is gated against tmux 3.2a through 3.7b;
+> the API shape is not settled. The experimental psmux preview has separate
+> [artifact and native/WSL release prerequisites](psmux.md#artifact-availability).
 
-A .NET class library for tmux. Every call reaches a real tmux server, and
-which of the three execution modes you are in is visible where the call
-starts.
+A .NET class library for tmux. The three ordinary execution modes reach a real
+tmux server, and the mode is visible where the call starts. The query-only
+psmux preview is a separately bounded compatibility facade.
 
 ## Start here
 
@@ -16,6 +17,7 @@ machine. [Benchmarks](benchmarks/README.md) holds the recorded runs behind it.
 - [One-shot](modes/one-shot.md) — one command, one materialized object
 - [Control mode](modes/control-mode.md) — one client, streamed events
 - [Chaining](modes/chaining.md) — many commands, one invocation
+- [psmux preview](psmux.md) — one isolated session, query only
 
 ## Reference
 
@@ -52,8 +54,8 @@ and each record has a validator that fails when the code disagrees.
   symbol went
 - [Decisions](decisions/) — why the transport, object model, query
   catalog, and public API are shaped the way they are
-- [Quality bar](quality-bar.md) — what "good" is claimed to mean here, with
-  the evidence for each claim and a script that re-measures it
+- [Quality-bar snapshot](quality-bar.md) — an archived scored tree and the
+  script that prints raw measures for a current one
 
 Decisions 0001 to 0003 quote the commands that produced their evidence, and
 those ran while this project was a directory inside another repository. Their

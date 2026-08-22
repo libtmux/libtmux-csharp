@@ -1,24 +1,44 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Text;
 
 namespace LibTmux.Examples;
 
-/// <summary>Runs every example against a tmux server of its own.</summary>
+/// <summary>Runs the example suite selected on the command line.</summary>
 /// <remarks>
 /// The same list <c>LibTmux.ExampleTests</c> runs, on the console instead of
 /// in a test report.
 /// </remarks>
-[UnsupportedOSPlatform("windows")]
 internal static class Program
 {
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] args)
     {
+        if (args is ["--psmux"])
+        {
+            Console.OutputEncoding = new UTF8Encoding(false, true);
+            await Snippets.Psmux.QueryPsmux();
+            return 0;
+        }
+
+        if (args.Length != 0)
+        {
+            Console.Error.WriteLine("usage: LibTmux.Examples [--psmux]");
+            return 2;
+        }
+
         if (OperatingSystem.IsWindows())
         {
-            Console.Error.WriteLine("tmux does not run on Windows.");
+            Console.Error.WriteLine(
+                "The ordinary examples require tmux on Linux or macOS; use --psmux for the Windows query preview.");
             return 1;
         }
 
+        return await RunTmuxExamplesAsync();
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private static async Task<int> RunTmuxExamplesAsync()
+    {
         int failed = 0;
         foreach (ExampleCase example in ExampleCase.Discover())
         {

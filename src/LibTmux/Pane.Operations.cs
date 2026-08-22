@@ -5,13 +5,8 @@ using Microsoft.Extensions.Logging;
 
 namespace LibTmux;
 
-/// <summary>Reads, writes, moves, and tears down a pane.</summary>
-/// <remarks>
-/// Handles are immutable, so an operation that changes tmux state returns a
-/// replacement rather than mutating the receiver. Operations that destroy a
-/// pane or hand it to another window return nothing, because there is no
-/// truthful replacement to hand back.
-/// </remarks>
+// Pane mutations return replacements when a truthful handle remains; destructive
+// or re-homing operations do not.
 public sealed partial class Pane
 {
     private const string CaptureTrimCapability = "capture_pane_trim_trailing";
@@ -142,6 +137,10 @@ public sealed partial class Pane
     /// <param name="request">What to send.</param>
     /// <param name="cancellationToken">Cancels the tmux commands.</param>
     /// <exception cref="ArgumentException">The request sends nothing.</exception>
+    /// <exception cref="LibTmuxException">
+    /// Text was sent, but a requested Enter failed. Its dispatch state is
+    /// unknown, so the whole request must not be retried.
+    /// </exception>
     [UnsupportedOSPlatform("windows")]
     public async Task SendKeysAsync(
         SendKeysRequest request,
@@ -157,13 +156,18 @@ public sealed partial class Pane
         }
 
         List<string> arguments = BuildSendKeysArguments(request);
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
+        var sequence = new TmuxMutationSequence(
+            "The text was sent, but Enter failed. The pane may already have "
+            + "acted on the text; do not retry the whole request.");
+        await sequence.MutateAsync(() => RunAsync(arguments, cancellationToken))
+            .ConfigureAwait(false);
 
         // Enter rides in its own command: appended to a literal send it would
         // type the five characters of its name instead of pressing the key.
         if (request.CopyModeCommand is null && request.Text is not null && request.Enter)
         {
-            await RunAsync(["send-keys", "-t", Target, "Enter"], cancellationToken)
+            await sequence.MutateAsync(
+                    () => RunAsync(["send-keys", "-t", Target, "Enter"], cancellationToken))
                 .ConfigureAwait(false);
         }
     }
@@ -172,6 +176,10 @@ public sealed partial class Pane
     /// <param name="text">The text to type.</param>
     /// <param name="enter">Whether Enter follows the text.</param>
     /// <param name="cancellationToken">Cancels the tmux commands.</param>
+    /// <exception cref="LibTmuxException">
+    /// Text was sent, but Enter failed. Its dispatch state is unknown, so the
+    /// whole request must not be retried.
+    /// </exception>
     [UnsupportedOSPlatform("windows")]
     public Task SendTextAsync(
         string text,
@@ -202,9 +210,10 @@ public sealed partial class Pane
     [UnsupportedOSPlatform("windows")]
     public async Task<Pane> EnterAsync(CancellationToken cancellationToken = default)
     {
-        await RunAsync(["send-keys", "-t", Target, "Enter"], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["send-keys", "-t", Target, "Enter"], cancellationToken),
+                () => RefreshAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Clears the pane by running the shell's reset.</summary>
@@ -213,8 +222,10 @@ public sealed partial class Pane
     [UnsupportedOSPlatform("windows")]
     public async Task<Pane> ClearAsync(CancellationToken cancellationToken = default)
     {
-        await SendKeysAsync(new SendKeysRequest("reset"), cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => SendKeysAsync(new SendKeysRequest("reset"), cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Resets the pane's terminal state and drops its history.</summary>
@@ -228,9 +239,15 @@ public sealed partial class Pane
     [UnsupportedOSPlatform("windows")]
     public async Task<Pane> ResetAsync(CancellationToken cancellationToken = default)
     {
-        await RunAsync(["send-keys", "-t", Target, "-R"], cancellationToken).ConfigureAwait(false);
-        await RunAsync(["clear-history", "-t", Target], cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        var sequence = new TmuxMutationSequence();
+        await sequence.MutateAsync(
+                () => RunAsync(["send-keys", "-t", Target, "-R"], cancellationToken))
+            .ConfigureAwait(false);
+        await sequence.MutateAsync(
+                () => RunAsync(["clear-history", "-t", Target], cancellationToken))
+            .ConfigureAwait(false);
+        return await sequence.ObserveAsync(() => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Drops the pane's scrollback history.</summary>
@@ -610,32 +627,36 @@ public sealed partial class Pane
         arguments.Add("-s");
         arguments.Add(Target);
 
-        TmuxCommandResult result = await _commandDispatcher
-            .ExecuteAsync(arguments, cancellationToken)
+        var sequence = new TmuxMutationSequence();
+        TmuxCommandResult result = await sequence.MutateAsync(
+                () => _commandDispatcher.ExecuteAsync(arguments, cancellationToken),
+                static value => TmuxCommandFailure.ThrowIfFailed(value, "break-pane"))
             .ConfigureAwait(false);
-        TmuxCommandFailure.ThrowIfFailed(result, "break-pane");
-        if (result.StandardOutputLines.Count == 0
-            || !WindowId.TryParse(result.StandardOutputLines[0], out WindowId created))
-        {
-            throw new InvalidDataException("tmux reported no new window identifier.");
-        }
+        WindowId created = sequence.Observe(() =>
+            result.StandardOutputLines.Count > 0
+                && WindowId.TryParse(result.StandardOutputLines[0], out WindowId parsed)
+                    ? parsed
+                    : throw new InvalidDataException("tmux reported no new window identifier."));
 
         // On that same version tmux keeps the name it was given only some of
         // the time, so a caller who asked for one gets it set explicitly.
         if (windowName is not null && needsPlaceholder)
         {
-            await RunAsync(
-                    ["rename-window", "-t", created.ToString(), windowName],
-                    cancellationToken)
+            await sequence.MutateAsync(
+                    () => RunAsync(
+                        ["rename-window", "-t", created.ToString(), windowName],
+                        cancellationToken))
                 .ConfigureAwait(false);
         }
 
-        IReadOnlyList<Window> windows = await owner.GetWindowsAsync(cancellationToken)
+        IReadOnlyList<Window> windows = await sequence
+            .ObserveAsync(() => owner.GetWindowsAsync(cancellationToken))
             .ConfigureAwait(false);
-        return windows.FirstOrDefault(window => window.Id == created)
-            ?? throw new TmuxObjectNotFoundException(
-                $"tmux did not report the created window '{created}'.",
-                created.ToString());
+        return sequence.Observe(() =>
+            windows.FirstOrDefault(window => window.Id == created)
+                ?? throw new TmuxObjectNotFoundException(
+                    $"tmux did not report the created window '{created}'.",
+                    created.ToString()));
     }
 
     /// <summary>Splits this pane.</summary>
@@ -667,7 +688,6 @@ public sealed partial class Pane
         CancellationToken cancellationToken = default)
     {
         NewPaneRequest options = request ?? new NewPaneRequest();
-        Server owner = Server;
         List<string> arguments = BuildNewPaneArguments(options);
 
         return await CreatePaneFromAsync(arguments, "new-pane", cancellationToken)
@@ -755,8 +775,10 @@ public sealed partial class Pane
         ArgumentNullException.ThrowIfNull(request);
         List<string> arguments = BuildResizePaneArguments(request);
 
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(arguments, cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Sets this pane's width.</summary>
@@ -789,9 +811,10 @@ public sealed partial class Pane
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(title);
-        await RunAsync(["select-pane", "-t", Target, "-T", title], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["select-pane", "-t", Target, "-T", title], cancellationToken),
+                () => RefreshAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Selects this pane.</summary>
@@ -806,8 +829,10 @@ public sealed partial class Pane
         SelectPaneRequest options = request ?? new SelectPaneRequest();
         List<string> arguments = BuildSelectPaneArguments(options);
 
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(arguments, cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     internal List<string> BuildPipePaneArguments(PipePaneRequest request)
@@ -1574,25 +1599,31 @@ public sealed partial class Pane
         string subcommand,
         CancellationToken cancellationToken)
     {
-        TmuxCommandResult result = await _commandDispatcher
-            .ExecuteAsync(arguments, cancellationToken)
+        var sequence = new TmuxMutationSequence();
+        TmuxCommandResult result = await sequence.MutateAsync(
+                () => _commandDispatcher.ExecuteAsync(arguments, cancellationToken),
+                value => TmuxCommandFailure.ThrowIfFailed(value, subcommand))
             .ConfigureAwait(false);
-        TmuxCommandFailure.ThrowIfFailed(result, subcommand);
-        if (result.StandardOutputLines.Count == 0
-            || !PaneId.TryParse(result.StandardOutputLines[0], out PaneId created))
-        {
-            throw new InvalidDataException("tmux reported no new pane identifier.");
-        }
+        PaneId created = sequence.Observe(() =>
+            result.StandardOutputLines.Count > 0
+                && PaneId.TryParse(result.StandardOutputLines[0], out PaneId parsed)
+                    ? parsed
+                    : throw new InvalidDataException("tmux reported no new pane identifier."));
 
-        Server owner = Server;
-        IReadOnlyList<IReadOnlyDictionary<string, string?>> rows = await RelationReader
-            .ListAsync(owner, "list-panes", ["-a"], cancellationToken)
+        Server owner = sequence.Observe(() => Server);
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> rows = await sequence
+            .ObserveAsync(() => RelationReader.ListAsync(
+                owner,
+                "list-panes",
+                ["-a"],
+                cancellationToken))
             .ConfigureAwait(false);
-        return rows.Select(row => RelationReader.ToPane(owner, row))
-                .FirstOrDefault(pane => pane.Id == created)
-            ?? throw new TmuxObjectNotFoundException(
-                $"tmux did not report the created pane '{created}'.",
-                created.ToString());
+        return sequence.Observe(() =>
+            rows.Select(row => RelationReader.ToPane(owner, row))
+                    .FirstOrDefault(pane => pane.Id == created)
+                ?? throw new TmuxObjectNotFoundException(
+                    $"tmux did not report the created pane '{created}'.",
+                    created.ToString()));
     }
 
     private string Target => _id.ToString();

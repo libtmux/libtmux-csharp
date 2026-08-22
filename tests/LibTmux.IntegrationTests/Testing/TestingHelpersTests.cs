@@ -90,6 +90,46 @@ public sealed class TestingHelpersTests
     }
 
     [UnixFact]
+    public async Task Self_contained_session_scope_stops_its_private_server()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TmuxTestFactory factory = new();
+        TemporarySessionScope scope = await factory.CreateSessionAsync(HarnessOptions(), token);
+        ServerConnectionOptions endpoint = scope.Session.Server.ConnectionOptions;
+        try
+        {
+            Assert.True(await scope.Session.Server.IsAliveAsync(token));
+        }
+        finally
+        {
+            await scope.DisposeAsync();
+        }
+
+        await Assert.ThrowsAnyAsync<LibTmuxException>(
+            () => Server.ConnectAsync(endpoint, token));
+    }
+
+    [UnixFact]
+    public async Task Self_contained_window_scope_stops_its_private_server()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TmuxTestFactory factory = new();
+        TemporaryWindowScope scope = await factory.CreateWindowAsync(HarnessOptions(), token);
+        ServerConnectionOptions endpoint = scope.Window.Server.ConnectionOptions;
+        try
+        {
+            Assert.True(await scope.Window.Server.IsAliveAsync(token));
+        }
+        finally
+        {
+            await scope.DisposeAsync();
+        }
+
+        await Assert.ThrowsAnyAsync<LibTmuxException>(
+            () => Server.ConnectAsync(endpoint, token));
+    }
+
+    [UnixFact]
     public async Task Generated_names_do_not_collide()
     {
         CancellationToken token = TestContext.Current.CancellationToken;

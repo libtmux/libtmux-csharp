@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides session hierarchy relations.</summary>
+// Provides session hierarchy relations.
 public sealed partial class Session
 {
     private readonly Server? _owner;
