@@ -35,6 +35,10 @@ version.
   result now obey hard global line and UTF-8 byte ceilings.
 - MCP Tasks admit at most eight active executions, retain a bounded result set,
   and apply only to waits and job collection.
+- **The `LibTmux.Mcp` package README is an onboarding path.** How the server
+  behaves — what to wait on, what bounds a result, which tools a tier
+  registers, what a subscription holds open — moved to
+  [`docs/mcp/`](docs/mcp/README.md), beside the generated tool reference.
 - **`tmux_run` no longer answers as an MCP task.**
 
   - Previous behaviour: a task-capable client received a task handle and
