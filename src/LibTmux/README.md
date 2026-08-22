@@ -63,26 +63,6 @@ tmux exports into every pane. `ConnectAsync` never consults it.
 Every call that reaches tmux is asynchronous and takes a `CancellationToken`.
 There are no synchronous twins to choose between.
 
-## Windows and psmux preview
-
-The clean Windows psmux build at commit
-`aa26cd39edcfab03e718f94ea21bb47e8c5b85e8` has a deliberately bounded core
-one-shot preview: one externally provisioned session in an explicit non-default
-`-L` namespace and a small client-side query-verb allowlist. Use the dedicated
-`PsmuxServer`, `PsmuxSession`, `PsmuxWindow`, and `PsmuxPane` observations;
-their surface is analyzer-clean on native Windows and cannot express lifecycle,
-mutation, chaining, control mode, or arbitrary commands.
-The psmux 3.3.7 release build at `05cc5d4` is unsafe even to probe and is
-explicitly outside the preview. Mutations, session/server lifecycle,
-multi-command groups, control mode, Workspace, MCP, and Testing helpers that
-create servers are excluded.
-The ordinary tmux process-backed APIs retain their Windows unsupported
-annotations while the remaining atomicity and parity gaps are open. See the
-[psmux preview contract](https://github.com/libtmux/libtmux-dotnet/blob/master/docs/psmux.md)
-for the exact binary, SHA, endpoint, provisioning, and smoke-test requirements.
-Publication of the exact accepted Windows x64 artifact and successful native
-and WSL harness runs are prerequisites to shipping this preview.
-
 ## Three ways to reach tmux
 
 Which one a call uses is visible where the call starts, and all three work on
@@ -320,6 +300,15 @@ ran — a missing binary, or a command rejected before launch. A client that
 started and then died is `Unknown`, because tmux may have acted before the pipe
 broke, and `Unknown` is the default for exactly that reason. A
 `TmuxCommandException` is always `Dispatched`: it exists because tmux answered.
+
+## Compatibility
+
+| | |
+|---|---|
+| tmux | 3.2a to 3.7b |
+| .NET | net8.0, net10.0 |
+| OS | Linux and macOS. `Server`, `Session`, `Window` and `Pane` are annotated unsupported on Windows, because their lifecycle, mutation and control-mode contracts need a real tmux |
+| Windows preview | `PsmuxServer`, `PsmuxSession`, `PsmuxWindow` and `PsmuxPane` read one [psmux](https://github.com/psmux/psmux) session — its windows, its panes, and pane text — natively or across WSL. They cannot express lifecycle, mutation, chaining, control mode, or raw commands, so a caller gets a compile error where a suppression would have given a silent gap. [The preview contract](https://github.com/libtmux/libtmux-dotnet/blob/master/docs/psmux.md) names the build it accepts and how to provision it |
 
 ## Related packages
 

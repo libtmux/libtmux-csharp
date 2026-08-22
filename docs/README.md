@@ -1,12 +1,12 @@
 # LibTmux
 
 > **Alpha.** Ordinary tmux behavior is gated against tmux 3.2a through 3.7b;
-> the API shape is not settled. The experimental psmux preview has separate
-> [artifact and native/WSL release prerequisites](psmux.md#artifact-availability).
+> the API shape is not settled. The [psmux preview](psmux.md) is experimental
+> and query-only.
 
 A .NET class library for tmux. The three ordinary execution modes reach a real
-tmux server, and the mode is visible where the call starts. The query-only
-psmux preview is a separately bounded compatibility facade.
+tmux server, and the mode is visible where the call starts. The psmux preview
+reads one isolated session on Windows.
 
 ## Start here
 

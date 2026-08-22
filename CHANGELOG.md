@@ -35,6 +35,8 @@ version.
   result now obey hard global line and UTF-8 byte ceilings.
 - MCP Tasks admit at most eight active executions, retain a bounded result set,
   and apply only to waits and job collection.
+- **The `LibTmux` package README states tmux, framework and platform support
+  in one table**, including what the Windows psmux preview reads and refuses.
 - **The `LibTmux.Mcp` package README is an onboarding path.** How the server
   behaves — what to wait on, what bounds a result, which tools a tier
   registers, what a subscription holds open — moved to
