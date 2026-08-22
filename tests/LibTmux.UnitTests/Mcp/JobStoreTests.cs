@@ -1013,6 +1013,10 @@ public sealed class JobStoreTests
         Assert.Equal(Path.GetFullPath("relative-socket"), described.SocketPath);
     }
 
+    private delegate Task<TmuxCommandResult> CommandHandler(
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken);
+
     private sealed class FakeEndpoint
     {
         private readonly TmuxConnection _connection;
@@ -1056,8 +1060,7 @@ public sealed class JobStoreTests
 
         internal IReadOnlyList<string> PreJobCaptureLines { get; init; } = [];
 
-        internal Func<IReadOnlyList<string>, CancellationToken, Task<TmuxCommandResult>>?
-            Handler { get; set; }
+        internal CommandHandler? Handler { get; set; }
 
         internal JobStore.StoredJob Job(string jobId) => new(
             jobId,
