@@ -190,13 +190,12 @@ public sealed class HierarchyWatcher : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(uri);
         foreach (HierarchyEndpointWatch endpoint in SnapshotEndpoints())
         {
-            if (!endpoint.TryRemoveAnyReference(uri))
+            if (!endpoint.RemoveAllReferences(uri))
             {
                 continue;
             }
 
             await RetireIfUnusedAsync(endpoint).ConfigureAwait(false);
-            return;
         }
     }
 
