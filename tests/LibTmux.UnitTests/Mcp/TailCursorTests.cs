@@ -43,7 +43,24 @@ public sealed class TailCursorTests
         Assert.InRange(token.Length, 1, 2_048);
         Assert.Equal(32, decoded.BelowCount);
         Assert.Equal(9_999, decoded.SuffixCount);
-        Assert.Equal(32 * 16, decoded.RowHashes?.Length);
+        Assert.Equal(32 * 8, Convert.FromBase64String(
+            decoded.RowHashes!.Replace('-', '+').Replace('_', '/') + "==").Length);
+    }
+
+    [Fact]
+    public void A_cursor_with_nothing_below_it_round_trips()
+    {
+        Pane pane = PaneFor("cursor-bottom", new ServerGeneration(17, 9001), 3);
+        TailCursor cursor = TailCursor.Build(
+            pane,
+            new PaneGridState("313", 23, 1_000, 24, 1, false, false),
+            ["only the cursor row"]);
+
+        TailCursor decoded = Assert.IsType<TailCursor>(TailCursor.Decode(cursor.Encode(), pane));
+
+        Assert.Null(decoded.RowHashes);
+        Assert.Equal(0, decoded.BelowCount);
+        Assert.Equal(cursor, decoded);
     }
 
     [Fact]
