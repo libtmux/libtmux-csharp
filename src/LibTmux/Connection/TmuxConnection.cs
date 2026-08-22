@@ -17,6 +17,7 @@ internal sealed class TmuxConnection
     private readonly TmuxEntityLookup _entityLookup;
     private readonly PsmuxSessionRouter _psmuxRouter;
     private readonly string? _resolvedSocketName;
+    private readonly string? _resolvedSocketPath;
     private int _implementation;
     private string? _detectedVersionLine;
 
@@ -42,6 +43,7 @@ internal sealed class TmuxConnection
     {
         Options = resolved.Options;
         _resolvedSocketName = resolved.SocketName;
+        _resolvedSocketPath = resolved.SocketPath;
         PrefixArguments = resolved.PrefixArguments;
         _endpointIdentity = resolved.EndpointIdentity;
         _processBacked = execute is null;
@@ -137,6 +139,14 @@ internal sealed class TmuxConnection
     internal int GetEndpointHashCode() => _endpointIdentity.GetHashCode();
 
     internal string GetEndpointFingerprint() => _endpointIdentity.Fingerprint();
+
+    /// <summary>The socket this connection resolved to, not what was asked for.</summary>
+    /// <remarks>
+    /// A name factory or <c>LIBTMUX_SOCKET_NAME</c> leaves the options empty, so
+    /// anything that records or asserts an endpoint has to read it from here.
+    /// </remarks>
+    internal (string? SocketName, string? SocketPath) ResolvedSocket =>
+        (_resolvedSocketName, _resolvedSocketPath);
 
     internal async Task<(ServerGeneration Generation, string RawVersion)> DiscoverAsync(
         CancellationToken cancellationToken)

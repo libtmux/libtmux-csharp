@@ -2,6 +2,7 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Threading.Channels;
+using LibTmux.Internal;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol;
 
@@ -515,24 +516,15 @@ public sealed class JobStore : IDisposable, IAsyncDisposable
             PaneId = pane.Id.ToString();
             ServerGeneration = pane.Generation;
             _commandBytes = commandBytes;
-            _endpointFingerprint = pane.Server.Connection?.GetEndpointFingerprint()
+            TmuxConnection connection = pane.Server.Connection
                 ?? throw new IncompleteSnapshotException("connection", SnapshotDepth.Server);
+            _endpointFingerprint = connection.GetEndpointFingerprint();
             Token = token;
             StartedAt = DateTimeOffset.UtcNow;
 
-            ServerConnectionOptions options = server.ConnectionOptions;
-            if (options.SocketPath is string path)
-            {
-                _socketPath = Path.GetFullPath(path);
-            }
-            else if (options.SocketName is string name)
-            {
-                _socketName = name;
-            }
-            else if (options.SocketNameFactory is null)
-            {
-                _socketName = "default";
-            }
+            (string? socketName, string? socketPath) = connection.ResolvedSocket;
+            _socketPath = socketPath;
+            _socketName = socketPath is null ? socketName : null;
         }
 
         internal string JobId { get; }

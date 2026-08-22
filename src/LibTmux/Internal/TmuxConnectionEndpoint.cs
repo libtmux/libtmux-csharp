@@ -63,6 +63,7 @@ internal static class TmuxConnectionEndpoint
             options,
             BuildPrefixArguments(options, socketPath, socketName),
             socketName,
+            socketPath,
             endpointIdentity,
             childEnvironment);
     }
@@ -171,6 +172,7 @@ internal sealed record ResolvedTmuxConnection(
     ServerConnectionOptions Options,
     string[] PrefixArguments,
     string? SocketName,
+    string? SocketPath,
     TmuxEndpointIdentity EndpointIdentity,
     IReadOnlyDictionary<string, string?>? ChildEnvironment);
 

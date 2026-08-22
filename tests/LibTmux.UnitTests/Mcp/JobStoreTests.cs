@@ -977,16 +977,57 @@ public sealed class JobStoreTests
         Assert.Contains("needs at least", tooSmall.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_job_records_the_socket_the_connection_resolved()
+    {
+        FakeEndpoint fromFactory = new(
+            new ServerConnectionOptions(socketNameFactory: () => "jobs-factory"),
+            new ServerGeneration(71, 701));
+        FakeEndpoint fromDefault = new(
+            new ServerConnectionOptions(),
+            new ServerGeneration(72, 702));
+
+        JobInfo factoryJob = fromFactory.Job("job-factory").Describe();
+        JobInfo defaultJob = fromDefault.Job("job-default").Describe();
+
+        Assert.Equal("jobs-factory", factoryJob.SocketName);
+        Assert.Null(factoryJob.SocketPath);
+        Assert.Equal("default", defaultJob.SocketName);
+
+        fromFactory.Job("job-assert").RequireSocket("jobs-factory");
+        McpException mismatch = Assert.Throws<McpException>(
+            () => fromFactory.Job("job-assert").RequireSocket("jobs-elsewhere"));
+        Assert.Contains("jobs-factory", mismatch.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_job_records_the_socket_path_the_connection_resolved()
+    {
+        FakeEndpoint endpoint = new(
+            new ServerConnectionOptions(socketPath: "relative-socket"),
+            new ServerGeneration(73, 703));
+
+        JobInfo described = endpoint.Job("job-path").Describe();
+
+        Assert.Null(described.SocketName);
+        Assert.Equal(Path.GetFullPath("relative-socket"), described.SocketPath);
+    }
+
     private sealed class FakeEndpoint
     {
         private readonly TmuxConnection _connection;
         private int _jobDispatched;
 
         internal FakeEndpoint(string socketName, ServerGeneration generation)
+            : this(new ServerConnectionOptions(socketName: socketName), generation)
+        {
+        }
+
+        internal FakeEndpoint(ServerConnectionOptions options, ServerGeneration generation)
         {
             Generation = generation;
             _connection = new TmuxConnection(
-                new ServerConnectionOptions(socketName: socketName),
+                options,
                 ExecuteAsync,
                 implementation: TmuxImplementation.Tmux);
             Server = new Server(_connection, generation, "tmux 3.7");
