@@ -8,6 +8,53 @@ Versions follow [Semantic Versioning](https://semver.org). During alpha the
 public API can change in any release with no deprecation period — pin an exact
 version.
 
+## [0.0.0-alpha.8] — 2026-08-22
+
+No behaviour change. `git diff v0.0.0-alpha.7..v0.0.0-alpha.8 -- src/` touches
+only comments, XML documentation and package READMEs, so the compiled library
+is the alpha.7 library. What ships differently is what a caller reads:
+IntelliSense text, and the page on nuget.org.
+
+### Changed
+
+- **The package READMEs are titled `libtmux for .NET`** and state the alpha
+  terms the way every libtmux port states them: releases carry an `-alpha`
+  prerelease tag, the API is not settled, any release may change or remove
+  exported identifiers without a deprecation period, pin an exact version, not
+  recommended for production. The previous wording claimed the behaviour is
+  proven on every commit; the tmux matrix runs on its own workflow, not on
+  each commit.
+- **Install instructions use `dotnet package add`**, the noun-first form .NET
+  10 added, in the root README and each package README. The older
+  `dotnet add package` still works.
+- **Ten XML documentation comments that were false are corrected**, and the
+  rest are cut to the constraint they carry. A `<summary>` restating its own
+  identifier, or a `<remarks>` arguing a choice, is gone; what a caller may
+  rely on — ordering, lifetime, cancellation, ownership — stays. This is the
+  text IntelliSense shows, so it changes what a caller reads without changing
+  what the code does.
+- **`LibTmux.Workspace` says what an unsupported workspace key does** rather
+  than leaving a reader to infer it.
+- The same comment bar is applied to the tests, the engineering scripts and the
+  examples, which ship in none of the packages.
+
+### Added
+
+- **`.github/WRITING.md` and `.github/CONTRIBUTING.md`** carry how this project
+  writes and how it works. `AGENTS.md` is now a router naming which of them
+  governs the change being made, rather than restating both at 364 lines.
+- **`examples/README.md`** says how a documented example is verified: every C#
+  block in the shipped documents is compiled against the real assemblies, a
+  `csharp run` block is additionally executed against a tmux server of its own,
+  and a block anchored to a snippet region is held to the code it was quoted
+  from.
+
+### Fixed
+
+- The `alpha.5`, `alpha.6` and `alpha.7` headings in this file link their
+  release tags. They were bracketed like links with no reference definition, so
+  they rendered as literal text.
+
 ## [0.0.0-alpha.7] — 2026-08-16
 
 ### Changed
@@ -221,6 +268,7 @@ it is: a published version can never be deleted from nuget.org, only unlisted.
 - `LibTmux.Workspace` — sessions from tmuxp workspace files.
 - `LibTmux.Mcp` — a Model Context Protocol server, installed as a .NET tool.
 
+[0.0.0-alpha.8]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.8
 [0.0.0-alpha.7]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.7
 [0.0.0-alpha.6]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.6
 [0.0.0-alpha.5]: https://github.com/libtmux/libtmux-dotnet/releases/tag/v0.0.0-alpha.5
