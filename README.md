@@ -283,6 +283,7 @@ and a tool above it never reaches the model's list.
 - [Public API](docs/public-api.md) — the reviewed, approved surface
 - [Version deltas](docs/parity/version-deltas.json) — every tmux difference, with its proof
 - [Decisions](docs/decisions/) — why the transport, object model and query catalog are shaped this way
+- [Examples](examples/README.md) — every example here is a test, and the C# in this README is quoted from one
 - [AGENTS.md](AGENTS.md) — how to work in this repository
 
 ## Compatibility
