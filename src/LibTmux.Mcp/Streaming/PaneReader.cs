@@ -349,10 +349,13 @@ internal static class PaneReader
 
         // A pane below the cursor is redrawn a row at a time, so comparing the
         // block as a whole would replay every row beside the one that changed.
-        int tracked = Math.Min(cursor.BelowCount, Math.Max(rows.Count - index, 0));
+        byte[]? digests = cursor.TrackedRowDigests();
+        int tracked = digests is null
+            ? 0
+            : Math.Min(cursor.BelowCount, Math.Max(rows.Count - index, 0));
         for (int row = 0; row < tracked; row++)
         {
-            if (!cursor.TrackedRowUnchanged(row, rows[index + row]))
+            if (!TailCursor.TrackedRowUnchanged(digests!, row, rows[index + row]))
             {
                 kept.Add(rows[index + row]);
             }

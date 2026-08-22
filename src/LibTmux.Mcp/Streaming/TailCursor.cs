@@ -37,7 +37,7 @@ internal sealed record TailCursor(
     private const int CurrentVersion = 3;
     private const int DigestHexLength = 64;
     private const int MaximumBelowRows = 32;
-    private const int RowDigestHexLength = 16;
+    private const int RowDigestBytes = 8;
     private const int MaximumPayloadBytes = 1536;
     private const int MaximumTokenCharacters = 2048;
     private const string Prefix = "tmux-tail-v3:";
@@ -53,6 +53,10 @@ internal sealed record TailCursor(
     }
 
     /// <summary>Fingerprints each row of a window, one truncated digest per row.</summary>
+    /// <remarks>
+    /// A tail result carries its cursor twice, so the window is packed rather
+    /// than written as hex: every byte saved here is two bytes of a response.
+    /// </remarks>
     internal static string HashRowWindow(IReadOnlyList<string> rows, int start, int count)
     {
         ArgumentNullException.ThrowIfNull(rows);
@@ -61,29 +65,37 @@ internal sealed record TailCursor(
         ArgumentOutOfRangeException.ThrowIfGreaterThan(count, rows.Count);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(start, rows.Count - count);
 
-        var digests = new StringBuilder(count * RowDigestHexLength);
-        for (int index = start; index < start + count; index++)
+        Span<byte> window = stackalloc byte[MaximumBelowRows * RowDigestBytes];
+        for (int index = 0; index < count; index++)
         {
-            digests.Append(HashLine(rows[index]), 0, RowDigestHexLength);
+            RowDigest(rows[start + index])
+                .CopyTo(window[(index * RowDigestBytes)..]);
         }
 
-        return digests.ToString();
+        return ToBase64Url(window[..(count * RowDigestBytes)]);
     }
 
+    /// <summary>The recorded digest of each tracked row, or null when none was.</summary>
+    /// <returns>The packed digests, one <c>RowDigestBytes</c> run per row.</returns>
+    internal byte[]? TrackedRowDigests() =>
+        RowHashes is null ? null : FromBase64Url(RowHashes);
+
     /// <summary>Answers whether a tracked row still holds the text it was seen with.</summary>
+    /// <param name="digests">The digests <see cref="TrackedRowDigests" /> returned.</param>
     /// <param name="index">The row's position within the tracked window.</param>
     /// <param name="line">The row's text now.</param>
     /// <returns><see langword="true" /> when the row is unchanged.</returns>
-    internal bool TrackedRowUnchanged(int index, string line)
+    internal static bool TrackedRowUnchanged(byte[] digests, int index, string line)
     {
+        ArgumentNullException.ThrowIfNull(digests);
         ArgumentOutOfRangeException.ThrowIfNegative(index);
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, BelowCount);
         ArgumentNullException.ThrowIfNull(line);
-        return RowHashes is not null
-            && HashLine(line)
-                .AsSpan(0, RowDigestHexLength)
-                .SequenceEqual(RowHashes.AsSpan(index * RowDigestHexLength, RowDigestHexLength));
+        return RowDigest(line)
+            .SequenceEqual(digests.AsSpan(index * RowDigestBytes, RowDigestBytes));
     }
+
+    private static ReadOnlySpan<byte> RowDigest(string line) =>
+        SHA256.HashData(Encoding.UTF8.GetBytes(line)).AsSpan(0, RowDigestBytes);
 
     /// <summary>Fingerprints an ordered row sequence without retaining every row hash.</summary>
     internal static string HashRows(IReadOnlyList<string> rows, int start, int count)
@@ -259,9 +271,7 @@ internal sealed record TailCursor(
             || (SuffixCount == BelowCount
                 && !string.Equals(SuffixHash, BelowHash, StringComparison.Ordinal))
             || (BelowCount == 0) != (RowHashes is null)
-            || (RowHashes is not null
-                && (RowHashes.Length != BelowCount * RowDigestHexLength
-                    || !IsHex(RowHashes)))
+            || (RowHashes is not null && !IsRowWindow(RowHashes, BelowCount))
             || (AnchorHash is null
                 && (BelowCount != 0
                     || BelowHash is not null
@@ -291,11 +301,21 @@ internal sealed record TailCursor(
     }
 
     private static bool IsDigest(string? value) =>
-        value is { Length: DigestHexLength } && IsHex(value);
-
-    private static bool IsHex(string value) =>
-        value.All(static character =>
+        value is { Length: DigestHexLength }
+        && value.All(static character =>
             character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static bool IsRowWindow(string value, int count)
+    {
+        try
+        {
+            return FromBase64Url(value).Length == count * RowDigestBytes;
+        }
+        catch (Exception error) when (error is FormatException or McpException)
+        {
+            return false;
+        }
+    }
 
     private static void ValidateJsonShape(ReadOnlySpan<byte> payload)
     {
