@@ -372,6 +372,25 @@ target frameworks, generates an SBOM and a provenance attestation, and pushes
 to NuGet through trusted publishing. Renaming that workflow file breaks the
 trusted-publishing policy registered on nuget.org, so change the policy first.
 
+### The psmux preview gates
+
+Publishing the preview needs the accepted Windows x64 executable, which is a
+maintainer validation build rather than a published psmux release asset.
+[`docs/psmux.md`](../docs/psmux.md) states the trust boundary it has to meet.
+
+`release.yml` reads the repository variables `PSMUX_ARTIFACT_URL`,
+`PSMUX_SOURCE_PROVENANCE_URL`, `PSMUX_LICENSE_URL`, `PSMUX_WSL_DISTRIBUTION`
+and `PSMUX_WSL_DOTNET_PATH`, and needs a self-hosted `Windows`, `X64`, `psmux`
+runner for the native and WSL gates. `PSMUX_WSL_DOTNET_PATH` is the absolute
+Linux `dotnet` path for that checkout, which the runner reports:
+
+```console
+$ mise exec -- which dotnet
+```
+
+Those inputs make the gates runnable; they do not by themselves complete the
+artifact or the runtime evidence.
+
 ### Recorded evidence is a release artifact
 
 A capability row is `pending` until a matrix run records evidence for it, and

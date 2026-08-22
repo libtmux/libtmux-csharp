@@ -83,14 +83,9 @@ this preview. Without that published artifact URL, the native/WSL smoke is
 available only to a tester who already has the exact artifact. Do not install
 or rebuild psmux and assume the result is accepted.
 
-The release workflow requires repository variables
-`PSMUX_ARTIFACT_URL`, `PSMUX_SOURCE_PROVENANCE_URL`, `PSMUX_LICENSE_URL`,
-`PSMUX_WSL_DISTRIBUTION`, and `PSMUX_WSL_DOTNET_PATH`, plus a self-hosted
-`Windows`, `X64`, `psmux` runner that executes the native and WSL gates. The last
-value is the absolute Linux `dotnet` path selected for that checkout (obtain it
-on the runner with `mise exec -- which dotnet`). Those inputs make the
-prerequisites mechanical; they do not by themselves complete the artifact or
-runtime evidence.
+What a release needs on top of this contract — the repository variables and
+the self-hosted runner — is in
+[`CONTRIBUTING.md`](../.github/CONTRIBUTING.md#the-psmux-preview-gates).
 
 ## Query from C#
 

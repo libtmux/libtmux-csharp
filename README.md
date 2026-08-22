@@ -43,8 +43,6 @@ is right there. Native Windows has a bounded, query-only
 one dispatch model per workload (below), a version model that tells you when a
 flag does not exist on the tmux you are on rather than failing oddly, and
 documented ordinary-tmux examples that are executed against live tmux in CI.
-The psmux preview has a separate manual native/WSL harness whose runtime
-verification remains a release gate.
 
 ## Packages
 
@@ -283,7 +281,7 @@ never reaches the model's list.
 ## Documentation
 
 - [Choosing a mode](docs/modes/matrix.md) — the three dispatch modes, measured
-- [Windows psmux preview](docs/psmux.md) — test setup, bounded scope, and known gaps
+- [Windows psmux preview](docs/psmux.md) — what it reads, and what it refuses
 - [API reference](docs/api/README.md) — rendered from the doc comments
 - [tmux MCP tools](docs/mcp/tools.md) — every tool, tier and resource, generated
 - [Public API](docs/public-api.md) — the reviewed, approved surface
