@@ -9,7 +9,7 @@ every tmux from **3.2a to 3.7b**, on **net8.0** and **net10.0**.
 > seven supported tmux versions on every commit.
 
 ```console
-$ dotnet add package LibTmux --prerelease
+$ dotnet package add LibTmux --prerelease
 ```
 
 One dependency: `Microsoft.Extensions.Logging.Abstractions`, which is

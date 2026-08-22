@@ -8,7 +8,7 @@ want it does not get it.
 > without notice, so pin an exact version.
 
 ```console
-$ dotnet add package LibTmux.Query.Json --prerelease
+$ dotnet package add LibTmux.Query.Json --prerelease
 ```
 
 ## When you want this
