@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.Versioning;
 using LibTmux.Internal;
 using LibTmux.Mcp;
@@ -20,19 +21,29 @@ public sealed class TailCursorTests
     }
 
     [Fact]
-    public void A_cursor_is_constant_size_instead_of_copying_every_row_hash()
+    public void A_cursor_stays_bounded_instead_of_copying_every_row_hash()
     {
-        Pane pane = PaneFor("cursor-size", new ServerGeneration(17, 9001), 3);
-        var state = new PaneGridState("313", 2, 50_000, 20_000, 1, false, false);
+        Pane pane = PaneFor("cursor-size", new ServerGeneration(int.MaxValue, long.MaxValue), 99_999);
+        var state = new PaneGridState(
+            int.MaxValue.ToString(CultureInfo.InvariantCulture),
+            2,
+            50_000,
+            20_000,
+            1,
+            false,
+            false);
         string wideRow = string.Concat(Enumerable.Repeat("\U0001f642", 80));
         string[] rows = Enumerable.Repeat(wideRow, 10_000).ToArray();
 
         string token = TailCursor.Build(pane, state, rows).Encode();
         TailCursor decoded = Assert.IsType<TailCursor>(TailCursor.Decode(token, pane));
 
+        // Decode enforces these ceilings, so a cursor that cannot be read back
+        // would be issued by every tail of a tall pane.
         Assert.InRange(token.Length, 1, 2_048);
         Assert.Equal(32, decoded.BelowCount);
         Assert.Equal(9_999, decoded.SuffixCount);
+        Assert.Equal(32 * 16, decoded.RowHashes?.Length);
     }
 
     [Fact]
@@ -106,7 +117,7 @@ public sealed class TailCursorTests
     [Theory]
     [InlineData("")]
     [InlineData(" ")]
-    [InlineData("\ttmux-tail-v2:")]
+    [InlineData("\ttmux-tail-v3:")]
     public void An_explicit_blank_or_padded_cursor_is_rejected(string token)
     {
         Pane pane = PaneFor("cursor-whitespace", new ServerGeneration(17, 9001), 3);

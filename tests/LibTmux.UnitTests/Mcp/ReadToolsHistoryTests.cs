@@ -66,7 +66,7 @@ public sealed class ReadToolsHistoryTests
             TestContext.Current.CancellationToken);
         var rows = new CancellingRows(cancellation, cancelAt: 8, count: 1_000);
         var cursor = new TailCursor(
-            Version: 2,
+            Version: 3,
             EndpointFingerprint: "endpoint",
             ServerProcessId: 1,
             ServerStartTime: 2,
@@ -79,7 +79,8 @@ public sealed class ReadToolsHistoryTests
             BelowCount: 0,
             BelowHash: null,
             SuffixCount: 0,
-            SuffixHash: null);
+            SuffixHash: null,
+            RowHashes: null);
 
         Assert.Throws<OperationCanceledException>(() =>
             PaneReader.FindUniqueAnchor(rows, cursor, cancellation.Token));

@@ -175,7 +175,7 @@ public sealed class WriteToolsExecutionSafetyTests
             paneId: "%1",
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.StartsWith("tmux-tail-v2:", recovered.Cursor, StringComparison.Ordinal);
+        Assert.StartsWith("tmux-tail-v3:", recovered.Cursor, StringComparison.Ordinal);
         Assert.False(recovered.LinesMissed);
         Assert.False(recovered.AnchorLost);
     }
