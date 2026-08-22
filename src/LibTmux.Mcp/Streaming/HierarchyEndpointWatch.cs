@@ -86,14 +86,26 @@ internal sealed class HierarchyEndpointWatch : IAsyncDisposable
         }
     }
 
-    internal bool TryRemoveAnyReference(string uri)
+    /// <summary>Drops the resource for every subscriber holding it here.</summary>
+    /// <remarks>
+    /// The keyless unsubscribe has no way to name one of several holders, so
+    /// leaving any behind would keep a callback and a control client alive that
+    /// no caller can reach.
+    /// </remarks>
+    internal bool RemoveAllReferences(string uri)
     {
         lock (_gate)
         {
-            object? subscriberKey = _subscribers
-                .FirstOrDefault(pair => pair.Value.Resources.ContainsKey(uri))
-                .Key;
-            return subscriberKey is not null && RemoveReferenceLocked(uri, subscriberKey);
+            object[] holders = [.. _subscribers
+                .Where(pair => pair.Value.Resources.ContainsKey(uri))
+                .Select(static pair => pair.Key)];
+            bool removed = false;
+            foreach (object subscriberKey in holders)
+            {
+                removed |= RemoveReferenceLocked(uri, subscriberKey);
+            }
+
+            return removed;
         }
     }
 

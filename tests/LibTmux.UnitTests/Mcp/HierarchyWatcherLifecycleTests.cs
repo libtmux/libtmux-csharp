@@ -8,6 +8,9 @@ namespace LibTmux.UnitTests.Mcp;
 [UnsupportedOSPlatform("windows")]
 public sealed class HierarchyWatcherLifecycleTests
 {
+    // A leaked subscription would otherwise hang the run rather than name itself.
+    private static readonly TimeSpan UnsubscribeTimeout = TimeSpan.FromSeconds(30);
+
     [Fact]
     public async Task Initial_recovery_invalidates_the_sole_subscriber_without_a_later_event()
     {
@@ -674,6 +677,84 @@ public sealed class HierarchyWatcherLifecycleTests
         (EventId EventId, Exception Error) failure = await logger.Failure.Task.WaitAsync(token);
         Assert.Equal(10, failure.EventId.Id);
         Assert.IsType<InvalidOperationException>(failure.Error);
+    }
+
+    [Fact]
+    public async Task Keyless_unsubscribe_releases_the_resource_on_every_endpoint()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using HierarchyWatcher watcher = new();
+        FakeControlModeSession first = new();
+        FakeControlModeSession second = new();
+        int starts = 0;
+
+        Task<IControlModeSession> Start(CancellationToken _)
+        {
+            IControlModeSession session = starts++ switch
+            {
+                0 => first,
+                1 => second,
+                _ => throw new InvalidOperationException("The watcher started too many clients."),
+            };
+            return Task.FromResult(session);
+        }
+
+        await watcher.SubscribeAsync(
+            "tmux://hierarchy",
+            new object(),
+            _ => Task.CompletedTask,
+            "endpoint-a",
+            new ServerGeneration(11, 111),
+            Start,
+            token);
+        await watcher.SubscribeAsync(
+            "tmux://hierarchy",
+            new object(),
+            _ => Task.CompletedTask,
+            "endpoint-b",
+            new ServerGeneration(12, 121),
+            Start,
+            token);
+
+        Assert.Equal(2, starts);
+
+        await watcher.UnsubscribeAsync("tmux://hierarchy");
+
+        await first.Disposed.Task.WaitAsync(UnsubscribeTimeout, token);
+        await second.Disposed.Task.WaitAsync(UnsubscribeTimeout, token);
+        Assert.Equal(1, first.DisposeCalls);
+        Assert.Equal(1, second.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task Keyless_unsubscribe_releases_every_holder_of_one_resource()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        await using HierarchyWatcher watcher = new();
+        FakeControlModeSession session = new();
+        ServerGeneration generation = new(13, 131);
+
+        await watcher.SubscribeAsync(
+            "tmux://hierarchy",
+            new object(),
+            _ => Task.CompletedTask,
+            "endpoint-a",
+            generation,
+            _ => Task.FromResult<IControlModeSession>(session),
+            token);
+        await watcher.SubscribeAsync(
+            "tmux://hierarchy",
+            new object(),
+            _ => Task.CompletedTask,
+            "endpoint-a",
+            generation,
+            _ => Task.FromResult<IControlModeSession>(session),
+            token);
+
+        await watcher.UnsubscribeAsync("tmux://hierarchy");
+
+        await session.Disposed.Task.WaitAsync(UnsubscribeTimeout, token);
+        Assert.Equal(1, session.DisposeCalls);
     }
 
     private sealed class FakeControlModeSession : IControlModeSession
