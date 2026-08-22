@@ -42,7 +42,7 @@ jobs:
       attestations: write
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.3.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # SourceLink points a debugger at the commit that produced the
           # assembly, which a shallow checkout does not have.
