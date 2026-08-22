@@ -522,9 +522,7 @@ public sealed class JobStore : IDisposable, IAsyncDisposable
             Token = token;
             StartedAt = DateTimeOffset.UtcNow;
 
-            (string? socketName, string? socketPath) = connection.ResolvedSocket;
-            _socketPath = socketPath;
-            _socketName = socketPath is null ? socketName : null;
+            (_socketName, _socketPath) = connection.ResolvedSocket;
         }
 
         internal string JobId { get; }
