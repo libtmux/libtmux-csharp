@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Runtime.Versioning;
 using System.Text;
+using LibTmux.Internal;
 using LibTmux.Mcp;
 using ModelContextProtocol;
 
@@ -18,7 +20,7 @@ public sealed class StructuredTextResultBudgetTests
             .ToArray();
 
         AssertFits(lines, content => new CaptureResult("%1", content));
-        AssertFits(lines, content => new TailResult("%1", content, new string('c', 256), false, false));
+        AssertFits(lines, content => new TailResult("%1", content, WidestCursor(), false, false));
         AssertFits(lines, content => new WaitResult(
             "%1",
             WaitOutcome.Matched,
@@ -264,6 +266,41 @@ public sealed class StructuredTextResultBudgetTests
     private static void AssertFits<T>(T result) =>
         Assert.True(
             Utf8JsonBudget.GetStructuredToolResultByteCount(result, ToolJson.Options) <= MaxBytes);
+
+    // The cursor a tall pane issues is the widest field a tail result carries,
+    // so a placeholder would stop measuring the case that fails first.
+    private static string WidestCursor()
+    {
+        var connection = new TmuxConnection(
+            new ServerConnectionOptions(socketName: "budget-cursor"),
+            static (request, _) => Task.FromResult(new TmuxCommandResult(
+                request.LogicalArguments,
+                0,
+                ReadOnlyMemory<byte>.Empty,
+                ReadOnlyMemory<byte>.Empty,
+                [],
+                [])),
+            implementation: TmuxImplementation.Tmux);
+        var generation = new ServerGeneration(int.MaxValue, long.MaxValue);
+        var pane = new Pane(
+            new Server(connection, generation, "tmux 3.7"),
+            connection,
+            generation,
+            new PaneId(99_999),
+            new Dictionary<string, string?>(StringComparer.Ordinal));
+        return TailCursor.Build(
+                pane,
+                new PaneGridState(
+                    int.MaxValue.ToString(CultureInfo.InvariantCulture),
+                    2,
+                    50_000,
+                    20_000,
+                    1,
+                    false,
+                    false),
+                [.. Enumerable.Repeat(new string('\u0416', 80), 200)])
+            .Encode();
+    }
 
     private static PaneInfo Pane() => new(
         "%1",
