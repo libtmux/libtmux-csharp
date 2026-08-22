@@ -53,7 +53,7 @@ documented examples that are executed against live tmux in CI.
 | **[LibTmux.Mcp](src/LibTmux.Mcp/README.md)** | [![v](https://img.shields.io/nuget/vpre/LibTmux.Mcp?logo=nuget&label=%20)](https://www.nuget.org/packages/LibTmux.Mcp) | You want an assistant driving tmux. Installs as a tool, not a reference. |
 
 ```console
-$ dotnet add package LibTmux --prerelease
+$ dotnet package add LibTmux --prerelease
 ```
 
 The core takes exactly one dependency. Anything that would add another ships as

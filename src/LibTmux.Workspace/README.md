@@ -7,7 +7,7 @@ workspace files, on top of [LibTmux](https://www.nuget.org/packages/LibTmux).
 > without notice, so pin an exact version.
 
 ```console
-$ dotnet add package LibTmux.Workspace --prerelease
+$ dotnet package add LibTmux.Workspace --prerelease
 ```
 
 Adds one dependency, [YamlDotNet](https://github.com/aaubry/YamlDotNet), which
