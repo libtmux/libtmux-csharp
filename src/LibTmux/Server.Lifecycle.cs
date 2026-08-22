@@ -3,13 +3,8 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Starts, probes, and tears down a tmux server.</summary>
-/// <remarks>
-/// Liveness and teardown answer different questions, so they fail differently.
-/// Probing whether a server is alive can honestly answer "no"; asking one to
-/// kill a named session cannot honestly answer anything if the request never
-/// lands.
-/// </remarks>
+// Liveness may answer false; teardown failures propagate because command
+// delivery is part of the answer.
 public sealed partial class Server
 {
     private const int SettleAttempts = 200;
@@ -127,58 +122,70 @@ public sealed partial class Server
         CancellationToken cancellationToken = default)
     {
         NewSessionRequest options = request ?? new NewSessionRequest();
+        var sequence = new TmuxMutationSequence();
         if (options.Name is not null)
         {
             SessionName.Validate(options.Name);
 
-            // tmux has no replace flag. Its nearest offer, new-session -A,
-            // attaches to the existing session instead, which needs a terminal
-            // and so fails outright from a library caller. Replacing therefore
-            // means removing the old session first.
+            // tmux -A attaches and needs a terminal; replacement must kill first.
             if (options.ReplaceExisting
                 && await HasSessionAsync(options.Name, true, cancellationToken)
                     .ConfigureAwait(false))
             {
-                await KillSessionAsync(options.Name, cancellationToken).ConfigureAwait(false);
+                await sequence
+                    .MutateAsync(() => KillSessionAsync(options.Name, cancellationToken))
+                    .ConfigureAwait(false);
             }
         }
 
-        TmuxCommandResult result = await Dispatch(
-                [.. BuildNewSessionArguments(options)],
-                cancellationToken)
-            .ConfigureAwait(false);
-        if (result.ExitCode != 0
-            && options.Name is not null
-            && result.StandardErrorLines.Any(static line =>
-                line.Contains("duplicate session", StringComparison.Ordinal)))
-        {
-            throw new TmuxSessionExistsException(
-                string.Join('\n', result.StandardErrorLines),
-                options.Name);
-        }
+        TmuxCommandResult result = await sequence.MutateAsync(
+                () => Dispatch([.. BuildNewSessionArguments(options)], cancellationToken),
+                value =>
+                {
+                    if (value.ExitCode != 0
+                        && options.Name is not null
+                        && value.StandardErrorLines.Any(static line =>
+                            line.Contains("duplicate session", StringComparison.Ordinal)))
+                    {
+                        throw new TmuxSessionExistsException(
+                            string.Join('\n', value.StandardErrorLines),
+                            options.Name);
+                    }
 
-        TmuxCommandFailure.ThrowIfFailed(result, "new-session");
-        string id = result.StandardOutputLines.Count > 0
-            ? result.StandardOutputLines[0]
-            : throw new InvalidDataException("tmux reported no new session identifier.");
-        if (!SessionId.TryParse(id, out SessionId sessionId))
-        {
-            throw new InvalidDataException("tmux reported a malformed session identifier.");
-        }
-
-        // Materializes and re-lists rather than resolving by id, so Name reads
-        // from the snapshot; skips GetSessionsAsync, whose lenient failure
-        // handling would turn a real listing error into a false negative.
-        Server materialized = await ConnectAsync(cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<IReadOnlyDictionary<string, string?>> rows = await RelationReader
-            .ListAsync(materialized, "list-sessions", [], cancellationToken)
+                    TmuxCommandFailure.ThrowIfFailed(value, "new-session");
+                })
             .ConfigureAwait(false);
-        IEnumerable<Session> sessions =
-            rows.Select(row => RelationReader.ToSession(materialized, row));
-        return sessions.FirstOrDefault(session => session.Id == sessionId)
-            ?? throw new TmuxObjectNotFoundException(
-                $"tmux did not report the created session '{sessionId}'.",
-                sessionId.ToString());
+        SessionId sessionId = sequence.Observe(() =>
+        {
+            string id = result.StandardOutputLines.Count > 0
+                ? result.StandardOutputLines[0]
+                : throw new InvalidDataException("tmux reported no new session identifier.");
+            return SessionId.TryParse(id, out SessionId parsed)
+                ? parsed
+                : throw new InvalidDataException("tmux reported a malformed session identifier.");
+        });
+
+        // Re-list directly so Name is materialized and listing errors remain failures.
+        // Replacing the last session may restart the daemon, so rediscover first.
+        Server materialized = await sequence
+            .ObserveAsync(() => RediscoverCurrentGenerationAsync(cancellationToken))
+            .ConfigureAwait(false);
+        IReadOnlyList<IReadOnlyDictionary<string, string?>> rows = await sequence
+            .ObserveAsync(() => RelationReader.ListAsync(
+                materialized,
+                "list-sessions",
+                [],
+                cancellationToken))
+            .ConfigureAwait(false);
+        return sequence.Observe(() =>
+        {
+            IEnumerable<Session> sessions =
+                rows.Select(row => RelationReader.ToSession(materialized, row));
+            return sessions.FirstOrDefault(session => session.Id == sessionId)
+                ?? throw new TmuxObjectNotFoundException(
+                    $"tmux did not report the created session '{sessionId}'.",
+                    sessionId.ToString());
+        });
     }
 
     /// <summary>Starts a server and takes ownership of it.</summary>
@@ -196,9 +203,13 @@ public sealed partial class Server
         CancellationToken cancellationToken = default)
     {
         Server endpoint = Open(options ?? ServerConnectionOptions.Default);
-        await endpoint.StartServerAsync(cancellationToken).ConfigureAwait(false);
-        await endpoint.WaitForSettledEndpointAsync(cancellationToken).ConfigureAwait(false);
-        return new OwnedServerScope(endpoint);
+        var sequence = new TmuxMutationSequence();
+        await sequence.MutateAsync(() => endpoint.StartServerAsync(cancellationToken))
+            .ConfigureAwait(false);
+        await sequence
+            .ObserveAsync(() => endpoint.WaitForSettledEndpointAsync(cancellationToken))
+            .ConfigureAwait(false);
+        return sequence.Observe(() => new OwnedServerScope(endpoint));
     }
 
     /// <summary>Creates a session and takes ownership of it.</summary>
@@ -210,9 +221,11 @@ public sealed partial class Server
         NewSessionRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        Session created = await CreateSessionAsync(request, cancellationToken)
+        var sequence = new TmuxMutationSequence();
+        Session created = await sequence
+            .MutateAsync(() => CreateSessionAsync(request, cancellationToken))
             .ConfigureAwait(false);
-        return new OwnedSessionScope(created);
+        return sequence.Observe(() => new OwnedSessionScope(created));
     }
 
     /// <summary>Attaches a client to a session on this server.</summary>

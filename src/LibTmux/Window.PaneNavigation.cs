@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using LibTmux.Internal;
 
 namespace LibTmux;
 
@@ -12,7 +13,7 @@ public enum PaneInputMode
     Disable = 1,
 }
 
-/// <summary>Moves between a window's panes.</summary>
+// Moves between a window's panes.
 public sealed partial class Window
 {
     /// <summary>Selects the pane that was last active.</summary>
@@ -42,8 +43,14 @@ public sealed partial class Window
             arguments.Add("-Z");
         }
 
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<Pane> panes = await GetPanesAsync(cancellationToken).ConfigureAwait(false);
-        return panes.FirstOrDefault(pane => pane.Snapshot?["pane_active"] == "1");
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(arguments, cancellationToken),
+                async () =>
+                {
+                    IReadOnlyList<Pane> panes = await GetPanesAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    return panes.FirstOrDefault(pane => pane.Snapshot?["pane_active"] == "1");
+                })
+            .ConfigureAwait(false);
     }
 }

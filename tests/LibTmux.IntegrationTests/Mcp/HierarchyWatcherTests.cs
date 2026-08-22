@@ -105,6 +105,86 @@ public sealed class HierarchyWatcherTests
         Assert.Empty(clients);
     }
 
+    [UnixFact]
+    public async Task Overlapping_subscribers_are_distinct_and_duplicates_are_idempotent()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TmuxTestFactory factory = new();
+        TmuxTestOptions options = new(new ServerConnectionOptions(
+            tmuxBinaryPath: System.Environment.GetEnvironmentVariable("LIBTMUX_TMUX") ?? "tmux",
+            socketName: $"ltw-{Guid.NewGuid():N}"[..20],
+            configurationFile: "/dev/null"));
+        await using TemporaryHierarchyScope scope = await factory.CreateHierarchyAsync(
+            options,
+            token);
+
+        await using HierarchyWatcher watcher = new();
+        object firstKey = new();
+        object secondKey = new();
+        TaskCompletionSource firstTold = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource secondTold = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await watcher.SubscribeAsync(
+            "tmux://hierarchy",
+            firstKey,
+            changed =>
+            {
+                if (changed.Contains("tmux://hierarchy"))
+                {
+                    firstTold.TrySetResult();
+                }
+
+                return Task.CompletedTask;
+            },
+            scope.Session.Server,
+            token);
+        await watcher.SubscribeAsync(
+            "tmux://hierarchy",
+            secondKey,
+            changed =>
+            {
+                if (changed.Contains("tmux://hierarchy"))
+                {
+                    secondTold.TrySetResult();
+                }
+
+                return Task.CompletedTask;
+            },
+            scope.Session.Server,
+            token);
+        await watcher.SubscribeAsync(
+            "tmux://hierarchy",
+            secondKey,
+            _ => Task.CompletedTask,
+            scope.Session.Server,
+            token);
+
+        await scope.Session.CreateWindowAsync(new NewWindowRequest(name: "appeared"), token);
+
+        Task bothTold = Task.WhenAll(firstTold.Task, secondTold.Task);
+        Assert.True(
+            await Task.WhenAny(bothTold, Task.Delay(TimeSpan.FromSeconds(20), token)) == bothTold,
+            "one overlapping subscriber did not receive the hierarchy change");
+
+        await watcher.UnsubscribeAsync("tmux://hierarchy", firstKey);
+        IReadOnlyList<Client> oneReference = await TmuxWait.UntilAsync(
+            cancellation => scope.Session.Server.GetClientsAsync(cancellation),
+            current => current.Count == 1,
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromMilliseconds(250),
+            token);
+        Assert.Single(oneReference);
+
+        await watcher.UnsubscribeAsync("tmux://hierarchy", secondKey);
+        IReadOnlyList<Client> noReferences = await TmuxWait.UntilAsync(
+            cancellation => scope.Session.Server.GetClientsAsync(cancellation),
+            current => current.Count == 0,
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromMilliseconds(250),
+            token);
+        Assert.Empty(noReferences);
+    }
+
     [Theory]
     [InlineData("window-add", true)]
     [InlineData("layout-change", true)]
@@ -116,4 +196,8 @@ public sealed class HierarchyWatcherTests
     // subscription replaces.
     public void Only_a_change_to_what_exists_wakes_a_subscriber(string name, bool expected) =>
         Assert.Equal(expected, HierarchyWatcher.IsStructural(name));
+
+    [Fact]
+    public void Lost_control_events_invalidate_the_hierarchy() =>
+        Assert.True(HierarchyWatcher.InvalidatesHierarchy(new TmuxEventsDroppedEvent(1, 1)));
 }

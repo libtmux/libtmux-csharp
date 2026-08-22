@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 using LibTmux.Examples;
@@ -13,11 +14,15 @@ public sealed class SnippetContractTests
         RegexOptions.Multiline | RegexOptions.Compiled);
 
     [Fact]
-    public void Every_published_region_is_an_example_that_runs()
+    public void Every_published_region_is_an_explicit_example()
     {
         HashSet<string> examples =
         [
-            .. ExampleCase.Discover().Select(example => example.Id),
+            .. typeof(ExampleCase).Assembly
+                .GetTypes()
+                .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+                .Where(method => method.GetCustomAttribute<ExampleAttribute>() is not null)
+                .Select(method => method.Name),
         ];
 
         List<string> orphans = [];
@@ -35,7 +40,7 @@ public sealed class SnippetContractTests
 
         Assert.True(
             orphans.Count == 0,
-            "These regions are published but no [Example] method runs them:\n  "
+            "These regions are published but have no [Example] method:\n  "
             + string.Join("\n  ", orphans));
     }
 

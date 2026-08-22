@@ -22,6 +22,7 @@ public sealed class TmuxCapabilitiesTests
 
     [Theory]
     [InlineData("3.7", 3, 7, null)]
+    [InlineData("3.3.7", 3, 3, "7")]
     [InlineData("3.7b", 3, 7, "b")]
     [InlineData("3.0-rc3", 3, 0, "rc3")]
     [InlineData("3.3a-openbsd", 3, 3, "a-openbsd")]
@@ -55,7 +56,8 @@ public sealed class TmuxCapabilitiesTests
     [InlineData("03.7")]
     [InlineData("3.07")]
     [InlineData("3.7B")]
-    [InlineData("3.7.1")]
+    [InlineData("3.7.01")]
+    [InlineData("3.7.2147483648")]
     [InlineData("3.7-")]
     [InlineData("+3.7")]
     [InlineData("2147483648.7")]
@@ -99,6 +101,9 @@ public sealed class TmuxCapabilitiesTests
     [InlineData("3.7-rc2", "3.7")]
     [InlineData("3.7", "3.7-openbsd")]
     [InlineData("3.7-openbsd", "3.7a")]
+    [InlineData("3.3", "3.3.1")]
+    [InlineData("3.3.1", "3.3.10")]
+    [InlineData("3.3.10", "3.3a")]
     [InlineData("3.7a", "3.7a-openbsd")]
     [InlineData("3.7a-openbsd", "3.7b")]
     [InlineData("3.7z", "3.7aa")]
@@ -371,6 +376,7 @@ public sealed class TmuxCapabilitiesTests
         }
 
         Assert.False(TmuxCapabilities.TryGetExact(TmuxVersion.Parse("3.3"), out _));
+        Assert.False(TmuxCapabilities.TryGetExact(TmuxVersion.Parse("3.3.7"), out _));
         Assert.False(TmuxCapabilities.TryGetExact(TmuxVersion.Parse("next-3.8"), out _));
         Assert.False(TmuxCapabilities.TryGetExact(default, out _));
         Assert.Throws<NotSupportedException>(
@@ -510,6 +516,10 @@ public sealed class TmuxCapabilitiesTests
             "printf ' tmux 3.7b\\n'",
             "printf 'tmux 3.7b '",
             "printf 'tmux master\\n'",
+            "printf 'tmux 3.3.7\\npsmux 3.3.8\\n'",
+            "printf 'tmux 3.3.7\\npsmux 3.3.7 ()\\n'",
+            "printf 'tmux 3.3.7\\npsmux 3.3.7 (abc)\\nextra\\n'",
+            "printf 'tmux 3.3.7\\rpsmux 3.3.7\\n'",
             "printf '\\377'",
         ];
         foreach (string script in scripts)

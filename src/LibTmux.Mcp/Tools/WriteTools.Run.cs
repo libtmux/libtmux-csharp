@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.Versioning;
+using LibTmux.Internal;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
@@ -11,6 +12,10 @@ namespace LibTmux.Mcp;
 [UnsupportedOSPlatform("windows")]
 public sealed partial class WriteTools
 {
+    private static readonly TimeSpan StatusCleanupTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan StatusCleanupMargin = TimeSpan.FromMinutes(1);
+    internal static readonly TimeSpan JobStatusMarkerLifetime = TimeSpan.FromMinutes(11);
+
     /// <summary>Runs a command in a pane and waits for it to finish.</summary>
     /// <param name="command">The shell command.</param>
     /// <param name="paneId">The pane, or null for the active one.</param>
@@ -27,21 +32,26 @@ public sealed partial class WriteTools
     /// <c>$?</c>, so "it finished" and "it exited 1" are facts rather than
     /// readings of a prompt this tool would have to recognise.
     /// </remarks>
-    [McpServerTool(Name = "tmux_run", Destructive = false, OpenWorld = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_run", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description(
         "Run a shell command in a pane, wait for it to finish, and report its real "
         + "exit status and output. This is the tool for 'run X and tell me if it "
         + "worked'. Do NOT send keys and then poll a capture in a loop — this waits "
         + "deterministically and costs one call. The command runs in a subshell, so "
-        + "cd and export do not persist. If it may outlast the timeout, use "
-        + "tmux_start_job instead and collect it later.")]
+        + "cd and export do not persist. Output starts at an authenticated position "
+        + "captured before dispatch; check linesMissed and anchorLost. If it may "
+        + "outlast the timeout, use tmux_start_job instead and collect it later. A "
+        + "timed-out command MAY STILL BE RUNNING; inspect it and do not retry it.")]
     public async Task<RunResult> RunAsync(
-        [Description("The shell command to run.")] string command,
+        [Description(
+            "The shell command to run, at most LIBTMUX_MCP_MAX_BYTES UTF-8 bytes. "
+            + "Put longer scripts in a file and run that file.")]
+        string command,
         [Description("The pane id, such as %1. Omit for the active pane.")]
         string? paneId = null,
         [Description(
             "Seconds to wait. Lowered to the server's ceiling; read "
-            + "effective_timeout_seconds for the value actually used.")]
+            + "effectiveTimeoutSeconds for the value actually used.")]
         double? timeoutSeconds = null,
         [Description("The most output lines to return, newest kept.")]
         int? maxLines = null,
@@ -56,46 +66,105 @@ public sealed partial class WriteTools
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
+        ValidateRunCommand(command, _policy.MaxBytes);
         Server server = await ServerAsync(socketName, cancellationToken).ConfigureAwait(false);
         Pane pane = await TmuxTargets.PaneAsync(server, paneId, cancellationToken)
             .ConfigureAwait(false);
         TimeSpan budget = _policy.EffectiveTimeout(
             timeoutSeconds is double seconds ? TimeSpan.FromSeconds(seconds) : null);
+        PaneRead baselineRead = await PaneReader
+            .ReadVisibleAsync(pane, null, cancellationToken)
+            .ConfigureAwait(false);
+        string baselineToken = TailCursor
+            .Build(pane, baselineRead.State, baselineRead.CursorRows)
+            .Encode();
+        TailCursor baseline = TailCursor.Decode(baselineToken, pane)!;
 
         RunToken token = RunToken.Create();
         Stopwatch elapsed = Stopwatch.StartNew();
-        await SendRunPayloadAsync(server, pane, command, token, suppressHistory, cancellationToken)
-            .ConfigureAwait(false);
+        var sequence = new TmuxMutationSequence(
+            "The command was sent, but observing its result failed. It may still be "
+            + "running or may already have finished; do not retry until you inspect the pane.");
+        bool payloadMayHaveReachedTmux = false;
+        try
+        {
+            try
+            {
+                await sequence.MutateAsync(
+                        () => SendRunPayloadAsync(
+                            server,
+                            pane,
+                            command,
+                            token,
+                            suppressHistory,
+                            _policy.WaitCeiling + StatusCleanupMargin,
+                            cancellationToken))
+                    .ConfigureAwait(false);
+                payloadMayHaveReachedTmux = true;
+            }
+            catch (TmuxOperationCanceledException error) when (error.CommandMayHaveExecuted)
+            {
+                payloadMayHaveReachedTmux = true;
+                throw new LibTmuxException(
+                    "The command may have reached tmux before cancellation. Do not retry "
+                    + "until you inspect the pane.",
+                    TmuxDispatchState.Unknown,
+                    error);
+            }
+            catch (LibTmuxException error)
+                when (error.Dispatch != TmuxDispatchState.NotDispatched)
+            {
+                payloadMayHaveReachedTmux = true;
+                throw;
+            }
 
-        bool timedOut = !await TickWhileAsync(
-                AwaitChannelAsync(server, token.Channel, budget, cancellationToken),
-                progress,
-                elapsed,
-                budget,
-                $"running in {pane.Id}",
-                cancellationToken)
-            .ConfigureAwait(false);
-        elapsed.Stop();
+            bool timedOut = !await sequence.ObserveAsync(() => TickWhileAsync(
+                    AwaitChannelAsync(server, token.Channel, budget, cancellationToken),
+                    progress,
+                    elapsed,
+                    budget,
+                    $"running in {pane.Id}",
+                    cancellationToken))
+                .ConfigureAwait(false);
+            elapsed.Stop();
 
-        int? status = timedOut
-            ? null
-            : await ReadStatusAsync(pane, token, cancellationToken).ConfigureAwait(false);
+            int? status = timedOut
+                ? null
+                : await sequence
+                    .ObserveAsync(() => ReadStatusAsync(pane, token, cancellationToken))
+                    .ConfigureAwait(false);
+            PaneRead read = await sequence
+                .ObserveAsync(() => PaneReader.ReadSinceAsync(
+                    pane,
+                    baseline,
+                    cancellationToken))
+                .ConfigureAwait(false);
 
-        IReadOnlyList<string> lines = await pane.CaptureAsync(
-                new CapturePaneRequest(joinWrappedLines: true),
-                cancellationToken)
-            .ConfigureAwait(false);
-
-        return new RunResult(
-            PaneId: pane.Id.ToString(),
-            ExitStatus: status,
-            TimedOut: timedOut,
-            Output: BoundedText.Fit(
-                PaneText.Scrub(lines, pane.Width),
+            string id = pane.Id.ToString();
+            double elapsedSeconds = Math.Round(elapsed.Elapsed.TotalSeconds, 3);
+            return sequence.Observe(() => StructuredTextResultBudget.Fit(
+                PaneText.Scrub(read.Lines, pane.Width),
                 maxLines ?? _policy.MaxLines,
-                _policy.MaxBytes),
-            ElapsedSeconds: Math.Round(elapsed.Elapsed.TotalSeconds, 3),
-            EffectiveTimeoutSeconds: budget.TotalSeconds);
+                _policy.MaxBytes,
+                content => new RunResult(
+                    id,
+                    status,
+                    timedOut,
+                    content,
+                    elapsedSeconds,
+                    budget.TotalSeconds,
+                    read.LinesMissed,
+                    read.AnchorLost),
+                "command result"));
+        }
+        finally
+        {
+            elapsed.Stop();
+            if (payloadMayHaveReachedTmux)
+            {
+                await CleanupStatusMarkerAsync(pane, token).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>Names the private channel and option one run uses.</summary>
@@ -124,8 +193,12 @@ public sealed partial class WriteTools
         string command,
         RunToken token,
         bool suppressHistory,
+        TimeSpan statusMarkerLifetime,
         CancellationToken cancellationToken)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            statusMarkerLifetime,
+            TimeSpan.Zero);
         string statusCommand = TmuxCommandLine(
             server,
             "set-option",
@@ -134,11 +207,27 @@ public sealed partial class WriteTools
             pane.Id.ToString(),
             token.StatusOption);
         string signalCommand = TmuxCommandLine(server, "wait-for", "-S", token.Channel);
+        string unsetStatusCommand = TmuxCommandLine(
+            server,
+            "set-option",
+            "-p",
+            "-u",
+            "-q",
+            "-t",
+            pane.Id.ToString(),
+            token.StatusOption);
+        string cleanupDelay = ((long)Math.Ceiling(statusMarkerLifetime.TotalSeconds))
+            .ToString(CultureInfo.InvariantCulture);
+        string scheduleCleanupCommand = TmuxCommandLine(
+            server,
+            "run-shell",
+            "-b",
+            "-d",
+            cleanupDelay,
+            unsetStatusCommand);
 
-        // The command goes in a subshell so that its own syntax cannot run into
-        // the bookkeeping after it: an unbalanced quote or a trailing operator
-        // would otherwise swallow the status capture and the rendezvous, and the
-        // wait would hang for the whole budget with nothing to show.
+        // The subshell isolates command syntax from status capture and rendezvous;
+        // otherwise a trailing operator can swallow both and leave the wait hanging.
         string payload = string.Concat(
             suppressHistory ? " " : string.Empty,
             "(\n",
@@ -146,6 +235,8 @@ public sealed partial class WriteTools
             "\n); __lt=$?; ",
             statusCommand,
             " \"$__lt\"; ",
+            scheduleCleanupCommand,
+            "; ",
             signalCommand);
 
         await pane.SendKeysAsync(
@@ -153,6 +244,28 @@ public sealed partial class WriteTools
                 cancellationToken)
             .ConfigureAwait(false);
     }
+
+    internal static void ValidateRunCommand(string command, int maximumBytes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(command);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumBytes);
+        if (command.Length > maximumBytes)
+        {
+            throw RunCommandTooLarge(
+                $"The command is more than {maximumBytes} UTF-8 bytes");
+        }
+
+        int commandBytes = System.Text.Encoding.UTF8.GetByteCount(command);
+        if (commandBytes > maximumBytes)
+        {
+            throw RunCommandTooLarge(
+                $"The command is {commandBytes} UTF-8 bytes; the input ceiling is "
+                + maximumBytes.ToString(CultureInfo.InvariantCulture));
+        }
+    }
+
+    private static McpException RunCommandTooLarge(string size) =>
+        new(size + ". Put a longer script in a file and run that file instead.");
 
     /// <summary>Reports progress on a beat while one wait runs.</summary>
     /// <param name="waiting">The wait to watch.</param>
@@ -221,31 +334,41 @@ public sealed partial class WriteTools
         RunToken token,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<TmuxOption> options = await pane.Options
-            .GetAsync(new GetOptionRequest(token.StatusOption, quiet: true), cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            IReadOnlyList<TmuxOption> options = await pane.Options
+                .GetAsync(new GetOptionRequest(token.StatusOption, quiet: true), cancellationToken)
+                .ConfigureAwait(false);
 
-        int? status = options.Count > 0
-            && int.TryParse(
-                options[0].Value.Raw,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out int parsed)
-                ? parsed
-                : null;
+            return options.Count > 0
+                && int.TryParse(
+                    options[0].Value.Raw,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int parsed)
+                    ? parsed
+                    : null;
+        }
+        finally
+        {
+            await CleanupStatusMarkerAsync(pane, token).ConfigureAwait(false);
+        }
+    }
 
+    private static async Task CleanupStatusMarkerAsync(Pane pane, RunToken token)
+    {
+        using var cleanup = new CancellationTokenSource(StatusCleanupTimeout);
         try
         {
             await pane.Options
-                .UnsetAsync(new UnsetOptionRequest(token.StatusOption, quiet: true), cancellationToken)
+                .UnsetAsync(
+                    new UnsetOptionRequest(token.StatusOption, quiet: true),
+                    cleanup.Token)
                 .ConfigureAwait(false);
         }
-        catch (LibTmuxException)
+        catch (Exception)
         {
-            // The option is scoped to a pane that may already be gone. Leaving
-            // one behind is untidy; failing the call over it would be worse.
+            // The payload also schedules a bounded cleanup inside tmux.
         }
-
-        return status;
     }
 }

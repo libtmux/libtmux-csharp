@@ -26,8 +26,29 @@ REQUIRED_BUILD_STEPS = (
     "LibTmux.PackageConsumer",
     "LibTmux.Examples",
     "LibTmux.ExampleTests",
+    "render_api_reference.py --check",
+    "render_public_api.py --check",
     "sync_snippets.py --check",
     "fetch-depth: 0",
+)
+
+REQUIRED_RELEASE_STEPS = (
+    "uses: ./.github/workflows/dotnet.yml",
+    "uses: ./.github/workflows/dotnet-tmux.yml",
+    "needs: [dotnet, compatibility, psmux]",
+    "github.ref_type",
+    "actions/download-artifact@",
+    "PSMUX_ARTIFACT_URL",
+    "PSMUX_SOURCE_PROVENANCE_URL",
+    "PSMUX_LICENSE_URL",
+    "PSMUX_WSL_DISTRIBUTION",
+    "PSMUX_WSL_DOTNET_PATH",
+    "runs-on: [self-hosted, Windows, X64, psmux]",
+    "Invoke-PsmuxSmoke.ps1",
+    "-RunWslSmoke",
+    "-WslDotnetPath",
+    "-WslRepository $env:GITHUB_WORKSPACE",
+    "1abd0eaa3de1ed5491a4f744c8b3db492ae9ac94e9e9a8fea9da217c744ba94e",
 )
 
 
@@ -38,9 +59,10 @@ def verify(root: pathlib.Path) -> list[str]:
 
     build = workflows / "dotnet.yml"
     matrix = workflows / "dotnet-tmux.yml"
+    release = workflows / "release.yml"
     violations.extend(
         f"missing workflow: {path.name}"
-        for path in (build, matrix)
+        for path in (build, matrix, release)
         if not path.is_file()
     )
 
@@ -49,6 +71,7 @@ def verify(root: pathlib.Path) -> list[str]:
 
     build_text = build.read_text(encoding="utf-8")
     matrix_text = matrix.read_text(encoding="utf-8")
+    release_text = release.read_text(encoding="utf-8")
 
     violations.extend(
         f"dotnet.yml omits {step}"
@@ -65,6 +88,27 @@ def verify(root: pathlib.Path) -> list[str]:
         for framework in TARGET_FRAMEWORKS
         if f"'{framework}'" not in matrix_text
     )
+    violations.extend(
+        f"release.yml omits {step}"
+        for step in REQUIRED_RELEASE_STEPS
+        if step not in release_text
+    )
+
+    for name, content in (("dotnet.yml", build_text), ("dotnet-tmux.yml", matrix_text)):
+        if "workflow_call:" not in content:
+            violations.append(f"{name} cannot be called by release.yml")
+
+    if "--skip-duplicate" in release_text:
+        violations.append("release.yml can hide an existing immutable package version")
+
+    cache = release_text.find("$env:NUGET_PACKAGES")
+    restore = release_text.find("dotnet restore LibTmux.slnx")
+    if cache < 0 or restore < 0 or cache > restore:
+        violations.append("release.yml isolates NuGet only after restoring dependencies")
+
+    for framework in TARGET_FRAMEWORKS:
+        if f"'{framework}'" not in release_text:
+            violations.append(f"release.yml omits psmux {framework}")
 
     # One lane failing says something about that tmux version, which is only
     # readable when the other lanes still run.

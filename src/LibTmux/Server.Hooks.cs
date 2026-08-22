@@ -2,7 +2,7 @@ using System.Runtime.Versioning;
 
 namespace LibTmux;
 
-/// <summary>Reaches this server's hooks.</summary>
+// Reaches this server's hooks.
 public sealed partial class Server
 {
     private TmuxHooks? _hooks;

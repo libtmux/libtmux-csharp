@@ -1,6 +1,6 @@
 namespace LibTmux.Examples;
 
-/// <summary>Marks a method as an example that runs against a live tmux server.</summary>
+/// <summary>Marks a method as a published example.</summary>
 /// <remarks>
 /// The method name identifies the example, and names the <c>#region</c> a
 /// document publishes from it.
@@ -14,4 +14,7 @@ public sealed class ExampleAttribute : Attribute
 
     /// <summary>Gets the line saying what the example shows.</summary>
     public string Title { get; }
+
+    /// <summary>Gets or sets whether the ordinary tmux example suite runs this example.</summary>
+    public bool RunsInDefaultSuite { get; set; } = true;
 }

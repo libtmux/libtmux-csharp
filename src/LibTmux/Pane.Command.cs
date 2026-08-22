@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Provides raw command execution for a tmux pane.</summary>
+// Provides raw command execution for a tmux pane.
 public sealed partial class Pane
 {
     private readonly TmuxCommandDispatcher _commandDispatcher;
@@ -24,7 +24,6 @@ public sealed partial class Pane
         string? targetOverride = null,
         CancellationToken cancellationToken = default)
     {
-        PlatformGuard.ThrowIfWindows();
         return TargetedCommandArguments.ExecuteAsync(
             _commandDispatcher,
             arguments,

@@ -4,6 +4,7 @@
 name: dotnet
 
 on:
+  workflow_call:
   push:
     branches: [master]
   pull_request:
@@ -109,8 +110,8 @@ jobs:
           done
 
       - name: Examples
-        # An example that stopped working should fail the build, not the
-        # reader who copied it.
+        # An ordinary-tmux example that stopped working should fail here,
+        # before a reader copies it.
         run: >
           dotnet run
           --project examples/LibTmux.Examples/LibTmux.Examples.csproj
@@ -119,10 +120,8 @@ jobs:
           --no-build
 
       - name: Example tests
-        # The same examples again, one test each, so a broken example is named
-        # in a report rather than being an exit code. This reaches them through
-        # the examples project and never through a project reference of its
-        # own, which is what makes it a reading of the surface a caller has.
+        # The ordinary-tmux examples run again, one test each, through the
+        # same compiled surface a caller reads.
         run: >
           dotnet test
           --project tests/LibTmux.ExampleTests/LibTmux.ExampleTests.csproj
@@ -153,8 +152,10 @@ jobs:
         # code that runs, and this is what says so out loud.
         run: |
           uv run python eng/parity/verify_public_api.py
+          uv run python eng/parity/render_public_api.py --check
           uv run python eng/parity/verify_capabilities.py
           uv run python eng/parity/verify_workflows.py
+          uv run python eng/docs/render_api_reference.py --check
           uv run python eng/docs/sync_snippets.py --check
           uv run eng/mcp/dump_tools.py --check
 
@@ -181,13 +182,8 @@ jobs:
           path: artifacts/packages
           if-no-files-found: warn
 
-  # The compatibility claim names macOS, and until now only Linux was ever run.
-  # The first run of this lane failed 15 of 854 integration tests, which is the
-  # answer it was added to get: the macOS support was asserted, not proven.
-  #
-  # It is advisory until those are fixed. Requiring it would block every commit
-  # on a platform difference nobody has diagnosed yet, and deleting it would go
-  # back to not knowing. Reporting it is the honest middle.
+  # macOS exercises the advertised platform but stays advisory; failures remain
+  # visible without making the primary Linux gate depend on hosted macOS.
   macos:
     name: macos arm64 (advisory)
     runs-on: macos-latest

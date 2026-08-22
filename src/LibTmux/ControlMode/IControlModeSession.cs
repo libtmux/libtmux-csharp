@@ -19,8 +19,8 @@ public interface IControlModeSession : IAsyncDisposable
     /// <remarks>
     /// The sequence completes after <see cref="TmuxExitEvent" />. It may be
     /// enumerated once; a second enumeration reads only what has not already
-    /// been taken. Consume it, or events accumulate for as long as the session
-    /// is held.
+    /// been taken. A slow reader receives <see cref="TmuxEventsDroppedEvent" />
+    /// instead of silently missing data when the bounded buffer overflows.
     /// </remarks>
     public IAsyncEnumerable<TmuxEvent> Events { get; }
 

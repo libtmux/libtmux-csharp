@@ -1171,6 +1171,102 @@
       "summary": "Defines PromptType values."
     },
     {
+      "id": "T:LibTmux.PsmuxCaptureOptions",
+      "namespace": "LibTmux",
+      "name": "PsmuxCaptureOptions",
+      "kind": "class",
+      "package": "LibTmux",
+      "modifiers": [
+        "public",
+        "sealed"
+      ],
+      "baseType": "object",
+      "interfaces": [],
+      "ownership": "value",
+      "state": [],
+      "summary": "Typed capture choices audited for the psmux query preview."
+    },
+    {
+      "id": "T:LibTmux.PsmuxConnectionOptions",
+      "namespace": "LibTmux",
+      "name": "PsmuxConnectionOptions",
+      "kind": "class",
+      "package": "LibTmux",
+      "modifiers": [
+        "public",
+        "sealed"
+      ],
+      "baseType": "object",
+      "interfaces": [],
+      "ownership": "value",
+      "state": [],
+      "summary": "A pinned psmux client file and one isolated namespace."
+    },
+    {
+      "id": "T:LibTmux.PsmuxPane",
+      "namespace": "LibTmux",
+      "name": "PsmuxPane",
+      "kind": "class",
+      "package": "LibTmux",
+      "modifiers": [
+        "public",
+        "sealed"
+      ],
+      "baseType": "object",
+      "interfaces": [],
+      "ownership": "value",
+      "state": [],
+      "summary": "An immutable pane observation from the psmux query preview."
+    },
+    {
+      "id": "T:LibTmux.PsmuxServer",
+      "namespace": "LibTmux",
+      "name": "PsmuxServer",
+      "kind": "class",
+      "package": "LibTmux",
+      "modifiers": [
+        "public",
+        "sealed"
+      ],
+      "baseType": "object",
+      "interfaces": [],
+      "ownership": "reference",
+      "state": [],
+      "summary": "A query-only connection to one isolated psmux namespace."
+    },
+    {
+      "id": "T:LibTmux.PsmuxSession",
+      "namespace": "LibTmux",
+      "name": "PsmuxSession",
+      "kind": "class",
+      "package": "LibTmux",
+      "modifiers": [
+        "public",
+        "sealed"
+      ],
+      "baseType": "object",
+      "interfaces": [],
+      "ownership": "value",
+      "state": [],
+      "summary": "An immutable observation of the sole psmux session."
+    },
+    {
+      "id": "T:LibTmux.PsmuxWindow",
+      "namespace": "LibTmux",
+      "name": "PsmuxWindow",
+      "kind": "class",
+      "package": "LibTmux",
+      "modifiers": [
+        "public",
+        "sealed"
+      ],
+      "baseType": "object",
+      "interfaces": [],
+      "ownership": "value",
+      "state": [],
+      "summary": "An immutable window observation from the psmux query preview."
+    },
+    {
       "id": "T:LibTmux.Query.AndNode",
       "namespace": "LibTmux.Query",
       "name": "AndNode",
@@ -2595,9 +2691,10 @@
       },
       "versionContract": {
         "grammar": [
-          "version = next / release / prerelease",
+          "version = next / release / micro / prerelease",
           "next = \"next-\" core",
           "release = core [patch] [\"-openbsd\"]",
+          "micro = core \".\" uint",
           "prerelease = core (\"-rc\" posint / \"-dev\" [\".\" uint])",
           "core = uint \".\" uint",
           "patch = 1*LOWER",
@@ -2609,6 +2706,7 @@
           "majorMinor": "the two invariant-culture decimal core components",
           "suffixExamples": {
             "3.7": null,
+            "3.3.7": "7",
             "3.7b": "b",
             "3.0-rc3": "rc3",
             "3.3a-openbsd": "a-openbsd",
@@ -2632,7 +2730,7 @@
             "03.7",
             "3.07",
             "3.7B",
-            "3.7.1",
+            "3.7.01",
             "3.7-",
             "+3.7",
             "integer component overflow"
@@ -2640,15 +2738,17 @@
         },
         "ordering": {
           "core": "major then minor, numerically ascending",
-          "sameCore": "next < dev < rcN < final < letter patch",
+          "sameCore": "next < dev < rcN < final < vendor final < numeric micro < letter patch",
           "development": "a missing dev number precedes numeric dev numbers",
           "releaseCandidate": "N compares numerically",
+          "micro": "N compares numerically",
           "patch": "bijective base-26 lowercase ordinal: a=1, z=26, aa=27",
           "vendor": "-openbsd immediately follows its corresponding final or patch release",
           "exactIdentity": "CompareTo returns zero if and only if equality is true",
           "examples": [
             "next-3.7 < 3.7-dev < 3.7-dev.0 < 3.7-rc1 < 3.7-rc2",
             "3.7-rc2 < 3.7 < 3.7-openbsd < 3.7a < 3.7a-openbsd < 3.7b",
+            "3.3 < 3.3.1 < 3.3.10 < 3.3a",
             "3.7b < next-3.8 < 3.8"
           ],
           "invalidOperands": "CompareTo, <, <=, >, >=, IsAtLeast, and EnsureAtLeast throw InvalidOperationException if either operand is invalid",
@@ -2979,6 +3079,22 @@
       "ownership": "value",
       "state": [],
       "summary": "One thing a tmux control client reported without being asked."
+    },
+    {
+      "id": "T:LibTmux.TmuxEventsDroppedEvent",
+      "namespace": "LibTmux",
+      "name": "TmuxEventsDroppedEvent",
+      "kind": "record",
+      "package": "LibTmux",
+      "modifiers": [
+        "public",
+        "sealed"
+      ],
+      "baseType": "LibTmux.TmuxEvent",
+      "interfaces": [],
+      "ownership": "value",
+      "state": [],
+      "summary": "A loss marker emitted when the bounded control-event buffer overflows."
     },
     {
       "id": "T:LibTmux.TmuxOutputEvent",
@@ -3466,6 +3582,48 @@
       "portable": true,
       "summary": "The WindowTarget value.",
       "value": 3,
+      "static": true
+    },
+    {
+      "id": "F:LibTmux.PsmuxServer.SupportedBinarySha256",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "SupportedBinarySha256",
+      "kind": "field",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "const string LibTmux.PsmuxServer.SupportedBinarySha256",
+      "returnType": "string",
+      "portable": true,
+      "summary": "The exact psmux client executable SHA-256 accepted by this preview.",
+      "value": "1abd0eaa3de1ed5491a4f744c8b3db492ae9ac94e9e9a8fea9da217c744ba94e",
+      "static": true
+    },
+    {
+      "id": "F:LibTmux.PsmuxServer.SupportedCommit",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "SupportedCommit",
+      "kind": "field",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "const string LibTmux.PsmuxServer.SupportedCommit",
+      "returnType": "string",
+      "portable": true,
+      "summary": "The exact psmux source commit accepted by this preview.",
+      "value": "aa26cd39edcfab03e718f94ea21bb47e8c5b85e8",
+      "static": true
+    },
+    {
+      "id": "F:LibTmux.PsmuxServer.SupportedImplementationBanner",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "SupportedImplementationBanner",
+      "kind": "field",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "const string LibTmux.PsmuxServer.SupportedImplementationBanner",
+      "returnType": "string",
+      "portable": true,
+      "summary": "The exact clean implementation banner accepted by this preview.",
+      "value": "psmux 3.3.7 (aa26cd3 2026-08-17)",
       "static": true
     },
     {
@@ -7866,6 +8024,302 @@
       "signature": "PipePaneRequest(string? command = null, bool outputOnly = false, bool inputOnly = false, bool toggle = false)",
       "portable": true,
       "summary": "Creates PipePaneRequest."
+    },
+    {
+      "id": "M:LibTmux.PsmuxCaptureOptions.#ctor(CapturePanePosition?,CapturePanePosition?,bool,bool)",
+      "declaringType": "T:LibTmux.PsmuxCaptureOptions",
+      "name": ".ctor",
+      "kind": "constructor",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "PsmuxCaptureOptions",
+      "parameters": [
+        {
+          "name": "startLine",
+          "type": "CapturePanePosition?",
+          "default": "null"
+        },
+        {
+          "name": "endLine",
+          "type": "CapturePanePosition?",
+          "default": "null"
+        },
+        {
+          "name": "escapeSequences",
+          "type": "bool",
+          "default": "false"
+        },
+        {
+          "name": "joinWrappedLines",
+          "type": "bool",
+          "default": "false"
+        }
+      ],
+      "signature": "PsmuxCaptureOptions(CapturePanePosition? startLine = null, CapturePanePosition? endLine = null, bool escapeSequences = false, bool joinWrappedLines = false)",
+      "portable": true,
+      "summary": "Creates an audited psmux capture request."
+    },
+    {
+      "id": "M:LibTmux.PsmuxConnectionOptions.#ctor(string,string,string,string,ILogger?)",
+      "declaringType": "T:LibTmux.PsmuxConnectionOptions",
+      "name": ".ctor",
+      "kind": "constructor",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "PsmuxConnectionOptions",
+      "parameters": [
+        {
+          "name": "executablePath",
+          "type": "string"
+        },
+        {
+          "name": "expectedBinarySha256",
+          "type": "string"
+        },
+        {
+          "name": "dataDirectory",
+          "type": "string"
+        },
+        {
+          "name": "namespaceName",
+          "type": "string"
+        },
+        {
+          "name": "logger",
+          "type": "ILogger?",
+          "default": "null"
+        }
+      ],
+      "signature": "PsmuxConnectionOptions(string executablePath, string expectedBinarySha256, string dataDirectory, string namespaceName, ILogger? logger = null)",
+      "portable": true,
+      "summary": "Creates one pinned client and isolated psmux endpoint."
+    },
+    {
+      "id": "M:LibTmux.PsmuxPane.CaptureAsync(PsmuxCaptureOptions?,CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "CaptureAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "genericParameters": [],
+      "returnType": "Task<IReadOnlyList<string>>",
+      "parameters": [
+        {
+          "name": "options",
+          "type": "PsmuxCaptureOptions?",
+          "default": "null"
+        },
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<IReadOnlyList<string>> LibTmux.PsmuxPane.CaptureAsync(PsmuxCaptureOptions? options = null, CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Captures pane text with best-effort target consistency."
+    },
+    {
+      "id": "M:LibTmux.PsmuxServer.ConnectAsync(PsmuxConnectionOptions,CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "ConnectAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": true,
+      "genericParameters": [],
+      "returnType": "Task<PsmuxServer>",
+      "parameters": [
+        {
+          "name": "options",
+          "type": "PsmuxConnectionOptions"
+        },
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<PsmuxServer> LibTmux.PsmuxServer.ConnectAsync(PsmuxConnectionOptions options, CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Connects through the pinned client and validates one session."
+    },
+    {
+      "id": "M:LibTmux.PsmuxServer.GetPanesAsync(CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "GetPanesAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "genericParameters": [],
+      "returnType": "Task<IReadOnlyList<PsmuxPane>>",
+      "parameters": [
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<IReadOnlyList<PsmuxPane>> LibTmux.PsmuxServer.GetPanesAsync(CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Reads all current panes in the sole visible session."
+    },
+    {
+      "id": "M:LibTmux.PsmuxServer.GetSessionAsync(CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "GetSessionAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "genericParameters": [],
+      "returnType": "Task<PsmuxSession>",
+      "parameters": [
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<PsmuxSession> LibTmux.PsmuxServer.GetSessionAsync(CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Reads the sole visible session or fails closed."
+    },
+    {
+      "id": "M:LibTmux.PsmuxServer.GetWindowsAsync(CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "GetWindowsAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "genericParameters": [],
+      "returnType": "Task<IReadOnlyList<PsmuxWindow>>",
+      "parameters": [
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<IReadOnlyList<PsmuxWindow>> LibTmux.PsmuxServer.GetWindowsAsync(CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Reads all current windows in the sole visible session."
+    },
+    {
+      "id": "M:LibTmux.PsmuxServer.RefreshAsync(CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "RefreshAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "genericParameters": [],
+      "returnType": "Task<PsmuxServer>",
+      "parameters": [
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<PsmuxServer> LibTmux.PsmuxServer.RefreshAsync(CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Reconnects and returns a fresh endpoint observation."
+    },
+    {
+      "id": "M:LibTmux.PsmuxSession.GetPanesAsync(CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxSession",
+      "name": "GetPanesAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "genericParameters": [],
+      "returnType": "Task<IReadOnlyList<PsmuxPane>>",
+      "parameters": [
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<IReadOnlyList<PsmuxPane>> LibTmux.PsmuxSession.GetPanesAsync(CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Reads the session's current panes."
+    },
+    {
+      "id": "M:LibTmux.PsmuxSession.GetWindowsAsync(CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxSession",
+      "name": "GetWindowsAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "genericParameters": [],
+      "returnType": "Task<IReadOnlyList<PsmuxWindow>>",
+      "parameters": [
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<IReadOnlyList<PsmuxWindow>> LibTmux.PsmuxSession.GetWindowsAsync(CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Reads the session's current windows."
+    },
+    {
+      "id": "M:LibTmux.PsmuxWindow.GetPanesAsync(CancellationToken)",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "GetPanesAsync",
+      "kind": "method",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "genericParameters": [],
+      "returnType": "Task<IReadOnlyList<PsmuxPane>>",
+      "parameters": [
+        {
+          "name": "cancellationToken",
+          "type": "CancellationToken",
+          "default": "default"
+        }
+      ],
+      "signature": "Task<IReadOnlyList<PsmuxPane>> LibTmux.PsmuxWindow.GetPanesAsync(CancellationToken cancellationToken = default)",
+      "performsIO": true,
+      "processBacked": true,
+      "portable": true,
+      "platformAnnotations": [],
+      "summary": "Reads the window's current panes."
     },
     {
       "id": "M:LibTmux.Query.AndNode.#ctor(IReadOnlyList<QueryNode>)",
@@ -18652,6 +19106,426 @@
       "summary": "Gets Toggle."
     },
     {
+      "id": "P:LibTmux.PsmuxCaptureOptions.EndLine",
+      "declaringType": "T:LibTmux.PsmuxCaptureOptions",
+      "name": "EndLine",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "CapturePanePosition?",
+      "parameters": [],
+      "signature": "CapturePanePosition? LibTmux.PsmuxCaptureOptions.EndLine { get; }",
+      "portable": true,
+      "summary": "Gets the last capture line."
+    },
+    {
+      "id": "P:LibTmux.PsmuxCaptureOptions.EscapeSequences",
+      "declaringType": "T:LibTmux.PsmuxCaptureOptions",
+      "name": "EscapeSequences",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "bool",
+      "parameters": [],
+      "signature": "bool LibTmux.PsmuxCaptureOptions.EscapeSequences { get; }",
+      "portable": true,
+      "summary": "Gets whether terminal escape sequences are preserved."
+    },
+    {
+      "id": "P:LibTmux.PsmuxCaptureOptions.JoinWrappedLines",
+      "declaringType": "T:LibTmux.PsmuxCaptureOptions",
+      "name": "JoinWrappedLines",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "bool",
+      "parameters": [],
+      "signature": "bool LibTmux.PsmuxCaptureOptions.JoinWrappedLines { get; }",
+      "portable": true,
+      "summary": "Gets whether wrapped screen rows are joined."
+    },
+    {
+      "id": "P:LibTmux.PsmuxCaptureOptions.StartLine",
+      "declaringType": "T:LibTmux.PsmuxCaptureOptions",
+      "name": "StartLine",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "CapturePanePosition?",
+      "parameters": [],
+      "signature": "CapturePanePosition? LibTmux.PsmuxCaptureOptions.StartLine { get; }",
+      "portable": true,
+      "summary": "Gets the first capture line."
+    },
+    {
+      "id": "P:LibTmux.PsmuxConnectionOptions.DataDirectory",
+      "declaringType": "T:LibTmux.PsmuxConnectionOptions",
+      "name": "DataDirectory",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "string",
+      "parameters": [],
+      "signature": "string LibTmux.PsmuxConnectionOptions.DataDirectory { get; }",
+      "portable": true,
+      "summary": "Gets the canonical isolated Windows data directory."
+    },
+    {
+      "id": "P:LibTmux.PsmuxConnectionOptions.ExecutablePath",
+      "declaringType": "T:LibTmux.PsmuxConnectionOptions",
+      "name": "ExecutablePath",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "string",
+      "parameters": [],
+      "signature": "string LibTmux.PsmuxConnectionOptions.ExecutablePath { get; }",
+      "portable": true,
+      "summary": "Gets the absolute psmux client executable path."
+    },
+    {
+      "id": "P:LibTmux.PsmuxConnectionOptions.ExpectedBinarySha256",
+      "declaringType": "T:LibTmux.PsmuxConnectionOptions",
+      "name": "ExpectedBinarySha256",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "string",
+      "parameters": [],
+      "signature": "string LibTmux.PsmuxConnectionOptions.ExpectedBinarySha256 { get; }",
+      "portable": true,
+      "summary": "Gets the expected executable SHA-256."
+    },
+    {
+      "id": "P:LibTmux.PsmuxConnectionOptions.Logger",
+      "declaringType": "T:LibTmux.PsmuxConnectionOptions",
+      "name": "Logger",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "ILogger?",
+      "parameters": [],
+      "signature": "ILogger? LibTmux.PsmuxConnectionOptions.Logger { get; }",
+      "portable": true,
+      "summary": "Gets the optional connection logger."
+    },
+    {
+      "id": "P:LibTmux.PsmuxConnectionOptions.NamespaceName",
+      "declaringType": "T:LibTmux.PsmuxConnectionOptions",
+      "name": "NamespaceName",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "string",
+      "parameters": [],
+      "signature": "string LibTmux.PsmuxConnectionOptions.NamespaceName { get; }",
+      "portable": true,
+      "summary": "Gets the explicit non-default psmux namespace."
+    },
+    {
+      "id": "P:LibTmux.PsmuxPane.Height",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "Height",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "int",
+      "parameters": [],
+      "signature": "int LibTmux.PsmuxPane.Height { get; }",
+      "portable": true,
+      "summary": "Gets the captured pane height."
+    },
+    {
+      "id": "P:LibTmux.PsmuxPane.Id",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "Id",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "PaneId",
+      "parameters": [],
+      "signature": "PaneId LibTmux.PsmuxPane.Id { get; }",
+      "portable": true,
+      "summary": "Gets the captured pane identifier."
+    },
+    {
+      "id": "P:LibTmux.PsmuxPane.Index",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "Index",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "int",
+      "parameters": [],
+      "signature": "int LibTmux.PsmuxPane.Index { get; }",
+      "portable": true,
+      "summary": "Gets the captured pane index."
+    },
+    {
+      "id": "P:LibTmux.PsmuxPane.Server",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "Server",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "PsmuxServer",
+      "parameters": [],
+      "signature": "PsmuxServer LibTmux.PsmuxPane.Server { get; }",
+      "portable": true,
+      "summary": "Gets the psmux endpoint that produced the observation."
+    },
+    {
+      "id": "P:LibTmux.PsmuxPane.SessionId",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "SessionId",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "SessionId",
+      "parameters": [],
+      "signature": "SessionId LibTmux.PsmuxPane.SessionId { get; }",
+      "portable": true,
+      "summary": "Gets the captured parent session identifier."
+    },
+    {
+      "id": "P:LibTmux.PsmuxPane.Title",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "Title",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "string?",
+      "parameters": [],
+      "signature": "string? LibTmux.PsmuxPane.Title { get; }",
+      "portable": true,
+      "summary": "Gets the captured pane title."
+    },
+    {
+      "id": "P:LibTmux.PsmuxPane.Width",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "Width",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "int",
+      "parameters": [],
+      "signature": "int LibTmux.PsmuxPane.Width { get; }",
+      "portable": true,
+      "summary": "Gets the captured pane width."
+    },
+    {
+      "id": "P:LibTmux.PsmuxPane.WindowId",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "WindowId",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "WindowId",
+      "parameters": [],
+      "signature": "WindowId LibTmux.PsmuxPane.WindowId { get; }",
+      "portable": true,
+      "summary": "Gets the captured parent window identifier."
+    },
+    {
+      "id": "P:LibTmux.PsmuxServer.ConnectionOptions",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "ConnectionOptions",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "PsmuxConnectionOptions",
+      "parameters": [],
+      "signature": "PsmuxConnectionOptions LibTmux.PsmuxServer.ConnectionOptions { get; }",
+      "portable": true,
+      "summary": "Gets the endpoint trust and routing settings."
+    },
+    {
+      "id": "P:LibTmux.PsmuxServer.Version",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "Version",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "TmuxVersion",
+      "parameters": [],
+      "signature": "TmuxVersion LibTmux.PsmuxServer.Version { get; }",
+      "portable": true,
+      "summary": "Gets the psmux compatibility version."
+    },
+    {
+      "id": "P:LibTmux.PsmuxSession.Attached",
+      "declaringType": "T:LibTmux.PsmuxSession",
+      "name": "Attached",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "bool",
+      "parameters": [],
+      "signature": "bool LibTmux.PsmuxSession.Attached { get; }",
+      "portable": true,
+      "summary": "Gets whether a client was attached when observed."
+    },
+    {
+      "id": "P:LibTmux.PsmuxSession.Id",
+      "declaringType": "T:LibTmux.PsmuxSession",
+      "name": "Id",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "SessionId",
+      "parameters": [],
+      "signature": "SessionId LibTmux.PsmuxSession.Id { get; }",
+      "portable": true,
+      "summary": "Gets the captured session identifier."
+    },
+    {
+      "id": "P:LibTmux.PsmuxSession.Name",
+      "declaringType": "T:LibTmux.PsmuxSession",
+      "name": "Name",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "string",
+      "parameters": [],
+      "signature": "string LibTmux.PsmuxSession.Name { get; }",
+      "portable": true,
+      "summary": "Gets the captured session name."
+    },
+    {
+      "id": "P:LibTmux.PsmuxSession.Server",
+      "declaringType": "T:LibTmux.PsmuxSession",
+      "name": "Server",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "PsmuxServer",
+      "parameters": [],
+      "signature": "PsmuxServer LibTmux.PsmuxSession.Server { get; }",
+      "portable": true,
+      "summary": "Gets the psmux endpoint that produced the observation."
+    },
+    {
+      "id": "P:LibTmux.PsmuxWindow.Height",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "Height",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "int",
+      "parameters": [],
+      "signature": "int LibTmux.PsmuxWindow.Height { get; }",
+      "portable": true,
+      "summary": "Gets the captured window height."
+    },
+    {
+      "id": "P:LibTmux.PsmuxWindow.Id",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "Id",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "WindowId",
+      "parameters": [],
+      "signature": "WindowId LibTmux.PsmuxWindow.Id { get; }",
+      "portable": true,
+      "summary": "Gets the captured window identifier."
+    },
+    {
+      "id": "P:LibTmux.PsmuxWindow.Index",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "Index",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "int",
+      "parameters": [],
+      "signature": "int LibTmux.PsmuxWindow.Index { get; }",
+      "portable": true,
+      "summary": "Gets the captured window index."
+    },
+    {
+      "id": "P:LibTmux.PsmuxWindow.Name",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "Name",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "string",
+      "parameters": [],
+      "signature": "string LibTmux.PsmuxWindow.Name { get; }",
+      "portable": true,
+      "summary": "Gets the captured window name."
+    },
+    {
+      "id": "P:LibTmux.PsmuxWindow.Server",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "Server",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "PsmuxServer",
+      "parameters": [],
+      "signature": "PsmuxServer LibTmux.PsmuxWindow.Server { get; }",
+      "portable": true,
+      "summary": "Gets the psmux endpoint that produced the observation."
+    },
+    {
+      "id": "P:LibTmux.PsmuxWindow.SessionId",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "SessionId",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "SessionId",
+      "parameters": [],
+      "signature": "SessionId LibTmux.PsmuxWindow.SessionId { get; }",
+      "portable": true,
+      "summary": "Gets the captured parent session identifier."
+    },
+    {
+      "id": "P:LibTmux.PsmuxWindow.Width",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "Width",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "int",
+      "parameters": [],
+      "signature": "int LibTmux.PsmuxWindow.Width { get; }",
+      "portable": true,
+      "summary": "Gets the captured window width."
+    },
+    {
       "id": "P:LibTmux.Query.AndNode.Operands",
       "declaringType": "T:LibTmux.Query.AndNode",
       "name": "Operands",
@@ -23006,6 +23880,66 @@
       "portable": true
     },
     {
+      "id": "T:LibTmux.PsmuxCaptureOptions",
+      "declaringType": "T:LibTmux.PsmuxCaptureOptions",
+      "name": "PsmuxCaptureOptions",
+      "kind": "type",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "class LibTmux.PsmuxCaptureOptions",
+      "portable": true
+    },
+    {
+      "id": "T:LibTmux.PsmuxConnectionOptions",
+      "declaringType": "T:LibTmux.PsmuxConnectionOptions",
+      "name": "PsmuxConnectionOptions",
+      "kind": "type",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "class LibTmux.PsmuxConnectionOptions",
+      "portable": true
+    },
+    {
+      "id": "T:LibTmux.PsmuxPane",
+      "declaringType": "T:LibTmux.PsmuxPane",
+      "name": "PsmuxPane",
+      "kind": "type",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "class LibTmux.PsmuxPane",
+      "portable": true
+    },
+    {
+      "id": "T:LibTmux.PsmuxServer",
+      "declaringType": "T:LibTmux.PsmuxServer",
+      "name": "PsmuxServer",
+      "kind": "type",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "class LibTmux.PsmuxServer",
+      "portable": true
+    },
+    {
+      "id": "T:LibTmux.PsmuxSession",
+      "declaringType": "T:LibTmux.PsmuxSession",
+      "name": "PsmuxSession",
+      "kind": "type",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "class LibTmux.PsmuxSession",
+      "portable": true
+    },
+    {
+      "id": "T:LibTmux.PsmuxWindow",
+      "declaringType": "T:LibTmux.PsmuxWindow",
+      "name": "PsmuxWindow",
+      "kind": "type",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "class LibTmux.PsmuxWindow",
+      "portable": true
+    },
+    {
       "id": "T:LibTmux.Query.AndNode",
       "declaringType": "T:LibTmux.Query.AndNode",
       "name": "AndNode",
@@ -24016,6 +24950,16 @@
       "portable": true
     },
     {
+      "id": "T:LibTmux.TmuxEventsDroppedEvent",
+      "declaringType": "T:LibTmux.TmuxEventsDroppedEvent",
+      "name": "TmuxEventsDroppedEvent",
+      "kind": "type",
+      "visibility": "public",
+      "package": "LibTmux",
+      "signature": "record LibTmux.TmuxEventsDroppedEvent",
+      "portable": true
+    },
+    {
       "id": "T:LibTmux.TmuxOutputEvent",
       "declaringType": "T:LibTmux.TmuxOutputEvent",
       "name": "TmuxOutputEvent",
@@ -24057,15 +25001,22 @@
       "parameters": [
         {
           "name": "target",
-          "type": "string?"
+          "type": "string?",
+          "default": "null"
         },
         {
           "name": "cancellationToken",
-          "type": "System.Threading.CancellationToken"
+          "type": "CancellationToken",
+          "default": "default"
         }
       ],
       "signature": "Task<IControlModeSession> EnterControlModeAsync(string? target = null, CancellationToken cancellationToken = default)",
-      "portable": true,
+      "performsIO": true,
+      "processBacked": true,
+      "portable": false,
+      "platformAnnotations": [
+        "UnsupportedOSPlatform(\"windows\")"
+      ],
       "summary": "Starts a tmux control client and keeps it running."
     },
     {
@@ -24220,6 +25171,57 @@
       "signature": "IReadOnlyList<string> LibTmux.TmuxNotificationEvent.Arguments { get; }",
       "portable": true,
       "summary": "Gets Arguments."
+    },
+    {
+      "id": "M:LibTmux.TmuxEventsDroppedEvent.#ctor(long,long)",
+      "declaringType": "T:LibTmux.TmuxEventsDroppedEvent",
+      "name": ".ctor",
+      "kind": "constructor",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "TmuxEventsDroppedEvent",
+      "parameters": [
+        {
+          "name": "Count",
+          "type": "long"
+        },
+        {
+          "name": "TotalDropped",
+          "type": "long"
+        }
+      ],
+      "signature": "TmuxEventsDroppedEvent(long Count, long TotalDropped)",
+      "portable": true,
+      "summary": "Creates a bounded-event-buffer loss marker."
+    },
+    {
+      "id": "P:LibTmux.TmuxEventsDroppedEvent.Count",
+      "declaringType": "T:LibTmux.TmuxEventsDroppedEvent",
+      "name": "Count",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "long",
+      "parameters": [],
+      "signature": "long LibTmux.TmuxEventsDroppedEvent.Count { get; }",
+      "portable": true,
+      "summary": "Gets the events discarded since the previous loss report."
+    },
+    {
+      "id": "P:LibTmux.TmuxEventsDroppedEvent.TotalDropped",
+      "declaringType": "T:LibTmux.TmuxEventsDroppedEvent",
+      "name": "TotalDropped",
+      "kind": "property",
+      "visibility": "public",
+      "package": "LibTmux",
+      "static": false,
+      "returnType": "long",
+      "parameters": [],
+      "signature": "long LibTmux.TmuxEventsDroppedEvent.TotalDropped { get; }",
+      "portable": true,
+      "summary": "Gets the events discarded over this control client's lifetime."
     },
     {
       "id": "M:LibTmux.TmuxExitEvent.#ctor(string?)",

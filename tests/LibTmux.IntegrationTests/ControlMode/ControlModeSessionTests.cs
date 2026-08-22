@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.Versioning;
 using LibTmux.IntegrationTests.Infrastructure;
 using LibTmux.IntegrationTests.Transport;
@@ -140,6 +141,75 @@ public sealed class ControlModeSessionTests
         await control.DisposeAsync();
     }
 
+    [UnixFact]
+    public async Task A_canceled_attach_is_disposed_before_the_call_returns()
+    {
+        await using RawTmuxTestContext raw = await RawTmuxTestContext.StartAsync(
+            TestContext.Current.CancellationToken);
+        string directory = Path.Combine(
+            Path.GetTempPath(),
+            $"libtmux-control-start-{Guid.NewGuid():N}");
+        string wrapper = Path.Combine(directory, "tmux-wrapper");
+        string pidFile = Path.Combine(directory, "client.pid");
+        Directory.CreateDirectory(directory);
+        int clientPid = 0;
+
+        try
+        {
+            string script = $"""
+                #!/bin/sh
+                for argument in "$@"; do
+                    if [ "$argument" = "-C" ]; then
+                        echo "$$" > {ShellQuote(pidFile)}
+                        IFS= read -r ignored
+                        exit 0
+                    fi
+                done
+                exec {ShellQuote(raw.TmuxBinaryPath)} "$@"
+                """;
+            await File.WriteAllTextAsync(
+                wrapper,
+                script,
+                TestContext.Current.CancellationToken);
+            File.SetUnixFileMode(
+                wrapper,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+            Server server = await Server.ConnectAsync(
+                new ServerConnectionOptions(
+                    tmuxBinaryPath: wrapper,
+                    socketPath: raw.SocketPath,
+                    configurationFile: "/dev/null"),
+                TestContext.Current.CancellationToken);
+            using var startupCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                TestContext.Current.CancellationToken);
+            Task<IControlModeSession> startup = server.EnterControlModeAsync(
+                cancellationToken: startupCancellation.Token);
+
+            await WaitUntilAsync(
+                () => TryReadProcessId(pidFile, out clientPid),
+                TestContext.Current.CancellationToken);
+            startupCancellation.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await startup);
+            await WaitUntilAsync(
+                () => !IsProcessAlive(clientPid),
+                TestContext.Current.CancellationToken);
+            Assert.False(IsProcessAlive(clientPid));
+        }
+        finally
+        {
+            if (IsProcessAlive(clientPid))
+            {
+                using Process process = Process.GetProcessById(clientPid);
+                process.Kill(entireProcessTree: false);
+                await process.WaitForExitAsync(TestContext.Current.CancellationToken);
+            }
+
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static Task<Server> ConnectAsync(
         RawTmuxTestContext raw,
         CancellationToken token) =>
@@ -149,4 +219,55 @@ public sealed class ControlModeSessionTests
                 socketPath: raw.SocketPath,
                 configurationFile: "/dev/null"),
             token);
+
+    private static bool IsProcessAlive(int processId)
+    {
+        if (processId <= 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            using Process process = Process.GetProcessById(processId);
+            return !process.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryReadProcessId(string path, out int processId)
+    {
+        processId = 0;
+        try
+        {
+            return int.TryParse(
+                File.ReadAllText(path),
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out processId);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    private static string ShellQuote(string value) =>
+        $"'{value.Replace("'", "'\"'\"'", StringComparison.Ordinal)}'";
+
+    private static async Task WaitUntilAsync(
+        Func<bool> condition,
+        CancellationToken cancellationToken)
+    {
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+        while (!condition())
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(20), timeout.Token);
+        }
+    }
 }

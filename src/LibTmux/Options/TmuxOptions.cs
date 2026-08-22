@@ -130,18 +130,21 @@ public sealed class TmuxOptions
         ArgumentNullException.ThrowIfNull(request);
         List<string> arguments = BuildSetArguments(request);
 
-        TmuxCommandResult result = await _dispatcher
-            .ExecuteAsync(arguments, cancellationToken)
+        var sequence = new TmuxMutationSequence();
+        _ = await sequence.MutateAsync(
+                () => _dispatcher.ExecuteAsync(arguments, cancellationToken),
+                value => OptionFailure.ThrowIfFailed(value, request.Name))
             .ConfigureAwait(false);
-        OptionFailure.ThrowIfFailed(result, request.Name);
 
-        IReadOnlyList<TmuxOption> stored = await GetAsync(
+        IReadOnlyList<TmuxOption> stored = await sequence
+            .ObserveAsync(() => GetAsync(
                 new GetOptionRequest(request.Name, request.Scope, request.Global, quiet: true),
-                cancellationToken)
+                cancellationToken))
             .ConfigureAwait(false);
-        return stored.Count > 0
-            ? stored[^1].Value
-            : new TmuxOptionValue(null, TmuxOptionState.Absent, null, null);
+        return sequence.Observe(() =>
+            stored.Count > 0
+                ? stored[^1].Value
+                : new TmuxOptionValue(null, TmuxOptionState.Absent, null, null));
     }
 
     /// <summary>Builds the arguments an unset request sends.</summary>

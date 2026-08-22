@@ -19,7 +19,11 @@ public enum JobState
 /// <summary>A command that outlives the call that started it.</summary>
 /// <param name="JobId">The handle to ask about it with.</param>
 /// <param name="PaneId">The pane it runs in.</param>
-/// <param name="Command">What was run.</param>
+/// <param name="SocketName">The named socket it runs on, or null for a socket path.</param>
+/// <param name="SocketPath">The socket path it runs on, or null for a named socket.</param>
+/// <param name="EndpointFingerprint">The exact socket endpoint, as a stable opaque digest.</param>
+/// <param name="ServerGeneration">The tmux daemon that owned the pane when it started.</param>
+/// <param name="CommandBytes">The UTF-8 size of the command, whose text is not retained.</param>
 /// <param name="State">Where it has got to.</param>
 /// <param name="ExitStatus">What it exited with, once it has.</param>
 /// <param name="StartedAt">When it was started.</param>
@@ -29,16 +33,31 @@ public enum JobState
 /// Starting one costs a single call and returns at once, so a command that
 /// takes ten minutes does not spend ten minutes of the model's turn. The pane
 /// keeps running it either way; the job is what makes the result collectable.
+/// Command text is deliberately absent because shell commands commonly contain
+/// credentials; the handle and endpoint are enough to collect or cancel it.
 /// </remarks>
 public sealed record JobInfo(
     string JobId,
     string PaneId,
-    string Command,
+    string? SocketName,
+    string? SocketPath,
+    string EndpointFingerprint,
+    ServerGeneration ServerGeneration,
+    int CommandBytes,
     JobState State,
     int? ExitStatus,
     DateTimeOffset StartedAt,
     DateTimeOffset? EndedAt,
     double ElapsedSeconds);
+
+/// <summary>A bounded inventory of background jobs.</summary>
+/// <param name="Jobs">The jobs that fit, newest first.</param>
+/// <param name="TotalJobs">How many jobs the server remembers.</param>
+/// <param name="Truncated">Whether older jobs were omitted to fit the response budget.</param>
+public sealed record JobList(
+    IReadOnlyList<JobInfo> Jobs,
+    int TotalJobs,
+    bool Truncated);
 
 /// <summary>A background command, and whatever it has printed since last asked.</summary>
 /// <param name="Job">Where the command has got to.</param>

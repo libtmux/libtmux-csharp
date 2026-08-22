@@ -23,19 +23,19 @@ public sealed class RecipePrompts
         [Description("The shell command to run.")] string command,
         [Description("The pane id to run it in, such as %1. Optional.")] string? paneId = null)
     {
-        string target = paneId is null ? string.Empty : $", pane_id=\"{paneId}\"";
+        string target = paneId is null ? string.Empty : $", paneId=\"{paneId}\"";
         return $"""
             Run this in tmux and report what happened:
 
                 tmux_run(command={command.Replace("\"", "\\\"", StringComparison.Ordinal)}{target})
 
-            Read exit_status, timed_out and output from the result.
+            Read exitStatus, timedOut and output from the result.
 
-            - exit_status is the shell's real status, not a guess from the screen.
+            - exitStatus is the shell's real status, not a guess from the screen.
               Trust it over anything the output appears to say.
-            - If timed_out is true the command is STILL RUNNING in the pane. Do not
-              re-run it — that would start a second copy. Either call tmux_run again
-              with a longer timeout_seconds, or watch it with tmux_tail_pane.
+            - If timedOut is true the command MAY still be running in the pane.
+              Never re-run it: inspect with tmux_snapshot_pane or continue watching
+              with tmux_tail_pane. A retry could start a second copy.
             - If this may take minutes, stop and use tmux_start_job instead, then
               collect it with tmux_job.
 
@@ -53,15 +53,15 @@ public sealed class RecipePrompts
         $"""
         Work out what is wrong in tmux pane {paneId}. Change nothing yet.
 
-        1. tmux_snapshot_pane(pane_id="{paneId}") — content, cursor, size and the
+        1. tmux_snapshot_pane(paneId="{paneId}") — content, cursor, size and the
            running command in one call.
-        2. Read pane.current_command. A shell means whatever ran has finished; a
+        2. Read pane.currentCommand. A shell means whatever ran has finished; a
            program name means it is still going and may simply be slow.
         3. If pane.dead is true the program exited: the screen shows its last
            output. tmux_respawn_pane restarts it.
-        4. If content_truncated is set, call again with a larger max_lines — the
+        4. If content.truncated is true, call again with a larger maxLines — the
            interesting line may be above what you were shown.
-        5. If alternate_screen is true, a full-screen program owns the pane and
+        5. If alternateScreen is true, a full-screen program owns the pane and
            scrollback holds what was there BEFORE it started, not its output.
         6. To watch it change, call tmux_tail_pane and keep the cursor. Do not
            re-capture the whole pane repeatedly.
@@ -83,9 +83,9 @@ public sealed class RecipePrompts
 
         1. tmux_create_session(name="{sessionName}", width=200, height=50).
            Give a size: nothing will attach, and a session with no client stays
-           at 80x24, which wraps most output. Keep the returned pane_id as A.
-        2. tmux_split_pane(pane_id=A, direction="Below") — keep its pane_id as B.
-        3. tmux_split_pane(pane_id=B, direction="Right") — keep its pane_id as C.
+           at 80x24, which wraps most output. Keep the returned paneId as A.
+        2. tmux_split_pane(paneId=A, direction="Below") — keep its paneId as B.
+        3. tmux_split_pane(paneId=B, direction="Right") — keep its paneId as C.
         4. Label them so a human can tell them apart:
            tmux_set_pane_title on A, B and C.
         5. Start what belongs in each with tmux_send_keys. No wait is needed
@@ -106,18 +106,18 @@ public sealed class RecipePrompts
         $"""
         Stop whatever is running in tmux pane {paneId} and confirm it stopped.
 
-        1. tmux_list_panes and note current_command for {paneId}. That is the
+        1. tmux_list_panes and note currentCommand for {paneId}. That is the
            thing you are trying to change; comparing it before and after is the
            only reliable check.
-        2. tmux_send_keys(pane_id="{paneId}", keys="C-c", literal=false) —
+        2. tmux_send_keys(paneId="{paneId}", keys="C-c", literal=false) —
            tmux reads C-c as an interrupt only when literal is false.
-        3. Read current_command again. Back to a shell means it worked.
+        3. Read currentCommand again. Back to a shell means it worked.
 
         Do not wait on a prompt pattern to decide this: a prompt glyph you did
         not predict reads as failure, and the terminal echoes ^C whenever the
         signal is DELIVERED, whether or not the program died.
 
-        If current_command is unchanged, the program is ignoring the interrupt.
+        If currentCommand is unchanged, the program is ignoring the interrupt.
         Stop and ask what to do. Do not escalate to C-\ or kill on your own —
         SIGQUIT can dump core, and killing the pane destroys its scrollback.
         """;

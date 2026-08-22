@@ -23,9 +23,10 @@ The complete parsing, ordering, detection, and support contract follows.
 ```json
 {
   "grammar": [
-    "version = next / release / prerelease",
+    "version = next / release / micro / prerelease",
     "next = \"next-\" core",
     "release = core [patch] [\"-openbsd\"]",
+    "micro = core \".\" uint",
     "prerelease = core (\"-rc\" posint / \"-dev\" [\".\" uint])",
     "core = uint \".\" uint",
     "patch = 1*LOWER",
@@ -37,6 +38,7 @@ The complete parsing, ordering, detection, and support contract follows.
     "majorMinor": "the two invariant-culture decimal core components",
     "suffixExamples": {
       "3.7": null,
+      "3.3.7": "7",
       "3.7b": "b",
       "3.0-rc3": "rc3",
       "3.3a-openbsd": "a-openbsd",
@@ -60,7 +62,7 @@ The complete parsing, ordering, detection, and support contract follows.
       "03.7",
       "3.07",
       "3.7B",
-      "3.7.1",
+      "3.7.01",
       "3.7-",
       "+3.7",
       "integer component overflow"
@@ -68,15 +70,17 @@ The complete parsing, ordering, detection, and support contract follows.
   },
   "ordering": {
     "core": "major then minor, numerically ascending",
-    "sameCore": "next < dev < rcN < final < letter patch",
+    "sameCore": "next < dev < rcN < final < vendor final < numeric micro < letter patch",
     "development": "a missing dev number precedes numeric dev numbers",
     "releaseCandidate": "N compares numerically",
+    "micro": "N compares numerically",
     "patch": "bijective base-26 lowercase ordinal: a=1, z=26, aa=27",
     "vendor": "-openbsd immediately follows its corresponding final or patch release",
     "exactIdentity": "CompareTo returns zero if and only if equality is true",
     "examples": [
       "next-3.7 < 3.7-dev < 3.7-dev.0 < 3.7-rc1 < 3.7-rc2",
       "3.7-rc2 < 3.7 < 3.7-openbsd < 3.7a < 3.7a-openbsd < 3.7b",
+      "3.3 < 3.3.1 < 3.3.10 < 3.3a",
       "3.7b < next-3.8 < 3.8"
     ],
     "invalidOperands": "CompareTo, <, <=, >, >=, IsAtLeast, and EnsureAtLeast throw InvalidOperationException if either operand is invalid",
@@ -326,6 +330,12 @@ internal static class Program
 | `T:LibTmux.PipePaneRequest` | record | `public, sealed` | None | `object` | value | Parameters for PipePane. | `LibTmux` |
 | `T:LibTmux.PopupCloseMode` | enum | `public` | None | `Enum` | value | Defines PopupCloseMode values. | `LibTmux` |
 | `T:LibTmux.PromptType` | enum | `public` | None | `Enum` | value | Defines PromptType values. | `LibTmux` |
+| `T:LibTmux.PsmuxCaptureOptions` | class | `public, sealed` | None | `object` | value | Typed capture choices audited for the psmux query preview. | `LibTmux` |
+| `T:LibTmux.PsmuxConnectionOptions` | class | `public, sealed` | None | `object` | value | A pinned psmux client file and one isolated namespace. | `LibTmux` |
+| `T:LibTmux.PsmuxPane` | class | `public, sealed` | None | `object` | value | An immutable pane observation from the psmux query preview. | `LibTmux` |
+| `T:LibTmux.PsmuxServer` | class | `public, sealed` | None | `object` | reference | A query-only connection to one isolated psmux namespace. | `LibTmux` |
+| `T:LibTmux.PsmuxSession` | class | `public, sealed` | None | `object` | value | An immutable observation of the sole psmux session. | `LibTmux` |
+| `T:LibTmux.PsmuxWindow` | class | `public, sealed` | None | `object` | value | An immutable window observation from the psmux query preview. | `LibTmux` |
 | `T:LibTmux.Query.AndNode` | record | `public, sealed` | None | `QueryNode` | value | A canonical and query node. Equality: structural ordered operand equality and hashing. | `LibTmux` |
 | `T:LibTmux.Query.BooleanConstant` | record | `public, sealed` | None | `QueryConstant` | value | A canonical boolean constant. | `LibTmux` |
 | `T:LibTmux.Query.ComparisonNode` | record | `public, sealed` | None | `QueryNode` | value | A canonical comparison query node. | `LibTmux` |
@@ -428,6 +438,7 @@ internal static class Program
 | `T:LibTmux.WindowRotationDirection` | enum | `public` | None | `Enum` | value | Defines WindowRotationDirection values. | `LibTmux` |
 | `T:LibTmux.IControlModeSession` | interface | `public` | `System.IAsyncDisposable` | `None` | reference | A live tmux control client reporting what tmux does until disposed. | `LibTmux` |
 | `T:LibTmux.TmuxEvent` | record | `public, abstract` | None | `object` | value | One thing a tmux control client reported without being asked. | `LibTmux` |
+| `T:LibTmux.TmuxEventsDroppedEvent` | record | `public, sealed` | None | `LibTmux.TmuxEvent` | value | A loss marker emitted when the bounded control-event buffer overflows. | `LibTmux` |
 | `T:LibTmux.TmuxOutputEvent` | record | `public, sealed` | None | `LibTmux.TmuxEvent` | value | Bytes a pane wrote, with tmux's escaping decoded. | `LibTmux` |
 | `T:LibTmux.TmuxNotificationEvent` | record | `public, sealed` | None | `LibTmux.TmuxEvent` | value | A tmux notification carried by name with its words unparsed. | `LibTmux` |
 | `T:LibTmux.TmuxExitEvent` | record | `public, sealed` | None | `LibTmux.TmuxEvent` | value | The control client ended; always the last event in the stream. | `LibTmux` |
@@ -724,6 +735,8 @@ internal static class Program
 | Member ID | Declaration | Visibility | Static | Platform | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `M:LibTmux.LibTmuxException.#ctor(string,Exception?)` | `LibTmuxException(string message, Exception? innerException = null)` | Public | No | Portable | Creates LibTmuxException. |
+| `M:LibTmux.LibTmuxException.#ctor(string,TmuxDispatchState,Exception?)` | `LibTmuxException(string message, TmuxDispatchState dispatch, Exception? innerException = null)` | Public | No | Portable | Creates LibTmuxException with a known dispatch state. |
+| `P:LibTmux.LibTmuxException.Dispatch` | `TmuxDispatchState LibTmux.LibTmuxException.Dispatch { get; }` | Public | No | Portable | Gets whether the command reached tmux, and so whether a retry is safe. |
 
 ### `T:LibTmux.LibTmuxInfo`
 
@@ -1008,6 +1021,80 @@ internal static class Program
 | `F:LibTmux.PromptType.Search` | `Search = 1` | Public | Implicit | Portable | The Search value. Value: `1`. |
 | `F:LibTmux.PromptType.Target` | `Target = 2` | Public | Implicit | Portable | The Target value. Value: `2`. |
 | `F:LibTmux.PromptType.WindowTarget` | `WindowTarget = 3` | Public | Implicit | Portable | The WindowTarget value. Value: `3`. |
+
+### `T:LibTmux.PsmuxCaptureOptions`
+
+| Member ID | Declaration | Visibility | Static | Platform | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `M:LibTmux.PsmuxCaptureOptions.#ctor(CapturePanePosition?,CapturePanePosition?,bool,bool)` | `PsmuxCaptureOptions(CapturePanePosition? startLine = null, CapturePanePosition? endLine = null, bool escapeSequences = false, bool joinWrappedLines = false)` | Public | No | Portable | Creates an audited psmux capture request. |
+| `P:LibTmux.PsmuxCaptureOptions.EndLine` | `CapturePanePosition? LibTmux.PsmuxCaptureOptions.EndLine { get; }` | Public | No | Portable | Gets the last capture line. |
+| `P:LibTmux.PsmuxCaptureOptions.EscapeSequences` | `bool LibTmux.PsmuxCaptureOptions.EscapeSequences { get; }` | Public | No | Portable | Gets whether terminal escape sequences are preserved. |
+| `P:LibTmux.PsmuxCaptureOptions.JoinWrappedLines` | `bool LibTmux.PsmuxCaptureOptions.JoinWrappedLines { get; }` | Public | No | Portable | Gets whether wrapped screen rows are joined. |
+| `P:LibTmux.PsmuxCaptureOptions.StartLine` | `CapturePanePosition? LibTmux.PsmuxCaptureOptions.StartLine { get; }` | Public | No | Portable | Gets the first capture line. |
+
+### `T:LibTmux.PsmuxConnectionOptions`
+
+| Member ID | Declaration | Visibility | Static | Platform | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `M:LibTmux.PsmuxConnectionOptions.#ctor(string,string,string,string,ILogger?)` | `PsmuxConnectionOptions(string executablePath, string expectedBinarySha256, string dataDirectory, string namespaceName, ILogger? logger = null)` | Public | No | Portable | Creates one pinned client and isolated psmux endpoint. |
+| `P:LibTmux.PsmuxConnectionOptions.DataDirectory` | `string LibTmux.PsmuxConnectionOptions.DataDirectory { get; }` | Public | No | Portable | Gets the canonical isolated Windows data directory. |
+| `P:LibTmux.PsmuxConnectionOptions.ExecutablePath` | `string LibTmux.PsmuxConnectionOptions.ExecutablePath { get; }` | Public | No | Portable | Gets the absolute psmux client executable path. |
+| `P:LibTmux.PsmuxConnectionOptions.ExpectedBinarySha256` | `string LibTmux.PsmuxConnectionOptions.ExpectedBinarySha256 { get; }` | Public | No | Portable | Gets the expected executable SHA-256. |
+| `P:LibTmux.PsmuxConnectionOptions.Logger` | `ILogger? LibTmux.PsmuxConnectionOptions.Logger { get; }` | Public | No | Portable | Gets the optional connection logger. |
+| `P:LibTmux.PsmuxConnectionOptions.NamespaceName` | `string LibTmux.PsmuxConnectionOptions.NamespaceName { get; }` | Public | No | Portable | Gets the explicit non-default psmux namespace. |
+
+### `T:LibTmux.PsmuxPane`
+
+| Member ID | Declaration | Visibility | Static | Platform | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `M:LibTmux.PsmuxPane.CaptureAsync(PsmuxCaptureOptions?,CancellationToken)` | `Task<IReadOnlyList<string>> LibTmux.PsmuxPane.CaptureAsync(PsmuxCaptureOptions? options = null, CancellationToken cancellationToken = default)` | Public | No | Portable | Captures pane text with best-effort target consistency. |
+| `P:LibTmux.PsmuxPane.Height` | `int LibTmux.PsmuxPane.Height { get; }` | Public | No | Portable | Gets the captured pane height. |
+| `P:LibTmux.PsmuxPane.Id` | `PaneId LibTmux.PsmuxPane.Id { get; }` | Public | No | Portable | Gets the captured pane identifier. |
+| `P:LibTmux.PsmuxPane.Index` | `int LibTmux.PsmuxPane.Index { get; }` | Public | No | Portable | Gets the captured pane index. |
+| `P:LibTmux.PsmuxPane.Server` | `PsmuxServer LibTmux.PsmuxPane.Server { get; }` | Public | No | Portable | Gets the psmux endpoint that produced the observation. |
+| `P:LibTmux.PsmuxPane.SessionId` | `SessionId LibTmux.PsmuxPane.SessionId { get; }` | Public | No | Portable | Gets the captured parent session identifier. |
+| `P:LibTmux.PsmuxPane.Title` | `string? LibTmux.PsmuxPane.Title { get; }` | Public | No | Portable | Gets the captured pane title. |
+| `P:LibTmux.PsmuxPane.Width` | `int LibTmux.PsmuxPane.Width { get; }` | Public | No | Portable | Gets the captured pane width. |
+| `P:LibTmux.PsmuxPane.WindowId` | `WindowId LibTmux.PsmuxPane.WindowId { get; }` | Public | No | Portable | Gets the captured parent window identifier. |
+
+### `T:LibTmux.PsmuxServer`
+
+| Member ID | Declaration | Visibility | Static | Platform | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `F:LibTmux.PsmuxServer.SupportedBinarySha256` | `static const string LibTmux.PsmuxServer.SupportedBinarySha256` | Public | Yes | Portable | The exact psmux client executable SHA-256 accepted by this preview. Value: `1abd0eaa3de1ed5491a4f744c8b3db492ae9ac94e9e9a8fea9da217c744ba94e`. |
+| `F:LibTmux.PsmuxServer.SupportedCommit` | `static const string LibTmux.PsmuxServer.SupportedCommit` | Public | Yes | Portable | The exact psmux source commit accepted by this preview. Value: `aa26cd39edcfab03e718f94ea21bb47e8c5b85e8`. |
+| `F:LibTmux.PsmuxServer.SupportedImplementationBanner` | `static const string LibTmux.PsmuxServer.SupportedImplementationBanner` | Public | Yes | Portable | The exact clean implementation banner accepted by this preview. Value: `psmux 3.3.7 (aa26cd3 2026-08-17)`. |
+| `M:LibTmux.PsmuxServer.ConnectAsync(PsmuxConnectionOptions,CancellationToken)` | `static Task<PsmuxServer> LibTmux.PsmuxServer.ConnectAsync(PsmuxConnectionOptions options, CancellationToken cancellationToken = default)` | Public | Yes | Portable | Connects through the pinned client and validates one session. |
+| `M:LibTmux.PsmuxServer.GetPanesAsync(CancellationToken)` | `Task<IReadOnlyList<PsmuxPane>> LibTmux.PsmuxServer.GetPanesAsync(CancellationToken cancellationToken = default)` | Public | No | Portable | Reads all current panes in the sole visible session. |
+| `M:LibTmux.PsmuxServer.GetSessionAsync(CancellationToken)` | `Task<PsmuxSession> LibTmux.PsmuxServer.GetSessionAsync(CancellationToken cancellationToken = default)` | Public | No | Portable | Reads the sole visible session or fails closed. |
+| `M:LibTmux.PsmuxServer.GetWindowsAsync(CancellationToken)` | `Task<IReadOnlyList<PsmuxWindow>> LibTmux.PsmuxServer.GetWindowsAsync(CancellationToken cancellationToken = default)` | Public | No | Portable | Reads all current windows in the sole visible session. |
+| `M:LibTmux.PsmuxServer.RefreshAsync(CancellationToken)` | `Task<PsmuxServer> LibTmux.PsmuxServer.RefreshAsync(CancellationToken cancellationToken = default)` | Public | No | Portable | Reconnects and returns a fresh endpoint observation. |
+| `P:LibTmux.PsmuxServer.ConnectionOptions` | `PsmuxConnectionOptions LibTmux.PsmuxServer.ConnectionOptions { get; }` | Public | No | Portable | Gets the endpoint trust and routing settings. |
+| `P:LibTmux.PsmuxServer.Version` | `TmuxVersion LibTmux.PsmuxServer.Version { get; }` | Public | No | Portable | Gets the psmux compatibility version. |
+
+### `T:LibTmux.PsmuxSession`
+
+| Member ID | Declaration | Visibility | Static | Platform | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `M:LibTmux.PsmuxSession.GetPanesAsync(CancellationToken)` | `Task<IReadOnlyList<PsmuxPane>> LibTmux.PsmuxSession.GetPanesAsync(CancellationToken cancellationToken = default)` | Public | No | Portable | Reads the session's current panes. |
+| `M:LibTmux.PsmuxSession.GetWindowsAsync(CancellationToken)` | `Task<IReadOnlyList<PsmuxWindow>> LibTmux.PsmuxSession.GetWindowsAsync(CancellationToken cancellationToken = default)` | Public | No | Portable | Reads the session's current windows. |
+| `P:LibTmux.PsmuxSession.Attached` | `bool LibTmux.PsmuxSession.Attached { get; }` | Public | No | Portable | Gets whether a client was attached when observed. |
+| `P:LibTmux.PsmuxSession.Id` | `SessionId LibTmux.PsmuxSession.Id { get; }` | Public | No | Portable | Gets the captured session identifier. |
+| `P:LibTmux.PsmuxSession.Name` | `string LibTmux.PsmuxSession.Name { get; }` | Public | No | Portable | Gets the captured session name. |
+| `P:LibTmux.PsmuxSession.Server` | `PsmuxServer LibTmux.PsmuxSession.Server { get; }` | Public | No | Portable | Gets the psmux endpoint that produced the observation. |
+
+### `T:LibTmux.PsmuxWindow`
+
+| Member ID | Declaration | Visibility | Static | Platform | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `M:LibTmux.PsmuxWindow.GetPanesAsync(CancellationToken)` | `Task<IReadOnlyList<PsmuxPane>> LibTmux.PsmuxWindow.GetPanesAsync(CancellationToken cancellationToken = default)` | Public | No | Portable | Reads the window's current panes. |
+| `P:LibTmux.PsmuxWindow.Height` | `int LibTmux.PsmuxWindow.Height { get; }` | Public | No | Portable | Gets the captured window height. |
+| `P:LibTmux.PsmuxWindow.Id` | `WindowId LibTmux.PsmuxWindow.Id { get; }` | Public | No | Portable | Gets the captured window identifier. |
+| `P:LibTmux.PsmuxWindow.Index` | `int LibTmux.PsmuxWindow.Index { get; }` | Public | No | Portable | Gets the captured window index. |
+| `P:LibTmux.PsmuxWindow.Name` | `string LibTmux.PsmuxWindow.Name { get; }` | Public | No | Portable | Gets the captured window name. |
+| `P:LibTmux.PsmuxWindow.Server` | `PsmuxServer LibTmux.PsmuxWindow.Server { get; }` | Public | No | Portable | Gets the psmux endpoint that produced the observation. |
+| `P:LibTmux.PsmuxWindow.SessionId` | `SessionId LibTmux.PsmuxWindow.SessionId { get; }` | Public | No | Portable | Gets the captured parent session identifier. |
+| `P:LibTmux.PsmuxWindow.Width` | `int LibTmux.PsmuxWindow.Width { get; }` | Public | No | Portable | Gets the captured window width. |
 
 ### `T:LibTmux.Query.AndNode`
 
@@ -1334,7 +1421,7 @@ internal static class Program
 | `M:LibTmux.Server.DetachAllClientsAsync(string?,string?,CancellationToken)` | `Task LibTmux.Server.DetachAllClientsAsync(string? keepClient = null, string? shellCommand = null, CancellationToken cancellationToken = default)` | Public | No | `UnsupportedOSPlatform("windows")` | Performs DetachAllClients. |
 | `M:LibTmux.Server.DetachClientAsync(string?,string?,CancellationToken)` | `Task LibTmux.Server.DetachClientAsync(string? targetClient = null, string? shellCommand = null, CancellationToken cancellationToken = default)` | Public | No | `UnsupportedOSPlatform("windows")` | Performs DetachClient. |
 | `M:LibTmux.Server.DisplayMessageAsync(DisplayMessageRequest,CancellationToken)` | `Task<IReadOnlyList<string>?> LibTmux.Server.DisplayMessageAsync(DisplayMessageRequest request, CancellationToken cancellationToken = default)` | Public | No | `UnsupportedOSPlatform("windows")` | Performs DisplayMessage. |
-| `M:LibTmux.Server.EnterControlModeAsync(string?,System.Threading.CancellationToken)` | `Task<IControlModeSession> EnterControlModeAsync(string? target = null, CancellationToken cancellationToken = default)` | Public | No | Portable | Starts a tmux control client and keeps it running. |
+| `M:LibTmux.Server.EnterControlModeAsync(string?,System.Threading.CancellationToken)` | `Task<IControlModeSession> EnterControlModeAsync(string? target = null, CancellationToken cancellationToken = default)` | Public | No | `UnsupportedOSPlatform("windows")` | Starts a tmux control client and keeps it running. |
 | `M:LibTmux.Server.ExecuteCommandAsync(IReadOnlyList<string>,CancellationToken)` | `Task<TmuxCommandResult> LibTmux.Server.ExecuteCommandAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken = default)` | Public | No | `UnsupportedOSPlatform("windows")` | Executes one raw tmux command and returns both byte streams. |
 | `M:LibTmux.Server.FromEnvironment(IReadOnlyDictionary<string,string>?)` | `static Server LibTmux.Server.FromEnvironment(IReadOnlyDictionary<string,string>? environment = null)` | Public | Yes | Portable | Parses a tmux endpoint from an environment snapshot without starting a process. |
 | `M:LibTmux.Server.GetAttachedSessionsAsync(CancellationToken)` | `Task<IReadOnlyList<Session>> LibTmux.Server.GetAttachedSessionsAsync(CancellationToken cancellationToken = default)` | Public | No | `UnsupportedOSPlatform("windows")` | Returns attached sessions or captured empty on any list-command failure. List error policy: empty-on-any-list-command-failure. |
@@ -1827,6 +1914,14 @@ internal static class Program
 | `P:LibTmux.TmuxCommandResult.StandardOutput` | `ReadOnlyMemory<byte> LibTmux.TmuxCommandResult.StandardOutput { get; }` | Public | No | Portable | Gets StandardOutput. |
 | `P:LibTmux.TmuxCommandResult.StandardOutputLines` | `IReadOnlyList<string> LibTmux.TmuxCommandResult.StandardOutputLines { get; }` | Public | No | Portable | Gets StandardOutputLines. |
 
+### `T:LibTmux.TmuxDispatchState`
+
+| Member ID | Declaration | Visibility | Static | Platform | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `F:LibTmux.TmuxDispatchState.Dispatched` | `Dispatched = 2` | Public | Implicit | Portable | tmux ran the command and answered, so any side effect has already happened. Value: `2`. |
+| `F:LibTmux.TmuxDispatchState.NotDispatched` | `NotDispatched = 1` | Public | Implicit | Portable | The command never reached tmux, so a retry repeats nothing. Value: `1`. |
+| `F:LibTmux.TmuxDispatchState.Unknown` | `Unknown = 0` | Public | Implicit | Portable | Whether tmux acted on the command cannot be determined; treat a retry as able to repeat it. Value: `0`. |
+
 ### `T:LibTmux.TmuxEnvironment`
 
 | Member ID | Declaration | Visibility | Static | Platform | Notes |
@@ -1845,6 +1940,14 @@ internal static class Program
 | `P:LibTmux.TmuxEnvironmentEntry.IsRemoved` | `bool LibTmux.TmuxEnvironmentEntry.IsRemoved { get; }` | Public | No | Portable | Gets IsRemoved. |
 | `P:LibTmux.TmuxEnvironmentEntry.Name` | `string LibTmux.TmuxEnvironmentEntry.Name { get; }` | Public | No | Portable | Gets Name. |
 | `P:LibTmux.TmuxEnvironmentEntry.Value` | `string? LibTmux.TmuxEnvironmentEntry.Value { get; }` | Public | No | Portable | Gets Value. |
+
+### `T:LibTmux.TmuxEventsDroppedEvent`
+
+| Member ID | Declaration | Visibility | Static | Platform | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `M:LibTmux.TmuxEventsDroppedEvent.#ctor(long,long)` | `TmuxEventsDroppedEvent(long Count, long TotalDropped)` | Public | No | Portable | Creates a bounded-event-buffer loss marker. |
+| `P:LibTmux.TmuxEventsDroppedEvent.Count` | `long LibTmux.TmuxEventsDroppedEvent.Count { get; }` | Public | No | Portable | Gets the events discarded since the previous loss report. |
+| `P:LibTmux.TmuxEventsDroppedEvent.TotalDropped` | `long LibTmux.TmuxEventsDroppedEvent.TotalDropped { get; }` | Public | No | Portable | Gets the events discarded over this control client's lifetime. |
 
 ### `T:LibTmux.TmuxExitEvent`
 
@@ -1985,6 +2088,7 @@ internal static class Program
 | Member ID | Declaration | Visibility | Static | Platform | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `M:LibTmux.TmuxTransportException.#ctor(string,IReadOnlyList<string>,Exception?)` | `TmuxTransportException(string message, IReadOnlyList<string> arguments, Exception? innerException = null)` | Public | No | Portable | Creates TmuxTransportException. |
+| `M:LibTmux.TmuxTransportException.#ctor(string,IReadOnlyList<string>,TmuxDispatchState,Exception?)` | `TmuxTransportException(string message, IReadOnlyList<string> arguments, TmuxDispatchState dispatch, Exception? innerException = null)` | Public | No | Portable | Creates TmuxTransportException with a known dispatch state. |
 | `P:LibTmux.TmuxTransportException.Arguments` | `IReadOnlyList<string> LibTmux.TmuxTransportException.Arguments { get; }` | Public | No | Portable | Gets Arguments. |
 
 ### `T:LibTmux.TmuxVersion`

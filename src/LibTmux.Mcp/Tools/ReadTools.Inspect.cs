@@ -21,7 +21,7 @@ public sealed partial class ReadTools
     [Description(
         "Find the tmux servers running for this user, by socket. Use when a session "
         + "you expect is missing: it is usually on a different socket. Every other "
-        + "tool takes a socket_name to reach one of these.")]
+        + "tool takes a socketName to reach one of these.")]
     public async Task<IReadOnlyList<DiscoveredServer>> ListServersAsync(
         CancellationToken cancellationToken = default)
     {
@@ -299,7 +299,7 @@ public sealed partial class ReadTools
 }
 
 /// <summary>A tmux socket found on this machine.</summary>
-/// <param name="SocketName">The name to pass as socket_name.</param>
+/// <param name="SocketName">The name to pass as <c>socketName</c>.</param>
 /// <param name="SocketPath">Where the socket file is.</param>
 /// <param name="Alive">Whether a server actually answered on it.</param>
 /// <param name="SessionCount">How many sessions it holds.</param>

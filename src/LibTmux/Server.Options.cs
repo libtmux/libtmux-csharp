@@ -3,7 +3,7 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Reaches the server's own option table.</summary>
+// Reaches the server's own option table.
 public sealed partial class Server
 {
     private TmuxOptions? _options;

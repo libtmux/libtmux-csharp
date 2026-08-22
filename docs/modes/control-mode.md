@@ -45,6 +45,40 @@ and the stream looks mysteriously quiet.
 The stream ends with `TmuxExitEvent` and then completes, so an `await foreach`
 is released rather than hanging when the server goes away.
 
+Notifications use a bounded, non-blocking buffer so a slow observer cannot
+stall command replies or the control reader. If the buffer fills, the oldest
+events are discarded and a `TmuxEventsDroppedEvent` appears immediately before
+the next retained event. `Count` is the loss since the previous marker and
+`TotalDropped` is the lifetime total. Treat the marker as cache invalidation:
+re-read any state that depends on notifications. Command replies travel through
+a separate queue and are not dropped by this buffer.
+
+The marker arrives in sequence, where the discarded events would have been:
+
+<!-- snippet: NoticeDroppedEvents -->
+```csharp
+await using IControlModeSession control = await server.EnterControlModeAsync(cancellationToken: ct);
+
+await control.SendAsync("new-window -d -n build", ct);
+
+await foreach (TmuxEvent observed in control.Events.WithCancellation(ct))
+{
+    if (observed is TmuxEventsDroppedEvent dropped)
+    {
+        // Anything cached from this stream is now a guess, so the
+        // marker is a signal to re-read rather than to log.
+        Console.WriteLine($"missed {dropped.Count}, {dropped.TotalDropped} in total");
+        continue;
+    }
+
+    if (observed is TmuxNotificationEvent { Name: "window-add" })
+    {
+        break;
+    }
+}
+```
+<!-- endsnippet -->
+
 `SendAsync` is safe to call concurrently: tmux answers in the order it was
 asked, and each caller gets its own answer.
 

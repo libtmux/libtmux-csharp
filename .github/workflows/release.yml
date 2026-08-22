@@ -1,7 +1,5 @@
-# Publishing. A version on nuget.org can never be deleted, only unlisted, so
-# everything that can be proven about a package is proven here before the push
-# rather than after it: the gate's build and tests, the package inspection, and
-# a consumer that restores the built package from a folder feed and runs it.
+# Publishing waits for same-commit gates and native/WSL psmux proof before
+# nuget.org grants a token for its immutable feed.
 #
 # The name of this file is part of the trusted publishing policy on nuget.org.
 # Renaming it means editing that policy, and until then no publish is possible.
@@ -25,8 +23,168 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
 
 jobs:
+  validate:
+    name: validate release ref
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Check the tag matches the version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "${REF_TYPE}" != tag ] || [[ "${TAG}" != v* ]]; then
+            echo "release must run at a v* tag, not ${REF_TYPE} ${TAG}" >&2
+            exit 1
+          fi
+          version="$(dotnet msbuild src/LibTmux/LibTmux.csproj \
+            -getProperty:Version -verbosity:quiet | tr -d '[:space:]')"
+          if [ "${TAG}" != "v${version}" ]; then
+            echo "tag ${TAG} does not match version ${version}" >&2
+            exit 1
+          fi
+          echo "validated ${TAG} at ${GITHUB_SHA}"
+
+  dotnet:
+    name: full dotnet gate
+    needs: validate
+    uses: ./.github/workflows/dotnet.yml
+
+  compatibility:
+    name: supported tmux matrix
+    needs: validate
+    uses: ./.github/workflows/dotnet-tmux.yml
+
+  psmux-metadata:
+    name: published psmux artifact
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify the published artifact and provenance links
+        env:
+          ARTIFACT_URL: ${{ vars.PSMUX_ARTIFACT_URL }}
+          LICENSE_URL: ${{ vars.PSMUX_LICENSE_URL }}
+          SOURCE_URL: ${{ vars.PSMUX_SOURCE_PROVENANCE_URL }}
+        run: |
+          set -euo pipefail
+          for variable in ARTIFACT_URL LICENSE_URL SOURCE_URL; do
+            value="${!variable:-}"
+            if [[ "${value}" != https://* ]]; then
+              echo "${variable} must name a published HTTPS resource" >&2
+              exit 1
+            fi
+          done
+          if [[ "${SOURCE_URL}" != *aa26cd39edcfab03e718f94ea21bb47e8c5b85e8* ]]; then
+            echo "SOURCE_URL must attest the exact audited psmux commit" >&2
+            exit 1
+          fi
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --connect-timeout 15 --max-time 120 \
+            "${ARTIFACT_URL}" --output "${RUNNER_TEMP}/psmux.exe"
+          echo "1abd0eaa3de1ed5491a4f744c8b3db492ae9ac94e9e9a8fea9da217c744ba94e  ${RUNNER_TEMP}/psmux.exe" \
+            | sha256sum --check --strict
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --connect-timeout 15 --max-time 120 \
+            "${SOURCE_URL}" --output "${RUNNER_TEMP}/psmux-source-provenance"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --connect-timeout 15 --max-time 120 \
+            "${LICENSE_URL}" --output "${RUNNER_TEMP}/psmux-license"
+          test -s "${RUNNER_TEMP}/psmux-source-provenance"
+          test -s "${RUNNER_TEMP}/psmux-license"
+
+  psmux:
+    name: psmux native Windows and WSL
+    needs: [validate, psmux-metadata]
+    runs-on: [self-hosted, Windows, X64, psmux]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Download the audited psmux artifact
+        shell: pwsh
+        env:
+          ARTIFACT_URL: ${{ vars.PSMUX_ARTIFACT_URL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest `
+            -Uri $env:ARTIFACT_URL `
+            -OutFile (Join-Path $env:RUNNER_TEMP 'psmux.exe')
+
+      - name: Build the native and packed consumers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:NUGET_PACKAGES = Join-Path `
+            $env:RUNNER_TEMP `
+            "libtmux-psmux-nuget-$([Guid]::NewGuid().ToString('N'))"
+          dotnet restore LibTmux.slnx --locked-mode
+          dotnet build LibTmux.slnx `
+            --configuration Release `
+            --no-restore `
+            --warnaserror
+          dotnet pack LibTmux.slnx `
+            --configuration Release `
+            --no-build `
+            --output artifacts/packages
+          dotnet restore tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj
+          foreach ($framework in @('net8.0', 'net10.0')) {
+            dotnet build tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj `
+              --configuration Release `
+              --framework $framework `
+              --no-restore `
+              --warnaserror
+          }
+
+      - name: Run the native and WSL psmux harness
+        shell: pwsh
+        env:
+          WSL_DISTRIBUTION: ${{ vars.PSMUX_WSL_DISTRIBUTION }}
+          WSL_DOTNET_PATH: ${{ vars.PSMUX_WSL_DOTNET_PATH }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:WSL_DISTRIBUTION)) {
+            throw 'PSMUX_WSL_DISTRIBUTION must name the release runner distribution.'
+          }
+          if ([string]::IsNullOrWhiteSpace($env:WSL_DOTNET_PATH)) {
+            throw 'PSMUX_WSL_DOTNET_PATH must name the WSL dotnet executable.'
+          }
+          $dotnet = (Get-Command dotnet.exe -ErrorAction Stop).Source
+          foreach ($framework in @('net8.0', 'net10.0')) {
+            $nonce = [Guid]::NewGuid().ToString('N')
+            & .\eng\psmux\Invoke-PsmuxSmoke.ps1 `
+              -PsmuxPath (Join-Path $env:RUNNER_TEMP 'psmux.exe') `
+              -ExpectedSha256 '1abd0eaa3de1ed5491a4f744c8b3db492ae9ac94e9e9a8fea9da217c744ba94e' `
+              -DataDirectory (Join-Path $env:RUNNER_TEMP "libtmux-psmux-$nonce") `
+              -NamespaceName "libtmux_smoke_$($nonce.Substring(0, 16))" `
+              -DotnetPath $dotnet `
+              -TestAssembly (Join-Path $env:GITHUB_WORKSPACE "tests\LibTmux.UnitTests\bin\Release\$framework\LibTmux.UnitTests.dll") `
+              -ExampleAssembly (Join-Path $env:GITHUB_WORKSPACE "examples\LibTmux.Examples\bin\Release\$framework\LibTmux.Examples.dll") `
+              -PackageConsumerAssembly (Join-Path $env:GITHUB_WORKSPACE "tests\LibTmux.PackageConsumer\bin\Release\$framework\LibTmux.PackageConsumer.dll") `
+              -TargetFramework $framework `
+              -RunWslSmoke `
+              -WslDistribution $env:WSL_DISTRIBUTION `
+              -WslRepository $env:GITHUB_WORKSPACE `
+              -WslDotnetPath $env:WSL_DOTNET_PATH
+          }
+
   publish:
     name: publish to nuget.org
+    needs: [dotnet, compatibility, psmux]
     runs-on: ubuntu-latest
 
     # The policy on nuget.org names this environment, so a workflow that ran
@@ -54,68 +212,14 @@ jobs:
 
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
-      - name: Install tmux
-        # The consumer proof drives a real server rather than a stub.
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes tmux
-
-      - name: Check the tag matches the version
-        # A tag that disagrees with the version publishes something permanently
-        # mislabelled, and the mislabelling is what nobody can take back.
-        if: github.event_name == 'push'
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          version="$(dotnet msbuild src/LibTmux/LibTmux.csproj \
-            -getProperty:Version -verbosity:quiet | tr -d '[:space:]')"
-          if [ "${TAG}" != "v${version}" ]; then
-            echo "tag ${TAG} does not match version ${version}" >&2
-            exit 1
-          fi
-          echo "publishing ${version} as ${TAG}"
-
-      - name: Restore
-        run: dotnet restore LibTmux.slnx --locked-mode
-
-      - name: Build
-        run: dotnet build LibTmux.slnx --configuration Release --no-restore --warnaserror
-
-      - name: Unit tests
-        run: >
-          dotnet test
-          --project tests/LibTmux.UnitTests/LibTmux.UnitTests.csproj
-          --configuration Release
-          --framework net10.0
-          --no-build
-          --minimum-expected-tests 1
-
-      - name: Pack
-        run: dotnet pack LibTmux.slnx --configuration Release --no-build --output artifacts/packages
-
-      - name: Inspect the packages
-        # Metadata, assemblies, dependencies and symbols, per package. What
-        # this catches is only fixable before the version exists.
-        run: uv run python eng/parity/inspect_packages.py
-
-      - name: Prove the package installs and runs
-        # Reaching the library through the built package rather than a project
-        # reference is the last thing that can fail while it is still private.
-        run: |
-          dotnet restore tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj
-          for framework in net8.0 net10.0; do
-            dotnet run \
-              --project tests/LibTmux.PackageConsumer/LibTmux.PackageConsumer.csproj \
-              --configuration Release \
-              --framework "${framework}" \
-              --no-restore
-          done
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Download the packages proved by the gate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: packages
           path: artifacts/packages
-          if-no-files-found: error
+
+      - name: Inspect the packages
+        run: uv run python eng/parity/inspect_packages.py
 
       - name: NuGet login
         # The key this returns lasts an hour, so it is asked for immediately
@@ -145,12 +249,9 @@ jobs:
           subject-path: 'artifacts/packages/*.nupkg'
 
       - name: Push
-        # The matching .snupkg is pushed alongside each package automatically,
-        # which is what puts the symbols on the NuGet symbol server.
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: >
           dotnet nuget push "artifacts/packages/*.nupkg"
           --api-key "${NUGET_API_KEY}"
           --source https://api.nuget.org/v3/index.json
-          --skip-duplicate

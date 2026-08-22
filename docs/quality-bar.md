@@ -1,11 +1,15 @@
-# Quality bar
+# Quality bar (archived snapshot)
+
+> **Archived evidence — not a current release claim.** This page records one
+> older tree. Its API counts, macOS results, and Linux NativeAOT observations
+> must not be cited for the alpha.8 tree; use fresh CI and release evidence.
 
 A rating is worthless as an assertion, so this is the rubric and the evidence
 behind each score. Every row names something a reader can check, and the check
 is a command or a file rather than a claim.
 
-Assessed at `acd37f8` + the documentation work that follows it, against tmux
-3.2a–3.7b on net8.0 and net10.0.
+This snapshot was assessed at `acd37f8` plus the documentation work that
+followed it, against tmux 3.2a–3.7b on net8.0 and net10.0.
 
 Scoring: **10** means nothing known is missing. **9.5** means the gaps are named
 and are not defects. Below 9 means something is wrong rather than absent.
@@ -100,11 +104,12 @@ published, versioned doc site.
 
 ---
 
-## How to re-check this
+## How to measure a current tree
 
 ```console
 $ bash eng/quality/measure.sh
 ```
 
-The numbers above come from that script, so a change that moves one moves the
-evidence rather than only the prose.
+The script prints current raw measures; it does not refresh this archived prose.
+Current compatibility, package, API, and platform claims require their named CI
+or release gates on the exact tree being assessed.

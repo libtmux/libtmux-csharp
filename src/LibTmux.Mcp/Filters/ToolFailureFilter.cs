@@ -37,6 +37,7 @@ internal static class ToolFailureFilter
         next => async (request, cancellationToken) =>
     {
         string tool = request.Params?.Name ?? "a tmux tool";
+        bool mayModify = ToolMetadata.MayModify(request, tool);
         ILogger logger = request.Services?.GetService<ILoggerFactory>()
                 ?.CreateLogger(nameof(ToolFailureFilter))
             ?? NullLogger.Instance;
@@ -61,6 +62,7 @@ internal static class ToolFailureFilter
                     logger,
                     tool,
                     retried,
+                    mayModify,
                     "The tmux server was restarted and the retry failed too. "
                     + "Call tmux_list_servers to see what is running now.");
             }
@@ -71,6 +73,7 @@ internal static class ToolFailureFilter
                 logger,
                 tool,
                 error,
+                mayModify,
                 "This tmux is too old for that operation. "
                 + "Call tmux_server_info to see which version is running.");
         }
@@ -80,13 +83,23 @@ internal static class ToolFailureFilter
                 logger,
                 tool,
                 error,
+                mayModify,
                 "That session, window or pane no longer exists. "
                 + "Call tmux_hierarchy to see what does.");
         }
         catch (TmuxCommandException error)
         {
             // tmux's own message is the most specific thing anybody has.
-            return Failure(logger, tool, error, $"tmux refused the command: {error.Message}");
+            return Failure(
+                logger,
+                tool,
+                error,
+                mayModify,
+                $"tmux refused the command: {error.Message}");
+        }
+        catch (TmuxOperationCanceledException error) when (error.CommandMayHaveExecuted)
+        {
+            return Failure(logger, tool, error, mayModify, error.Message);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -94,13 +107,14 @@ internal static class ToolFailureFilter
                 logger,
                 tool,
                 null,
+                mayModify,
                 "The operation ran out of time. Nothing was rolled back — whatever "
-                + "was started is still running in its pane. Read the pane before "
-                + "trying again, so you do not start it twice.");
+                + "was started is still running in its pane. Do not retry until you "
+                + "have read the pane, so you do not start it twice.");
         }
         catch (LibTmuxException error)
         {
-            return Failure(logger, tool, error, error.Message);
+            return Failure(logger, tool, error, mayModify, error.Message);
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {
@@ -109,6 +123,7 @@ internal static class ToolFailureFilter
                 logger,
                 tool,
                 error,
+                mayModify,
                 $"{error.Message} This is unexpected — check the server's log on "
                 + "standard error before retrying, because retrying unchanged will "
                 + "most likely fail the same way.");
@@ -126,6 +141,7 @@ internal static class ToolFailureFilter
         ILogger logger,
         string tool,
         Exception? error,
+        bool mayModify,
         string advice)
     {
         if (error is not null)
@@ -136,7 +152,61 @@ internal static class ToolFailureFilter
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = $"{tool} failed. {advice}" }],
+            Content =
+            [
+                new TextContentBlock
+                {
+                    Text = $"{tool} failed. {ActionableAdvice(tool, error, mayModify, advice)}",
+                },
+            ],
         };
+    }
+
+    internal static string ActionableAdvice(
+        string tool,
+        Exception? error,
+        bool mayModify,
+        string advice)
+    {
+        if (TryPasteCleanup(error, out string? buffer))
+        {
+            return $"The paste failed, and temporary tmux buffer {buffer} may still "
+                + "contain the pasted text because cleanup failed. Do not retry the paste. "
+                + "Inspect with tmux_list_buffers, then ask the operator to remove that "
+                + $"exact buffer with tmux delete-buffer -b {buffer}.";
+        }
+
+        bool mayHaveActed = error is TmuxOperationCanceledException cancellation
+                && cancellation.CommandMayHaveExecuted
+            || error is LibTmuxException tmux
+                && tmux.Dispatch != TmuxDispatchState.NotDispatched;
+        if (!mayModify || !mayHaveActed)
+        {
+            return advice;
+        }
+
+        string recovery = string.Equals(tool, "tmux_start_job", StringComparison.Ordinal)
+            ? " Call tmux_list_jobs now; any possibly started command has a retained handle."
+            : " Inspect tmux state first.";
+        return advice
+            + " tmux may have acted before the failure. Do not retry this operation."
+            + recovery;
+    }
+
+    private static bool TryPasteCleanup(Exception? error, out string? buffer)
+    {
+        buffer = null;
+        if (error?.Data[WriteTools.PasteBufferCleanupFailureDataKey] is not Exception
+            || error.Data[WriteTools.PasteBufferCleanupBufferDataKey] is not string candidate
+            || candidate.Length is < 1 or > 64
+            || !candidate.StartsWith("libtmux_mcp_", StringComparison.Ordinal)
+            || candidate.Any(static character =>
+                !char.IsAsciiLetterOrDigit(character) && character != '_'))
+        {
+            return false;
+        }
+
+        buffer = candidate;
+        return true;
     }
 }

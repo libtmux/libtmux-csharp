@@ -15,13 +15,8 @@ public enum WindowRotationDirection
     Down = 1,
 }
 
-/// <summary>Lays out, moves, links, and tears down a window.</summary>
-/// <remarks>
-/// Handles are immutable, so an operation that changes tmux state returns a
-/// replacement rather than mutating the receiver. Operations that destroy or
-/// re-home a window return nothing, because there is no truthful replacement
-/// to hand back.
-/// </remarks>
+// Window mutations return replacements when a truthful handle remains;
+// destructive or re-homing operations do not.
 public sealed partial class Window
 {
     private const string DisplayMessageLiteralCapability = "display_message_literal";
@@ -130,9 +125,10 @@ public sealed partial class Window
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        await RunAsync(["rename-window", "-t", Target, name], cancellationToken)
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["rename-window", "-t", Target, name], cancellationToken),
+                () => RefreshAsync(cancellationToken))
             .ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Selects this window in its session.</summary>
@@ -141,8 +137,10 @@ public sealed partial class Window
     [UnsupportedOSPlatform("windows")]
     public async Task<Window> SelectAsync(CancellationToken cancellationToken = default)
     {
-        await RunAsync(["select-window", "-t", Target], cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["select-window", "-t", Target], cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Stops this window.</summary>
@@ -282,8 +280,10 @@ public sealed partial class Window
         ArgumentNullException.ThrowIfNull(request);
         List<string> arguments = BuildMoveWindowArguments(request);
 
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(arguments, cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Swaps this window with another.</summary>
@@ -327,8 +327,10 @@ public sealed partial class Window
         ArgumentNullException.ThrowIfNull(request);
         List<string> arguments = BuildResizeWindowArguments(request);
 
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(arguments, cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Rotates the panes in this window.</summary>
@@ -353,8 +355,10 @@ public sealed partial class Window
             arguments.Add("-Z");
         }
 
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(arguments, cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Restarts the command running in this window.</summary>
@@ -422,31 +426,26 @@ public sealed partial class Window
             arguments.Add(options.Command);
         }
 
-        TmuxCommandResult result = await _commandDispatcher
-            .ExecuteAsync(arguments, cancellationToken)
+        var sequence = new TmuxMutationSequence();
+        TmuxCommandResult result = await sequence.MutateAsync(
+                () => _commandDispatcher.ExecuteAsync(arguments, cancellationToken),
+                static value => TmuxCommandFailure.ThrowIfFailed(value, "new-window"))
             .ConfigureAwait(false);
-        TmuxCommandFailure.ThrowIfFailed(result, "new-window");
 
-        // -S selects an existing window of the same name and returns before
-        // tmux prints anything, so an empty listing there is the documented
-        // outcome rather than a protocol error.
-        if (result.StandardOutputLines.Count == 0 && options.SelectExisting)
-        {
-            return await RefreshActiveAsync(owner, cancellationToken).ConfigureAwait(false);
-        }
+        WindowId created = sequence.Observe(() =>
+            result.StandardOutputLines.Count > 0
+                && WindowId.TryParse(result.StandardOutputLines[0], out WindowId parsed)
+                    ? parsed
+                    : throw new InvalidDataException("tmux reported no new window identifier."));
 
-        if (result.StandardOutputLines.Count == 0
-            || !WindowId.TryParse(result.StandardOutputLines[0], out WindowId created))
-        {
-            throw new InvalidDataException("tmux reported no new window identifier.");
-        }
-
-        IReadOnlyList<Window> windows = await owner.GetWindowsAsync(cancellationToken)
+        IReadOnlyList<Window> windows = await sequence
+            .ObserveAsync(() => owner.GetWindowsAsync(cancellationToken))
             .ConfigureAwait(false);
-        return windows.FirstOrDefault(window => window.Id == created)
-            ?? throw new TmuxObjectNotFoundException(
-                $"tmux did not report the created window '{created}'.",
-                created.ToString());
+        return sequence.Observe(() =>
+            windows.FirstOrDefault(window => window.Id == created)
+                ?? throw new TmuxObjectNotFoundException(
+                    $"tmux did not report the created window '{created}'.",
+                    created.ToString()));
     }
 
     internal List<string> BuildResizeWindowArguments(ResizeWindowRequest request)
@@ -518,8 +517,10 @@ public sealed partial class Window
         SelectLayoutRequest options = request ?? new SelectLayoutRequest();
         List<string> arguments = BuildSelectLayoutArguments(options);
 
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(arguments, cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Moves to the next layout.</summary>
@@ -529,8 +530,10 @@ public sealed partial class Window
     public async Task<Window> SelectNextLayoutAsync(
         CancellationToken cancellationToken = default)
     {
-        await RunAsync(["next-layout", "-t", Target], cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["next-layout", "-t", Target], cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Moves to the previous layout.</summary>
@@ -540,8 +543,10 @@ public sealed partial class Window
     public async Task<Window> SelectPreviousLayoutAsync(
         CancellationToken cancellationToken = default)
     {
-        await RunAsync(["previous-layout", "-t", Target], cancellationToken).ConfigureAwait(false);
-        return await RefreshAsync(cancellationToken).ConfigureAwait(false);
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(["previous-layout", "-t", Target], cancellationToken),
+                () => RefreshAsync(cancellationToken))
+            .ConfigureAwait(false);
     }
 
     /// <summary>Selects a pane in this window.</summary>
@@ -559,9 +564,15 @@ public sealed partial class Window
         List<string> arguments = target is "-l" or "-U" or "-D" or "-L" or "-R"
             ? ["select-pane", "-t", Target, target]
             : ["select-pane", "-t", $"{Target}.{target}"];
-        await RunAsync(arguments, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<Pane> panes = await GetPanesAsync(cancellationToken).ConfigureAwait(false);
-        return panes.FirstOrDefault(pane => pane.Snapshot?["pane_active"] == "1");
+        return await TmuxMutationSequence.RunAsync(
+                () => RunAsync(arguments, cancellationToken),
+                async () =>
+                {
+                    IReadOnlyList<Pane> panes = await GetPanesAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    return panes.FirstOrDefault(pane => pane.Snapshot?["pane_active"] == "1");
+                })
+            .ConfigureAwait(false);
     }
 
     /// <summary>Reads one pane in this window.</summary>
@@ -637,21 +648,25 @@ public sealed partial class Window
             arguments.Add(options.Command);
         }
 
-        TmuxCommandResult result = await _commandDispatcher
-            .ExecuteAsync(arguments, cancellationToken)
+        var sequence = new TmuxMutationSequence();
+        TmuxCommandResult result = await sequence.MutateAsync(
+                () => _commandDispatcher.ExecuteAsync(arguments, cancellationToken),
+                static value => TmuxCommandFailure.ThrowIfFailed(value, "split-window"))
             .ConfigureAwait(false);
-        TmuxCommandFailure.ThrowIfFailed(result, "split-window");
-        if (result.StandardOutputLines.Count == 0
-            || !PaneId.TryParse(result.StandardOutputLines[0], out PaneId created))
-        {
-            throw new InvalidDataException("tmux reported no new pane identifier.");
-        }
+        PaneId created = sequence.Observe(() =>
+            result.StandardOutputLines.Count > 0
+                && PaneId.TryParse(result.StandardOutputLines[0], out PaneId parsed)
+                    ? parsed
+                    : throw new InvalidDataException("tmux reported no new pane identifier."));
 
-        IReadOnlyList<Pane> panes = await GetPanesAsync(cancellationToken).ConfigureAwait(false);
-        return panes.FirstOrDefault(pane => pane.Id == created)
-            ?? throw new TmuxObjectNotFoundException(
-                $"tmux did not report the created pane '{created}'.",
-                created.ToString());
+        IReadOnlyList<Pane> panes = await sequence
+            .ObserveAsync(() => GetPanesAsync(cancellationToken))
+            .ConfigureAwait(false);
+        return sequence.Observe(() =>
+            panes.FirstOrDefault(pane => pane.Id == created)
+                ?? throw new TmuxObjectNotFoundException(
+                    $"tmux did not report the created pane '{created}'.",
+                    created.ToString()));
     }
 
     /// <summary>Creates a floating pane in this window.</summary>
@@ -722,21 +737,25 @@ public sealed partial class Window
             arguments.Add(options.Command);
         }
 
-        TmuxCommandResult result = await _commandDispatcher
-            .ExecuteAsync(arguments, cancellationToken)
+        var sequence = new TmuxMutationSequence();
+        TmuxCommandResult result = await sequence.MutateAsync(
+                () => _commandDispatcher.ExecuteAsync(arguments, cancellationToken),
+                static value => TmuxCommandFailure.ThrowIfFailed(value, "new-pane"))
             .ConfigureAwait(false);
-        TmuxCommandFailure.ThrowIfFailed(result, "new-pane");
-        if (result.StandardOutputLines.Count == 0
-            || !PaneId.TryParse(result.StandardOutputLines[0], out PaneId created))
-        {
-            throw new InvalidDataException("tmux reported no new pane identifier.");
-        }
+        PaneId created = sequence.Observe(() =>
+            result.StandardOutputLines.Count > 0
+                && PaneId.TryParse(result.StandardOutputLines[0], out PaneId parsed)
+                    ? parsed
+                    : throw new InvalidDataException("tmux reported no new pane identifier."));
 
-        IReadOnlyList<Pane> panes = await GetPanesAsync(cancellationToken).ConfigureAwait(false);
-        return panes.FirstOrDefault(pane => pane.Id == created)
-            ?? throw new TmuxObjectNotFoundException(
-                $"tmux did not report the created pane '{created}'.",
-                created.ToString());
+        IReadOnlyList<Pane> panes = await sequence
+            .ObserveAsync(() => GetPanesAsync(cancellationToken))
+            .ConfigureAwait(false);
+        return sequence.Observe(() =>
+            panes.FirstOrDefault(pane => pane.Id == created)
+                ?? throw new TmuxObjectNotFoundException(
+                    $"tmux did not report the created pane '{created}'.",
+                    created.ToString()));
     }
 
     /// <summary>Runs a tmux-side filter over this window's panes.</summary>
@@ -1008,22 +1027,6 @@ public sealed partial class Window
         throw new TmuxWindowException(
             $"tmux {owner.RawVersion} does not know the layout '{layout}'.",
             _id);
-    }
-
-    [UnsupportedOSPlatform("windows")]
-    private async Task<Window> RefreshActiveAsync(
-        Server owner,
-        CancellationToken cancellationToken)
-    {
-        IReadOnlyList<Window> windows = await owner.GetWindowsAsync(cancellationToken)
-            .ConfigureAwait(false);
-        string? session = ReadSnapshot("session_id");
-        return windows.FirstOrDefault(window =>
-                window.ReadSnapshot("session_id") == session
-                && window.ReadSnapshot("window_active") == "1")
-            ?? throw new TmuxObjectNotFoundException(
-                "tmux reported no active window after selecting one.",
-                _id.ToString());
     }
 
     private string Target => _id.ToString();

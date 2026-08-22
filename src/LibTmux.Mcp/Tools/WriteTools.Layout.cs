@@ -18,7 +18,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What was created.</returns>
-    [McpServerTool(Name = "tmux_create_session", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_create_session", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description(
         "Create a detached tmux session and return its ids. Give a width and height "
         + "when nothing will attach to it: a session with no client keeps tmux's "
@@ -50,7 +50,7 @@ public sealed partial class WriteTools
 
             Pane? active = session.ActivePane;
             return new ActionResult(
-                $"Created session {session.Id} named {session.Name}.",
+                $"Created session {session.Id}.",
                 PaneId: active?.Id.ToString(),
                 WindowId: session.ActiveWindow?.Id.ToString(),
                 SessionId: session.Id.ToString());
@@ -71,7 +71,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What was created.</returns>
-    [McpServerTool(Name = "tmux_create_window", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_create_window", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description("Create a window in a tmux session and return its ids.")]
     public async Task<ActionResult> CreateWindowAsync(
         [Description("A session id such as $0, or its name. Omit for the first session.")]
@@ -95,7 +95,7 @@ public sealed partial class WriteTools
             .ConfigureAwait(false);
 
         return new ActionResult(
-            $"Created window {window.Id} named {window.Name} in {owner.Id}.",
+            $"Created window {window.Id} in {owner.Id}.",
             PaneId: window.ActivePane?.Id.ToString(),
             WindowId: window.Id.ToString(),
             SessionId: owner.Id.ToString());
@@ -110,7 +110,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>The new pane.</returns>
-    [McpServerTool(Name = "tmux_split_pane", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_split_pane", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description(
         "Split a pane and return the NEW pane's id. Use that id for what you put in "
         + "it — pane ids stay valid across layout changes, where window names and "
@@ -153,7 +153,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What changed.</returns>
-    [McpServerTool(Name = "tmux_select_pane", Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_select_pane", Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description(
         "Make a pane the active one in its window. This changes what a watching human "
         + "sees; targeting a pane by id does not require selecting it first.")]
@@ -175,7 +175,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What changed.</returns>
-    [McpServerTool(Name = "tmux_select_window", Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_select_window", Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Make a window the current one in its session.")]
     public async Task<ActionResult> SelectWindowAsync(
         [Description("The window id, such as @1.")] string windowId,
@@ -200,7 +200,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What changed.</returns>
-    [McpServerTool(Name = "tmux_resize_pane", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_resize_pane", Destructive = true, OpenWorld = false, UseStructuredContent = true)]
     [Description(
         "Resize a pane, or zoom it to fill its window. Widening a pane before reading "
         + "it is the fix for output that comes back wrapped across rows.")]
@@ -238,7 +238,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What changed.</returns>
-    [McpServerTool(Name = "tmux_select_layout", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_select_layout", Destructive = true, OpenWorld = false, UseStructuredContent = true)]
     [Description(
         "Arrange a window's panes with a named layout — even-horizontal, "
         + "even-vertical, main-horizontal, main-vertical, tiled — or a layout string "
@@ -260,7 +260,7 @@ public sealed partial class WriteTools
                 cancellationToken)
             .ConfigureAwait(false);
         return new ActionResult(
-            $"Arranged {arranged.Id} as {layout ?? "its current layout"}.",
+            $"Arranged window {arranged.Id}.",
             WindowId: arranged.Id.ToString());
     }
 
@@ -270,7 +270,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What changed.</returns>
-    [McpServerTool(Name = "tmux_rename_session", Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_rename_session", Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Rename a tmux session. Its id does not change, so anything holding one still works.")]
     public async Task<ActionResult> RenameSessionAsync(
         [Description("The new name. It cannot contain a colon or a full stop.")] string name,
@@ -286,7 +286,7 @@ public sealed partial class WriteTools
             .ConfigureAwait(false);
         Session renamed = await target.RenameAsync(name, cancellationToken).ConfigureAwait(false);
         return new ActionResult(
-            $"{renamed.Id} is now named {renamed.Name}.",
+            $"Renamed session {renamed.Id}.",
             SessionId: renamed.Id.ToString());
     }
 
@@ -296,7 +296,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What changed.</returns>
-    [McpServerTool(Name = "tmux_rename_window", Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_rename_window", Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Rename a tmux window. Its id does not change.")]
     public async Task<ActionResult> RenameWindowAsync(
         [Description("The new name.")] string name,
@@ -312,7 +312,7 @@ public sealed partial class WriteTools
             .ConfigureAwait(false);
         Window renamed = await window.RenameAsync(name, cancellationToken).ConfigureAwait(false);
         return new ActionResult(
-            $"{renamed.Id} is now named {renamed.Name}.",
+            $"Renamed window {renamed.Id}.",
             WindowId: renamed.Id.ToString());
     }
 
@@ -322,7 +322,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What changed.</returns>
-    [McpServerTool(Name = "tmux_set_pane_title", Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_set_pane_title", Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description(
         "Set a pane's title. Useful for labelling panes you created so a human "
         + "watching can tell which is which.")]
@@ -339,7 +339,7 @@ public sealed partial class WriteTools
         Pane pane = await TmuxTargets.PaneAsync(server, paneId, cancellationToken)
             .ConfigureAwait(false);
         Pane titled = await pane.SetTitleAsync(title, cancellationToken).ConfigureAwait(false);
-        return new ActionResult($"{titled.Id} is now titled {title}.", PaneId: titled.Id.ToString());
+        return new ActionResult($"Set the title of {titled.Id}.", PaneId: titled.Id.ToString());
     }
 
     /// <summary>Restarts the program in a pane.</summary>
@@ -348,7 +348,7 @@ public sealed partial class WriteTools
     /// <param name="socketName">The tmux socket, or null for the default.</param>
     /// <param name="cancellationToken">Cancels the tmux command.</param>
     /// <returns>What changed.</returns>
-    [McpServerTool(Name = "tmux_respawn_pane", Destructive = false, OpenWorld = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "tmux_respawn_pane", Destructive = true, OpenWorld = true, UseStructuredContent = true)]
     [Description(
         "Restart the program in a pane, keeping the pane and its id. Use to bring back "
         + "a pane whose program exited, or to restart a server in place. Any "

@@ -3,15 +3,8 @@ using LibTmux.Internal;
 
 namespace LibTmux;
 
-/// <summary>Reads what one capture of the server found.</summary>
-/// <remarks>
-/// These say what a capture found, and nothing else. Reading one never reaches
-/// tmux, so walking a server's sessions and each session's windows costs the
-/// commands the capture ran and not one per step. A handle that has captured
-/// nothing answers an uncaptured relation rather than an empty one, because
-/// "nobody looked" and "there are none" are different answers and a caller
-/// acting on the second when the first is true would be wrong.
-/// </remarks>
+// Captured relations never query tmux and distinguish uncaptured data from an
+// observed empty relation.
 public sealed partial class Server
 {
     private readonly ServerSnapshot? _snapshot;

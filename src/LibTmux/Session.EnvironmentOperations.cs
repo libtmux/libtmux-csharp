@@ -2,7 +2,7 @@ using System.Runtime.Versioning;
 
 namespace LibTmux;
 
-/// <summary>Reaches this session's environment.</summary>
+// Reaches this session's environment.
 public sealed partial class Session
 {
     private TmuxEnvironment? _environment;
