@@ -1,4 +1,4 @@
-# LibTmux
+# libtmux for .NET
 
 [![LibTmux](https://img.shields.io/nuget/vpre/LibTmux?logo=nuget&label=LibTmux)](https://www.nuget.org/packages/LibTmux)
 [![downloads](https://img.shields.io/nuget/dt/LibTmux?logo=nuget&label=downloads)](https://www.nuget.org/packages/LibTmux)
@@ -10,10 +10,9 @@ Drive [tmux](https://github.com/tmux/tmux) from .NET. Servers, sessions,
 windows, panes, clients, options, hooks and buffers, typed and asynchronous,
 against every tmux from **3.2a to 3.7b** on **net8.0** and **net10.0**.
 
-> **Alpha.** The public API is not settled and can change between prereleases
-> without notice, so pin an exact version. The behaviour is proven against all
-> seven supported tmux versions on every commit — what is unsettled is the shape
-> of the API, not whether it works.
+> **Alpha.** Releases carry an `-alpha` prerelease tag. The API is not
+> settled, and any release may change or remove exported identifiers without a
+> deprecation period. Pin an exact version. Not recommended for production.
 
 <!-- snippet: ConnectAndBuild usings: LibTmux -->
 ```csharp
