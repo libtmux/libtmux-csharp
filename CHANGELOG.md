@@ -30,7 +30,7 @@ version.
 - Generated API reference pages now contain only the public LibTmux surface,
   use each partial type's canonical summary, and are checked in CI alongside
   the public API, capability, snippet, and MCP catalogs.
-- MCP tail cursors are authenticated, constant-size, and bound to the exact
+- MCP tail cursors are authenticated, bounded in size, and tied to the exact
   endpoint, server generation, and pane. Search and every serialized tool
   result now obey hard global line and UTF-8 byte ceilings.
 - MCP Tasks admit at most eight active executions, retain a bounded result set,

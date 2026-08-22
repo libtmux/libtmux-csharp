@@ -317,7 +317,7 @@ internal static class PaneReader
         return match;
     }
 
-    private static List<string> DropAlreadySeen(
+    internal static List<string> DropAlreadySeen(
         IReadOnlyList<string> rows,
         TailCursor cursor)
     {
@@ -327,7 +327,6 @@ internal static class PaneReader
         }
 
         List<string> kept = [];
-        int index = 0;
         if (cursor.AnchorHash is null
             || !string.Equals(TailCursor.HashLine(rows[0]), cursor.AnchorHash, StringComparison.Ordinal))
         {
@@ -335,7 +334,7 @@ internal static class PaneReader
             kept.Add(rows[0]);
         }
 
-        index = 1;
+        int index = 1;
         if (cursor.SuffixCount > 0
             && rows.Count - index >= cursor.SuffixCount
             && string.Equals(
@@ -343,10 +342,26 @@ internal static class PaneReader
                 cursor.SuffixHash,
                 StringComparison.Ordinal))
         {
-            index += cursor.SuffixCount;
+            return Report(kept, rows, index + cursor.SuffixCount);
         }
 
-        for (int row = index; row < rows.Count; row++)
+        // A pane below the cursor is redrawn a row at a time, so comparing the
+        // block as a whole would replay every row beside the one that changed.
+        int tracked = Math.Min(cursor.BelowCount, Math.Max(rows.Count - index, 0));
+        for (int row = 0; row < tracked; row++)
+        {
+            if (!cursor.TrackedRowUnchanged(row, rows[index + row]))
+            {
+                kept.Add(rows[index + row]);
+            }
+        }
+
+        return Report(kept, rows, index + tracked);
+    }
+
+    private static List<string> Report(List<string> kept, IReadOnlyList<string> rows, int from)
+    {
+        for (int row = from; row < rows.Count; row++)
         {
             kept.Add(rows[row]);
         }
